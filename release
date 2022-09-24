@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# Applying prod config before building
+./setup-config prod
+
+# Fetching build number
+while IFS= read -r line
+do
+    if [[ ${line} == "    version ="* ]]; then
+        prefix=${line%%$*version*}
+        index=${#prefix}
+        version="${line:index+11}"
+        version="${version::${#version}-1}"
+    fi
+done < "app/build.gradle.kts"
+
+./gradlew clean :app:shadowJar
+mv app/build/libs/*.jar export/fulgurobot-${version}.jar
+
+# Rolling back to git config
+./setup-config git
