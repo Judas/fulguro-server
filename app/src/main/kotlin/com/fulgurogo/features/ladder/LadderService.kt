@@ -80,12 +80,23 @@ class LadderService : GameScanListener {
             ladderGames.forEach { game ->
                 var tmpPlayer = ladderPlayer.clone()
                 game.toGlickoGame()?.let { glickoGame ->
-                    val glickoPlayer =
-                        Glickotlin.Player(tmpPlayer.rating, tmpPlayer.deviation, tmpPlayer.volatility)
-                    val preRating = tmpPlayer.rating
-                    Glickotlin.Algorithm().updateRating(glickoPlayer, listOf(glickoGame))
-                    val postRating = glickoPlayer.rating()
+                    val opponentPlayer = glickoGame.opponent
+                    val logicalResult = when (glickoGame.result) {
+                        Glickotlin.GameResult.VICTORY ->
+                            tmpPlayer.rating - tmpPlayer.deviation > opponentPlayer.rating() + opponentPlayer.deviation()
 
+                        Glickotlin.GameResult.DEFEAT ->
+                            tmpPlayer.rating + tmpPlayer.deviation < opponentPlayer.rating() - opponentPlayer.deviation()
+
+                        Glickotlin.GameResult.DRAW -> false
+                    }
+
+                    val preRating = tmpPlayer.rating
+                    val glickoPlayer = Glickotlin.Player(tmpPlayer.rating, tmpPlayer.deviation, tmpPlayer.volatility)
+
+                    if (!logicalResult) Glickotlin.Algorithm().updateRating(glickoPlayer, listOf(glickoGame))
+
+                    val postRating = glickoPlayer.rating()
                     DatabaseAccessor.saveGameRatingGain(game.id, postRating - preRating)
 
                     tmpPlayer = LadderPlayer(
