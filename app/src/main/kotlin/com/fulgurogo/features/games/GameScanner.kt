@@ -110,7 +110,9 @@ class GameScanner(
         log(INFO, "Fetched ${allGames.size} valid games !")
 
         // Save game in DB
-        allGames.forEach { DatabaseAccessor.saveGame(it) }
+        allGames.forEach {
+            if (!DatabaseAccessor.existGame(it)) DatabaseAccessor.saveGame(it)
+        }
 
         // Update user scan date
         DatabaseAccessor.updateUserCheckDate(user.discordId, scanEnd)

@@ -254,6 +254,18 @@ object DatabaseAccessor {
             .executeUpdate()
     }
 
+    fun existGame(game: UserAccountGame): Boolean = dao.open().use { connection ->
+        val mainDiscordId = user(game.account(), game.mainPlayerAccountId())?.discordId ?: throw InvalidUserException
+        val query = " SELECT * FROM games WHERE server_id = :serverId AND main_player_id = :mainPlayerId"
+
+        log(INFO, "existGame [$query]")
+        connection
+            .createQuery(query)
+            .addParameter("serverId", game.gameServerId())
+            .addParameter("mainPlayerId", mainDiscordId)
+            .executeAndFetchFirst(Game::class.java) != null
+    }
+
     fun updateFinishedGame(user: User, gameId: Int, game: UserAccountGame): Connection = dao.open().use { connection ->
         val query = " UPDATE games SET main_player_won = :mainPlayerWon, finished = 1 WHERE id = :id "
 
