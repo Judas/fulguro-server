@@ -32,16 +32,14 @@ class LadderService : GameScanListener {
 
                 (UserAccount.KGS.client as KgsClient).user(user)?.let { kgsUser ->
                     // Only count KGS if rank is stable (no ?), and offset by -1 stone
-                    if (kgsUser.hasStableRank()) kgsPlayerRating = Glickotlin.Player(
-                        kgsUser.rank.toRating(-1),
-                        INITIAL_DEVIATION,
-                        INITIAL_VOLATILITY
-                    )
+                    if (kgsUser.hasStableRank())
+                        kgsPlayerRating =
+                            Glickotlin.Player(kgsUser.rank.toRating(-1), INITIAL_DEVIATION, INITIAL_VOLATILITY)
                 }
 
                 (UserAccount.OGS.client as OgsClient).user(user)?.let { ogsUser ->
                     val rating: OgsUser.Rating = ogsUser.fullRatings.live19
-                    ogsPlayerRating = Glickotlin.Player(rating.rating, rating.deviation, rating.volatility)
+                    ogsPlayerRating = Glickotlin.Player(rating.rating, INITIAL_DEVIATION, INITIAL_VOLATILITY)
                 }
 
                 val player = kgsPlayerRating.averageWith(ogsPlayerRating)

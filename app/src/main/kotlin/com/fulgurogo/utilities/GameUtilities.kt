@@ -12,7 +12,7 @@ private const val MIN_RATING = 100.0
 private const val MAX_RATING = 6000.0
 private const val A = 525.0
 private const val C = 23.15
- val FORMATTER = DecimalFormat("#.#", DecimalFormatSymbols().apply { decimalSeparator = '.' })
+val FORMATTER = DecimalFormat("#.#", DecimalFormatSymbols().apply { decimalSeparator = '.' })
 
 fun Double.toRank(): Double =
     ln(min(MAX_RATING, max(this, MIN_RATING)) / A) * C
@@ -50,19 +50,14 @@ fun String.toRating(offset: Int): Double = when {
 fun Double.toRating(): Double = exp(this / C) * A
 
 fun Glickotlin.Player?.averageWith(otherPlayer: Glickotlin.Player?): Glickotlin.Player =
-    if (this == null && otherPlayer == null) {
-        Glickotlin.Player(INITIAL_RATING, INITIAL_DEVIATION, INITIAL_VOLATILITY)
-    } else if (this == null) {
-        Glickotlin.Player(otherPlayer!!.rating(), otherPlayer.deviation(), otherPlayer.volatility())
-    } else if (otherPlayer == null) {
-        Glickotlin.Player(rating(), deviation(), volatility())
-    } else {
-        Glickotlin.Player(
-            arrayOf(rating(), otherPlayer.rating()).average(),
-            arrayOf(deviation(), otherPlayer.deviation()).average(),
-            arrayOf(volatility(), otherPlayer.volatility()).average()
-        )
-    }
+    Glickotlin.Player(
+        if (this == null && otherPlayer == null) INITIAL_RATING
+        else if (this == null) otherPlayer!!.rating()
+        else if (otherPlayer == null) rating()
+        else arrayOf(rating(), otherPlayer.rating()).average(),
+        INITIAL_DEVIATION,
+        INITIAL_VOLATILITY
+    )
 
 fun Int?.toHandicapEmoji(): String = when (this) {
     9 -> ":nine:"
