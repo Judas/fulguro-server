@@ -42,7 +42,7 @@ object Config {
         const val PLAY_CHANNEL = "<ENTER_PLAY_CHANNEL_ID>"
         const val STATIC_FOLDER = "<ENTER_STATIC_FILES_FOLDER>"
         const val STATIC_PATH = "<ENTER_STATIC_PATH>"
-        const val WEBSITE_URL = "https://go-ladder-for-discord.herokuapp.com"
+        const val WEBSITE_URL = "https://go-ladder-for-discord.onrender.com"
     }
 
     object League {
