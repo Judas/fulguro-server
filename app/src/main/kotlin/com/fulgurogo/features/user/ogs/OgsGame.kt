@@ -62,8 +62,7 @@ data class OgsGame(
     }
 
     override fun opponentAccountId(): String = opponent().id.toString()
-    override fun opponentRank(): String =
-        with(opponent()) { return rankString() + if (hasStableRank()) "" else "?" }
+    override fun opponentRank(): String = with(opponent()) { return rankString() + if (hasStableRank()) "" else "?" }
 
     override fun opponentPseudo(): String = opponent().username ?: ""
 
@@ -84,21 +83,20 @@ data class OgsGame(
     private fun isDraw() = outcome == "0 points"
     override fun handicap(): Int = handicap
     override fun komi(): Double = komi.toDouble()
-    override fun isLongGame(): Boolean =
-        isLiveGame() && when (timeControl) {
-            "byoyomi" -> extractTime("main_time") >= 1200
-            "canadian" -> extractTime("main_time") >= 1200
-            "fischer" -> extractTime("initial_time") >= 600 && extractTime("time_increment") >= 20
-            "absolute" -> false // No abs²olute game authorized
-            else -> false
-        }
+    override fun isLongGame(): Boolean = isLiveGame() && when (timeControl) {
+        "byoyomi" -> extractTime("main_time") >= 1200
+        "canadian" -> extractTime("main_time") >= 1200
+        "fischer" -> extractTime("initial_time") >= 600 && extractTime("time_increment") >= 20
+        "absolute" -> false // No absolute game authorized
+        else -> false
+    }
 
     fun isNotCancelled(): Boolean = !cancelled
-    fun isLiveGame(): Boolean = (timeControlParams.contains("\"speed\": \"live\"")
-            || timePerMove in (BLITZ_TIME_PER_MOVE + 1) until CORRESPONDENCE_TIME_PER_MOVE)
+    fun isLiveGame(): Boolean =
+        (timeControlParams.contains("\"speed\": \"live\"") || timePerMove in (BLITZ_TIME_PER_MOVE + 1) until CORRESPONDENCE_TIME_PER_MOVE)
 
-    fun isCorrespondenceGame(): Boolean = timeControlParams.contains("\"speed\": \"correspondence\"")
-            || timePerMove >= CORRESPONDENCE_TIME_PER_MOVE
+    fun isCorrespondenceGame(): Boolean =
+        timeControlParams.contains("\"speed\": \"correspondence\"") || timePerMove >= CORRESPONDENCE_TIME_PER_MOVE
 
     fun isNineteen(): Boolean = width == 19 && height == 19
     fun isNotBotGame(): Boolean = !historicalRatings.black.isBot() && !historicalRatings.white.isBot()
@@ -107,7 +105,11 @@ data class OgsGame(
     private fun extractTime(key: String): Int {
         var time: String = timeControlParams.substring(timeControlParams.indexOf("\"$key\": "))
         time = time.substring(("\"$key\": ").length)
-        time = time.substring(0, time.indexOf(","))
+
+        var end = time.indexOf(",")
+        if (end == -1) end = time.indexOf("}")
+        if (end == -1) end = time.length
+        time = time.substring(0, end)
         return try {
             time.toInt()
         } catch (e: NumberFormatException) {
