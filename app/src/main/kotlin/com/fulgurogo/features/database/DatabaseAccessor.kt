@@ -467,7 +467,7 @@ object DatabaseAccessor {
         log(INFO, "revealExamPhantom [$queryPoints] $revealerId")
         connection
             .createQuery(queryPoints)
-            .addParameter("revealer", revealerId)
+            .addParameter("revealerId", revealerId)
             .addParameter("phantom", 20)
             .executeUpdate()
     }
