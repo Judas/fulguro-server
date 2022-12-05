@@ -195,7 +195,7 @@ sealed class Command(val emoji: String, val subcommandData: SubcommandData, val 
             const val EMOJI = ":robot:"
             const val TITLE = "Administration"
             const val DESC = "Commandes admin du Bot"
-            val COMMANDS = listOf(Scan, Test)
+            val COMMANDS = listOf(Scan, Oteai)
             val GROUP = SubcommandGroupData(NAME, DESC).addSubcommands(COMMANDS.map { it.subcommandData })
         }
 
@@ -205,9 +205,9 @@ sealed class Command(val emoji: String, val subcommandData: SubcommandData, val 
             false
         )
 
-        object Test : Command(
+        object Oteai : Command(
             ":robot:",
-            SubcommandData("test", "Force un scan des parties."),
+            SubcommandData("oteai", "Force un tirage Oteai."),
             false
         )
     }

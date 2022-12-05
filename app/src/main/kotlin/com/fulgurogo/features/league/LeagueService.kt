@@ -78,7 +78,7 @@ class LeagueService(private val jda: JDA) : GameScanListener {
             }
     }
 
-    private fun drawPairings() = CoroutineScope(Dispatchers.IO).launch {
+    fun drawPairings() = CoroutineScope(Dispatchers.IO).launch {
         log(INFO, "drawPairings")
 
         val currentRush = DatabaseAccessor.currentRush()
