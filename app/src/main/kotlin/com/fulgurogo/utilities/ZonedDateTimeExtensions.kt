@@ -14,6 +14,7 @@ fun ZonedDateTime.millisecondsFromNow(): Long {
 }
 
 fun ZonedDateTime.toDate(): Date = Calendar.getInstance(Locale.FRANCE).let {
+    it.set(Calendar.YEAR, year)
     it.set(Calendar.MONTH, monthValue - 1)
     it.set(Calendar.DAY_OF_MONTH, dayOfMonth)
     it.set(Calendar.HOUR_OF_DAY, hour)
