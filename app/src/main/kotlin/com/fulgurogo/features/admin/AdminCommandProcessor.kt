@@ -72,7 +72,6 @@ class AdminCommandProcessor : CommandProcessor {
             CoroutineScope(Dispatchers.IO).launch {
                 log(INFO, "Starting manual oteai rush draw.")
                 LeagueService(event.jda).drawPairings()
-
             }
             simpleMessage(hook, ":robot:", "Tirage manuel", "Tirage lancé")
         } else simpleError(hook, Command.Exam.EMOJI, ":robot: *Commande réservée aux admins*")

@@ -12,9 +12,9 @@ import kotlinx.coroutines.launch
 import net.dv8tion.jda.api.JDA
 import java.time.DayOfWeek
 import java.time.ZonedDateTime
+import java.util.*
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.roundToInt
 
 class LeagueService(private val jda: JDA) : GameScanListener {
     override fun onScanStarted() {
@@ -37,16 +37,11 @@ class LeagueService(private val jda: JDA) : GameScanListener {
         val rush = DatabaseAccessor.currentRush()
 
         // Get unplayed pairings
-        DatabaseAccessor
-            .leaguePairings(rush)
-            .filterNot { it.exempt }
-            .filter { it.winnerId == null }
+        DatabaseAccessor.leaguePairings(rush).filterNot { it.exempt }.filter { it.winnerId == null }
             .forEach { pairing ->
                 // Search for first ladder game between given players
-                ladderGames
-                    .filter { it.date.after(pairing.date) }
-                    .firstOrNull { game -> pairing.containsPlayers(game.mainPlayerId, game.opponentId) }
-                    ?.let { game ->
+                ladderGames.filter { it.date.after(pairing.date) }
+                    .firstOrNull { game -> pairing.containsPlayers(game.mainPlayerId, game.opponentId) }?.let { game ->
                         // Update game result
                         val winnerId = if (game.mainPlayerWon == true) game.mainPlayerId else game.opponentId
                         val loserId = if (game.mainPlayerWon == true) game.opponentId else game.mainPlayerId
@@ -85,105 +80,99 @@ class LeagueService(private val jda: JDA) : GameScanListener {
         val rush = currentRush + 1
         val date = ZonedDateTime.now(DATE_ZONE).toDate()
 
-        // Get all players with Gold role
-        val rushPlayers = jda
-            .getGuildById(Config.GUILD_ID)
-            ?.findMembers { member ->
-                member.roles.any { it.id == Config.League.ROLE }
-            }
-            ?.get()
-            ?.mapNotNull { DatabaseAccessor.ladderPlayer(DatabaseAccessor.ensureUser(it.user)) }
-            ?.toMutableList()
+        // Get all players with league role
+        val rushPlayers = jda.getGuildById(Config.GUILD_ID)?.findMembers { member ->
+            member.roles.any { it.id == Config.League.ROLE }
+        }?.get()?.mapNotNull { DatabaseAccessor.ladderPlayer(DatabaseAccessor.ensureUser(it.user)) }?.toMutableList()
             ?: mutableListOf()
 
-        log(INFO, "Found ${rushPlayers.size} players with the role")
+        log(INFO, "Found ${rushPlayers.size} players with the league role")
 
-        val previousPairings = DatabaseAccessor.leaguePairings(currentRush)
-        val pairings = mutableListOf<Pair<LeaguePairing, Int>>()
+        val pairings = mutableListOf<LeaguePairing>()
 
         // If odd number of players, remove one randomly
         if (rushPlayers.size % 2 == 1) {
             val exempted = rushPlayers.random()
             rushPlayers.remove(exempted)
-            log(INFO, "Exempting player ${exempted.discordId}")
-            pairings.add(Pair(LeaguePairing.exempted(exempted, rush, date), Int.MAX_VALUE))
+            pairings.exemptPlayer(exempted, rush, date)
         }
 
-        // We take each player 1-by-1 taking extremities first
-        val playerWindow = 6 // Choose between the nearest 6 players
-        val remainingPlayers = rushPlayers.toMutableList()
-        sortByExtremes(rushPlayers).forEach { black ->
-            if (black !in remainingPlayers) return@forEach
+        // Split players by league group
+        val playerMap = splitByGroup(rushPlayers)
+        var uprankedPlayer: LadderPlayer? = null
 
-            val availablePlayers = remainingPlayers
-                .sortedBy { it.rating.toRank().rankToString(false).toRankInt() }
-                .toMutableList()
-            val blackIndex = availablePlayers.indexOf(black)
-            remainingPlayers.remove(black)
-            availablePlayers.remove(black)
-            val startIndex = cap(blackIndex - playerWindow, availablePlayers)
-            val endIndex = cap(startIndex + playerWindow, availablePlayers)
-            val opponents = availablePlayers.subList(startIndex, endIndex)
+        LeagueGroup.values().forEach { group ->
+            // Sort by level
+            val remainingPlayers =
+                playerMap[group]?.sortedBy { it.rating.toRank().rankToString(false).toRankInt() }?.toMutableList()
+                    ?: mutableListOf()
 
-            // Remove last week opponent if any
-            if (opponents.size > 1) previousPairings.firstNotNullOfOrNull {
-                if (it.firstPlayerId == black.discordId) it.secondPlayerId
-                else if (it.secondPlayerId == black.discordId) it.firstPlayerId
-                else null
-            }?.let { lastWeekId -> opponents.removeIf { it.discordId == lastWeekId } }
+            log(INFO, "Group ${group.name} : ${remainingPlayers.size} players")
 
-            val white = opponents.random()
-            remainingPlayers.remove(white)
+            if (remainingPlayers.isNotEmpty()) {
+                // Match upranked player with weakest, if any
+                if (uprankedPlayer != null) {
+                    log(INFO, "Pairing upranked player ${uprankedPlayer!!.discordId}")
+                    pairings.addMatch(uprankedPlayer!!, remainingPlayers.last(), rush, date)
+                    remainingPlayers.removeLast()
+                    uprankedPlayer = null
+                }
 
-            val blackRank = black.rating.toRank().rankToString(false)
-            val whiteRank = white.rating.toRank().rankToString(false)
-            log(INFO, "Adding pairing ${black.discordId} [$blackRank] VS [$whiteRank] ${white.discordId}")
-            pairings.add(Pair(LeaguePairing.pair(black, white, rush, date), black.rating.toRank().roundToInt()))
+                // If odd number, uprank first (strongest player of group)
+                if (remainingPlayers.size % 2 == 1) {
+                    uprankedPlayer = remainingPlayers.first()
+                    log(INFO, "Upranking player ${uprankedPlayer!!.discordId}")
+                    remainingPlayers.removeFirst()
+                }
+
+                remainingPlayers.toMutableList().forEach remainingLoop@{ mainPlayer ->
+                    if (mainPlayer !in remainingPlayers) return@remainingLoop
+                    remainingPlayers.remove(mainPlayer)
+
+                    val opponent = remainingPlayers.random()
+                    remainingPlayers.remove(opponent)
+
+                    pairings.addMatch(mainPlayer, opponent, rush, date)
+                }
+            }
         }
 
         var message = ""
-        pairings
-            .sortedBy { it.second }
-            .map { it.first }
-            .forEachIndexed { index, pairing ->
-                // Save pairing in DB
-                DatabaseAccessor.savePairing(pairing)
+        pairings.forEachIndexed { index, pairing ->
+            // Save pairing in DB
+            DatabaseAccessor.savePairing(pairing)
 
-                val firstPlayerLink = pairing.firstPlayerId.let { id ->
-                    val user = DatabaseAccessor.ensureUser(id)
-                    val player = DatabaseAccessor.ladderPlayer(user)
-                    val rank = player?.rating?.toRank()?.rankToString(false) ?: "?"
-                    val link = "${Config.Ladder.WEBSITE_URL}/players/$id"
-                    "**[${user.name} ($rank)]($link)**"
-                }
-
-                val secondPlayerLink = pairing.secondPlayerId?.let { id ->
-                    val user = DatabaseAccessor.ensureUser(id)
-                    val player = DatabaseAccessor.ladderPlayer(user)
-                    val rank = player?.rating?.toRank()?.rankToString(false) ?: "?"
-                    val link = "${Config.Ladder.WEBSITE_URL}/players/$id"
-                    "**[${user.name} ($rank)]($link)**"
-                } ?: ""
-
-                if (message.isNotBlank()) message += "\n"
-                message += if (pairing.exempt) "$firstPlayerLink est bye."
-                else "$firstPlayerLink :crossed_swords: $secondPlayerLink"
-
-                if (index % 5 == 4) {
-                    jda.publicMessage(
-                        Config.League.CHANNEL_ID,
-                        message,
-                        "Oteai Gold - Appariements du Rush $rush"
-                    )
-                    message = ""
-                }
+            val firstPlayerLink = pairing.firstPlayerId.let { id ->
+                val user = DatabaseAccessor.ensureUser(id)
+                val player = DatabaseAccessor.ladderPlayer(user)
+                val rank = player?.rating?.toRank()?.rankToString(false) ?: "?"
+                val link = "${Config.Ladder.WEBSITE_URL}/players/$id"
+                "**[${user.name} ($rank)]($link)**"
             }
+
+            val secondPlayerLink = pairing.secondPlayerId?.let { id ->
+                val user = DatabaseAccessor.ensureUser(id)
+                val player = DatabaseAccessor.ladderPlayer(user)
+                val rank = player?.rating?.toRank()?.rankToString(false) ?: "?"
+                val link = "${Config.Ladder.WEBSITE_URL}/players/$id"
+                "**[${user.name} ($rank)]($link)**"
+            } ?: ""
+
+            if (message.isNotBlank()) message += "\n"
+            message += if (pairing.exempt) "$firstPlayerLink est bye."
+            else "$firstPlayerLink :crossed_swords: $secondPlayerLink"
+
+            if (index % 5 == 4) {
+                jda.publicMessage(
+                    Config.League.CHANNEL_ID, message, "Oteai Gold - Appariements du Rush $rush"
+                )
+                message = ""
+            }
+        }
 
         if (message.isNotBlank()) {
             jda.publicMessage(
-                Config.League.CHANNEL_ID,
-                message,
-                "Oteai Gold - Appariements du Rush $rush"
+                Config.League.CHANNEL_ID, message, "Oteai Gold - Appariements du Rush $rush"
             )
             message = ""
         }
@@ -194,15 +183,34 @@ class LeagueService(private val jda: JDA) : GameScanListener {
         )
     }
 
-    private fun sortByExtremes(list: List<LadderPlayer>): List<LadderPlayer> {
-        val sorted = list.sortedBy { it.rating.toRank().rankToString(false).toRankInt() }.toMutableList()
-        val extremesFirst = mutableListOf<LadderPlayer>()
-        while (sorted.size > 0) {
-            val player = if (extremesFirst.size % 2 == 0) sorted.first() else sorted.last()
-            sorted.remove(player)
-            extremesFirst.add(player)
+    private fun MutableList<LeaguePairing>.addMatch(black: LadderPlayer, white: LadderPlayer, rush: Int, date: Date) {
+        val blackRank = black.rating.toRank().rankToString(false)
+        val whiteRank = white.rating.toRank().rankToString(false)
+        log(INFO, "Adding pairing ${black.discordId} [$blackRank] VS [$whiteRank] ${white.discordId}")
+        this.add(LeaguePairing.pair(black, white, rush, date))
+    }
+
+    private fun MutableList<LeaguePairing>.exemptPlayer(exempted: LadderPlayer, rush: Int, date: Date) {
+        log(INFO, "Exempting player ${exempted.discordId}")
+        this.add(LeaguePairing.exempted(exempted, rush, date))
+    }
+
+    private fun splitByGroup(list: List<LadderPlayer>): Map<LeagueGroup, MutableList<LadderPlayer>> {
+        val map = mutableMapOf<LeagueGroup, MutableList<LadderPlayer>>()
+        list.forEach {
+            val rankInt = it.rating.toRank().rankToString(false).toRankInt()
+            val group = when {
+                rankInt >= 15 -> LeagueGroup.TIN
+                rankInt >= 10 -> LeagueGroup.COPPER
+                rankInt >= 5 -> LeagueGroup.BRONZE
+                rankInt >= 1 -> LeagueGroup.SILVER
+                else -> LeagueGroup.GOLD
+            }
+
+            if (!map.containsKey(group) || map[group] == null) map[group] = mutableListOf(it)
+            else map[group]!!.add(it)
         }
-        return extremesFirst
+        return map
     }
 
     private fun cap(index: Int, list: List<*>): Int = max(0, min(list.size, index))
