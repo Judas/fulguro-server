@@ -30,7 +30,7 @@ class ExamService(private val jda: JDA) : GameScanListener {
             .format(now.minusMonths(1))
             .replaceFirstChar { it.titlecase() }
 
-        val shouldCloseSession = now.dayOfMonth == 1 && !DatabaseAccessor.hasPromotionScore(promoName)
+        val shouldCloseSession = !DatabaseAccessor.hasPromotionScore(promoName)
         if (shouldCloseSession) {
             log(INFO, "Promotion $promoName is not closed, closing it.")
             val start = now.minusMonths(1).toStartOfMonth().toDate()
