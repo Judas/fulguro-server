@@ -86,10 +86,11 @@ class GameScanner(
 
         handleAllUsers(this::handleUser)
 
+        listeners.forEach { it.onScanFinished() }
+
         // Clean older games
         DatabaseAccessor.cleanGames()
 
-        listeners.forEach { it.onScanFinished() }
         isScanning = false
     }
 
