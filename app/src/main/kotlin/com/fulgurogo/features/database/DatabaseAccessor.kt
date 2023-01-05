@@ -546,7 +546,7 @@ object DatabaseAccessor {
             val updateQuery =
                 "UPDATE exam SET ${specialization.databaseId} = ${specialization.databaseId} + 1 WHERE ${UserAccount.DISCORD.databaseId} = :discordId"
             val capQuery =
-                "UPDATE exam SET ${specialization.databaseId} = 3 WHERE ${UserAccount.DISCORD.databaseId} = :discordId AND ${specialization.databaseId} > 3"
+                "UPDATE exam SET ${specialization.databaseId} = 4 WHERE ${UserAccount.DISCORD.databaseId} = :discordId AND ${specialization.databaseId} > 4"
 
             log(INFO, "incrementSpec [$updateQuery] ${hunter.discordId}")
             connection.createQuery(updateQuery).addParameter("discordId", hunter.discordId).executeUpdate()
