@@ -22,45 +22,36 @@ import java.util.*
 class KgsClient : UserAccountClient {
     private val gson: Gson = Gson()
     private val okHttpClient: OkHttpClient = OkHttpClient.Builder()
-        .cookieJar(JavaNetCookieJar(CookieManager().apply { setCookiePolicy(CookiePolicy.ACCEPT_ALL) }))
-        .build()
+        .cookieJar(JavaNetCookieJar(CookieManager().apply { setCookiePolicy(CookiePolicy.ACCEPT_ALL) })).build()
 
     private val userCache = mutableMapOf<String, CachedKgsUser>()
 
     override fun user(user: User): KgsUser? = user(user.kgsId)
-    override fun userGames(user: User, from: Date, to: Date): List<UserAccountGame> = allGames(user)
-        .asSequence()
-        .filter { it.date().after(from) }
-        .filter { it.date().before(to) }
-        .filter { it.isNineteen() }
-        .filter { it.isRanked() || it.isFree() }
-        .sortedBy { it.timestamp }
-        .toList()
-        .filterBotGames()
-        .tagShortGames()
+    override fun userGames(user: User, from: Date, to: Date): List<UserAccountGame> =
+        allGames(user).asSequence().filter { it.date().after(from) }.filter { it.date().before(to) }
+            .filter { it.isNineteen() }.filter { it.isRanked() || it.isFree() }.sortedBy { it.timestamp }.toList()
+            .filterBotGamesAndTagShortGames()
 
     override fun userGame(user: User, gameId: String): UserAccountGame? =
         allGames(user).firstOrNull { it.timestamp == gameId }
 
-    private fun allGames(user: User): List<KgsGame> =
-        if (user.kgsId.isNullOrBlank())
-            throw EmptyUserIdException
-        else {
-            login()
-            val archives = getArchivesFor(user.kgsId)
-            val games = archives?.games ?: mutableListOf()
-            if (games.isNotEmpty()) {
-                log(INFO, "Found ${games.size} total games")
-                games.forEach { it.mainPlayer = archives?.user }
-            }
-            logout()
-            games
+    private fun allGames(user: User): List<KgsGame> = if (user.kgsId.isNullOrBlank()) throw EmptyUserIdException
+    else {
+        login()
+        val archives = getArchivesFor(user.kgsId)
+        val games = archives?.games ?: mutableListOf()
+        if (games.isNotEmpty()) {
+            log(INFO, "Found ${games.size} total games")
+            games.forEach { it.mainPlayer = archives?.user }
         }
+        logout()
+        games
+    }
 
-    private fun List<KgsGame>.filterBotGames(): List<KgsGame> {
+    private fun List<KgsGame>.filterBotGamesAndTagShortGames(): List<KgsGame> {
         if (isEmpty()) return this
 
-        log(INFO, "Inspecting $size games for bots")
+        log(INFO, "Inspecting $size games for bots & time settings")
         val nonBotGames = toMutableList()
 
         forEach { game ->
@@ -71,53 +62,34 @@ class KgsClient : UserAccountClient {
             log(INFO, "Checking user $opponentId")
 
             // Cache management to avoid multiple requests for the same opponent
-            val isBot: Boolean = userCache[opponentId]?.user?.isBot()
-                ?: getDetailsFor(opponentId)?.let {
-                    // Add user to cache
-                    userCache[it.user.name] = CachedKgsUser(it.user, it.regStartDate)
-                    it.user.isBot()
-                } ?: false
+            val isBot: Boolean = userCache[opponentId]?.user?.isBot() ?: getDetailsFor(opponentId)?.let {
+                // Add user to cache
+                userCache[it.user.name] = CachedKgsUser(it.user, it.regStartDate)
+                it.user.isBot()
+            } ?: false
 
             if (isBot) {
                 log(INFO, "Filtering game ${game.timestamp} because $opponentId is a bot.")
                 nonBotGames.remove(game)
+            } else {
+                log(INFO, "Loading game ${game.timestamp}")
+                game.isShortGame = true
+                loadGame(game)?.let {
+                    log(INFO, "Game ${game.timestamp} loaded")
+                    val channelId = it.channelId
+                    game.isShortGame = !it.sgfEvents.isLongGame()
+                    log(INFO, "Tagging game ${game.timestamp} => isShort: ${game.isShortGame}.")
+                    log(INFO, "Exiting game ${game.timestamp}")
+                    exitGame(channelId)
+                }
             }
 
             log(INFO, "Logging out")
             logout()
         }
-
 
         log(INFO, "Purged to ${nonBotGames.size} non-bot games")
         return nonBotGames
-    }
-
-    private fun List<KgsGame>.tagShortGames(): List<KgsGame> {
-        if (isEmpty()) return this
-
-        log(INFO, "Inspecting $size games for time settings")
-
-        forEach { game ->
-            log(INFO, "Logging in")
-            login()
-
-            log(INFO, "Loading game ${game.timestamp}")
-            game.isShortGame = true
-            loadGame(game)?.let {
-                log(INFO, "Game ${game.timestamp} loaded")
-                val channelId = it.channelId
-                game.isShortGame = !it.sgfEvents.isLongGame()
-                log(INFO, "Tagging game ${game.timestamp} => isShort: ${game.isShortGame}.")
-                log(INFO, "Exiting game ${game.timestamp}")
-                exitGame(channelId)
-            }
-
-            log(INFO, "Logging out")
-            logout()
-        }
-
-        log(INFO, "Treated $size games")
-        return this
     }
 
     fun user(id: String?): KgsUser? = try {
@@ -133,28 +105,22 @@ class KgsClient : UserAccountClient {
     }
 
     private fun login() {
-        val success = postGet(gson.toJson(KgsApi.Request.Login()))
-            .hasMessageOfType(KgsApi.ChannelType.LOGIN_SUCCESS)
-        if (!success)
-            throw ApiException("Login failure: no LOGIN_SUCCESS message")
+        val success = postGet(gson.toJson(KgsApi.Request.Login())).hasMessageOfType(KgsApi.ChannelType.LOGIN_SUCCESS)
+        if (!success) throw ApiException("Login failure: no LOGIN_SUCCESS message")
     }
 
     private fun logout() = postGet(gson.toJson(KgsApi.Request.Logout()))
 
     private fun getArchivesFor(id: String): KgsApi.Message? =
-        postGet(gson.toJson(KgsApi.Request.ArchiveJoin(id)))
-            .getMessageOfType(KgsApi.ChannelType.ARCHIVE_JOIN)
+        postGet(gson.toJson(KgsApi.Request.ArchiveJoin(id))).getMessageOfType(KgsApi.ChannelType.ARCHIVE_JOIN)
 
     private fun getDetailsFor(id: String): KgsApi.Message? =
-        postGet(gson.toJson(KgsApi.Request.DetailsJoin(id)))
-            .getMessageOfType(KgsApi.ChannelType.DETAILS_JOIN)
+        postGet(gson.toJson(KgsApi.Request.DetailsJoin(id))).getMessageOfType(KgsApi.ChannelType.DETAILS_JOIN)
 
     private fun loadGame(game: KgsGame): KgsApi.Message? =
-        postGet(gson.toJson(KgsApi.Request.LoadGame(game.timestamp)))
-            .getMessageOfType(KgsApi.ChannelType.GAME_JOIN)
+        postGet(gson.toJson(KgsApi.Request.LoadGame(game.timestamp))).getMessageOfType(KgsApi.ChannelType.GAME_JOIN)
 
-    private fun exitGame(channelId: Int) =
-        postGet(gson.toJson(KgsApi.Request.Unjoin(channelId)))
+    private fun exitGame(channelId: Int) = postGet(gson.toJson(KgsApi.Request.Unjoin(channelId)))
 
     private fun postGet(jsonPayload: String): KgsApi.Response {
         post(jsonPayload)
