@@ -1,6 +1,7 @@
 package com.fulgurogo.features.database
 
 import com.fulgurogo.Config
+import com.fulgurogo.features.events.Event
 import com.fulgurogo.features.exam.*
 import com.fulgurogo.features.games.Game
 import com.fulgurogo.features.ladder.LadderPlayer
@@ -331,9 +332,8 @@ object DatabaseAccessor {
 
     fun ladderGames(): List<Game> = games()
         .asSequence()
-        .filter { it.finished }
-        .filter { it.opponentId != null }
-        .filter { it.longGame == true }
+        .filter { it.finished }.filter { it.opponentId != null }
+        .filter { events().any { event -> event.type == "BLITZ" } || it.longGame == true }
         .filter { it.hasStandardHandicap() }
         .toList()
 
@@ -341,9 +341,8 @@ object DatabaseAccessor {
         .asSequence()
         .filter { it.date.after(from) }
         .filter { it.date.before(to) }
-        .filter { it.finished }
-        .filter { it.opponentId != null }
-        .filter { it.longGame == true }
+        .filter { it.finished }.filter { it.opponentId != null }
+        .filter { events().any { event -> event.type == "BLITZ" } || it.longGame == true }
         .filter { it.hasStandardHandicap() }
         .toList()
 
@@ -768,6 +767,19 @@ object DatabaseAccessor {
             .addParameter("winnerId", pairing.winnerId)
             .addParameter("exempt", pairing.exempt)
             .executeUpdate()
+    }
+
+    // endregion
+
+    // region events
+
+    fun events(): List<Event> = dao.open().use { connection ->
+        val query = "SELECT * FROM fulgurogo.events WHERE start < NOW() AND NOW() < end"
+        log(INFO, "events [$query]")
+        connection
+            .createQuery(query)
+            .throwOnMappingFailure(false)
+            .executeAndFetch(Event::class.java)
     }
 
     // endregion
