@@ -42,6 +42,6 @@ dependencies {
 
 application {
     group = "com.fulgurogo"
-    version = "5.22"
+    version = "5.23"
     mainClass.set("com.fulgurogo.AppKt")
 }
