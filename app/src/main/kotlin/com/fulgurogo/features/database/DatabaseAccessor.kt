@@ -200,6 +200,15 @@ object DatabaseAccessor {
             .executeAndFetch(User::class.java)
     }
 
+    fun cleanOldUsers() = dao.open().use { connection ->
+        val query = "SELECT discord_id FROM users WHERE name = discord_id"
+        connection
+            .createQuery(query)
+            .throwOnMappingFailure(false)
+            .executeAndFetch(String::class.java)
+            .forEach { deleteUser(it) }
+    }
+
     // endregion
 
     // region games

@@ -28,5 +28,8 @@ class UserService(private val jda: JDA) : GameScanListener {
 
     override fun onScanFinished() {
         log(INFO, "onScanFinished")
+
+        // Delete players who have left the server
+        DatabaseAccessor.cleanOldUsers()
     }
 }
