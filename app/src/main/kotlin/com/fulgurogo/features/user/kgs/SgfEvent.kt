@@ -13,6 +13,7 @@ data class EventProperties(
 ) {
     fun isLongGame(): Boolean = when (timeSystem) {
         "byo_yomi", "canadian" -> mainTime >= 1200
+        "absolute" -> mainTime >= 2400
         else -> false
     }
 }

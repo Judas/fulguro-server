@@ -84,10 +84,9 @@ data class OgsGame(
     override fun handicap(): Int = handicap
     override fun komi(): Double = komi.toDouble()
     override fun isLongGame(): Boolean = isLiveGame() && when (timeControl) {
-        "byoyomi" -> extractTime("main_time") >= 1200
-        "canadian" -> extractTime("main_time") >= 1200
+        "byoyomi", "canadian" -> extractTime("main_time") >= 1200
         "fischer" -> extractTime("initial_time") >= 600 && extractTime("time_increment") >= 20
-        "absolute" -> false // No absolute game authorized
+        "absolute" -> extractTime("total_time") >= 2400
         else -> false
     }
 
