@@ -1,6 +1,7 @@
 package com.fulgurogo
 
 import com.fulgurogo.features.bot.FulguroBot
+import com.fulgurogo.features.ladder.api.FulguroApi
 import com.fulgurogo.features.ssh.SSHConnector
 import io.javalin.Javalin
 import io.javalin.http.staticfiles.Location
@@ -34,4 +35,7 @@ fun main() {
             }
         }
         .start(Config.Server.PORT)
+        .apply {
+            get("/gold/api/v5/players", FulguroApi::getPlayers)
+        }
 }
