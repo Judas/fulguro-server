@@ -18,8 +18,6 @@ object SSHConnector {
             this["ConnectionAttempts"] = "3"
         }
         with(JSch()) {
-            val privateKey = File(Config.SSH.PRIVATE_KEY_FILE).readBytes()
-//            addIdentity("id_rsa", privateKey, null, null)
             addIdentity(Config.SSH.PRIVATE_KEY_FILE)
             val session = getSession(Config.SSH.USER, Config.SSH.HOST, Config.SSH.PORT)
             session.setConfig(config)

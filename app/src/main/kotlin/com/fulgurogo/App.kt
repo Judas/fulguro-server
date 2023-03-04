@@ -25,14 +25,16 @@ fun main() {
     // Launching API server
     Javalin
         .create { config ->
-            config.defaultContentType = "application/json"
-            config.enableCorsForAllOrigins()
-            if (Config.DEV) config.enableDevLogging()
-            config.addStaticFiles { staticFileConfig ->
+            config.http.defaultContentType = "application/json"
+
+            config.staticFiles.add { staticFileConfig ->
                 staticFileConfig.hostedPath = Config.Ladder.STATIC_PATH
                 staticFileConfig.directory = Config.Ladder.STATIC_FOLDER
                 staticFileConfig.location = Location.EXTERNAL
             }
+
+            if (Config.DEV) config.plugins.enableDevLogging()
+            config.plugins.enableCors { cors -> cors.add { it.anyHost() } }
         }
         .start(Config.Server.PORT)
         .apply {
