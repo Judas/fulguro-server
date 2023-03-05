@@ -80,6 +80,7 @@ class FoxClient : UserAccountClient {
                 it.mainPlayerPseudo = pseudo
                 games.add(it)
             }
+        log(INFO, "Found ${games.size} total games")
         return games
     }
 
@@ -89,7 +90,7 @@ class FoxClient : UserAccountClient {
         val response = okHttpClient.newCall(request).execute()
         if (response.isSuccessful) {
             log(INFO, "GET SUCCESS ${response.code}")
-            val apiResponse = gson.fromJson(response.body!!.string(), className)
+            val apiResponse = gson.fromJson(response.body?.string(), className)
             response.close()
             return apiResponse
         } else {
