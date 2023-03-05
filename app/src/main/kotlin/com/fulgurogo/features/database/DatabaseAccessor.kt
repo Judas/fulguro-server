@@ -202,6 +202,7 @@ object DatabaseAccessor {
 
     fun cleanOldUsers() = dao.open().use { connection ->
         val query = "SELECT discord_id FROM users WHERE name = discord_id"
+        log(INFO, "cleanOldUsers [$query]")
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)
