@@ -15,7 +15,7 @@ do
 done < "app/build.gradle.kts"
 
 ./gradlew clean :app:shadowJar
-mv app/build/libs/*.jar export/fulgurobot-${version}.jar
+mv app/build/libs/app-${version}-all.jar export/fulgurobot-${version}.jar
 
 # Rolling back to git config
 ./setup-config git
