@@ -28,27 +28,30 @@ class KgsClient : UserAccountClient {
 
     override fun user(user: User): KgsUser? = user(user.kgsId)
     override fun userGames(user: User, from: Date, to: Date): List<UserAccountGame> =
-        allGames(user).asSequence().filter { it.date().after(from) }.filter { it.date().before(to) }
-            .filter { it.isNineteen() }.filter { it.isRanked() || it.isFree() }.sortedBy { it.timestamp }.toList()
-            .filterBotGamesAndTagShortGames()
+        allGames(user)
+            .asSequence()
+            .filter { it.date().after(from) }
+            .filter { it.date().before(to) }
+            .filter { it.isNineteen() }
+            .filter { it.isRanked() || it.isFree() }
+            .sortedBy { it.timestamp }
+            .toList()
+            .filterBotGamesAndTagShortGames(user)
 
-    override fun userGame(user: User, gameId: String): UserAccountGame? =
-        allGames(user).firstOrNull { it.timestamp == gameId }
+    override fun userGame(user: User, gameServerId: String): UserAccountGame? =
+        allGames(user).firstOrNull { it.timestamp == gameServerId }
 
     private fun allGames(user: User): List<KgsGame> = if (user.kgsId.isNullOrBlank()) throw EmptyUserIdException
     else {
         login()
         val archives = getArchivesFor(user.kgsId)
         val games = archives?.games ?: mutableListOf()
-        if (games.isNotEmpty()) {
-            log(INFO, "Found ${games.size} total games")
-            games.forEach { it.mainPlayer = archives?.user }
-        }
+        log(INFO, "Found ${games.size} total games")
         logout()
         games
     }
 
-    private fun List<KgsGame>.filterBotGamesAndTagShortGames(): List<KgsGame> {
+    private fun List<KgsGame>.filterBotGamesAndTagShortGames(mainPlayer: User): List<KgsGame> {
         if (isEmpty()) return this
 
         log(INFO, "Inspecting $size games for bots & time settings")
@@ -58,7 +61,9 @@ class KgsClient : UserAccountClient {
             log(INFO, "Logging in")
             login()
 
-            val opponentId = game.opponentAccountId()
+            val opponentId =
+                if (game.blackPlayerServerId() == mainPlayer.kgsId) game.whitePlayerServerId()
+                else game.blackPlayerServerId()
             log(INFO, "Checking user $opponentId")
 
             // Cache management to avoid multiple requests for the same opponent

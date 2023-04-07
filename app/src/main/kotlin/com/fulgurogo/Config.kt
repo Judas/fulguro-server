@@ -2,7 +2,6 @@ package com.fulgurogo
 
 object Config {
     const val DEV = false
-    const val GUILD_ID = -1L // <ENTER_GUILD_ID>
 
     object SSH {
         const val USER = "useless-only-needed-in-dev"
@@ -15,7 +14,7 @@ object Config {
     object Database {
         const val HOST = "localhost"
         const val PORT = 3306
-        const val NAME = "fulgurogo"
+        const val NAME = "<ENTER_MYSQL_DB_NAME>"
         const val USER = "<ENTER_MYSQL_USERNAME>"
         const val PASSWORD = "<ENTER_MYSQL_PASSWORD>"
     }
@@ -43,11 +42,6 @@ object Config {
         const val STATIC_FOLDER = "<ENTER_STATIC_FILES_FOLDER>"
         const val STATIC_PATH = "<ENTER_STATIC_PATH>"
         const val WEBSITE_URL = "https://fulguro-gold.onrender.com"
-    }
-
-    object League {
-        const val CHANNEL_ID = "<ENTER_LEAGUE_CHANNEL_ID>"
-        const val ROLE = "<ENTER_ROLE_ID>"
     }
 
     object Kgs {

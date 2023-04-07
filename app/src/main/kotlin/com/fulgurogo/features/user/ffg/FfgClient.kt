@@ -24,9 +24,9 @@ class FfgClient : UserAccountClient {
 
     override fun user(user: User): FfgUser? = user(user.ffgId)
     override fun userGames(user: User, from: Date, to: Date): List<UserAccountGame> = listOf()
-    override fun userGame(user: User, gameId: String): UserAccountGame? = null
+    override fun userGame(user: User, gameServerId: String): UserAccountGame? = null
 
-    private fun user(id: String?): FfgUser? = try {
+    fun user(id: String?): FfgUser? = try {
         if (id.isNullOrBlank())
             throw EmptyUserIdException
         else {

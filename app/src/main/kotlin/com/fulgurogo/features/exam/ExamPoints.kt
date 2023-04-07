@@ -13,23 +13,29 @@ data class ExamPoints(
     var achievement: Int = 0
 ) {
     companion object {
-        fun fromGame(game: Game): ExamPoints {
+        fun fromGame(game: Game, black: Boolean): ExamPoints? {
+            // Quick exit if main player is not exam player (random server player)
+            val mainPlayerId = (if (black) game.blackPlayerDiscordId else game.whitePlayerDiscordId) ?: return null
+            val opponentId = if (black) game.whitePlayerDiscordId else game.blackPlayerDiscordId
+            val community = opponentId != null
+            val victory = if (black) game.blackPlayerWon else game.whitePlayerWon
+
             val points = ExamPoints()
-
             points.participation += 1
-
-            if (game.opponentId != null) {
+            if (community) {
                 points.community += 2
-                val opponentIsHunter = DatabaseAccessor.examPlayer(game.opponentId)?.hunter ?: false
-                if (game.mainPlayerWon == true && opponentIsHunter) points.achievement += 2
+                opponentId?.let {
+                    val opponentIsHunter = DatabaseAccessor.examPlayer(it)?.hunter ?: false
+                    if (victory == true && opponentIsHunter) points.achievement += 2
+                }
             }
             if (game.longGame == true) points.patience += 2
 
-            if (game.mainPlayerWon == true) {
+            if (victory == true) {
                 points.victory += 2
-                if (game.handicap == 0 && game.komi != null && game.komi in 6.0..9.0) {
+                if (game.hasNoHandicap()) {
                     points.refinement += 1
-                    if (game.rankGap() >= 2) points.performance += 1
+                    if (game.rankGap(black) >= 2) points.performance += 1
                 }
             }
             return points

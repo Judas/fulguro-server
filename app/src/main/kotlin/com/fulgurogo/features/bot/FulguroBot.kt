@@ -6,10 +6,8 @@ import com.fulgurogo.features.exam.ExamCommandProcessor
 import com.fulgurogo.features.exam.ExamService
 import com.fulgurogo.features.games.GameScanner
 import com.fulgurogo.features.info.InfoCommandProcessor
-import com.fulgurogo.features.kitchen.KitchenCommandProcessor
 import com.fulgurogo.features.ladder.LadderCommandProcessor
 import com.fulgurogo.features.ladder.LadderService
-import com.fulgurogo.features.league.LeagueService
 import com.fulgurogo.features.user.UserService
 import com.fulgurogo.utilities.Logger.Level.INFO
 import com.fulgurogo.utilities.log
@@ -31,8 +29,7 @@ class FulguroBot : ListenerAdapter() {
         Command.Admin.NAME to AdminCommandProcessor(),
         Command.Info.NAME to InfoCommandProcessor(),
         Command.Exam.NAME to ExamCommandProcessor(),
-        Command.Ladder.NAME to LadderCommandProcessor(),
-        Command.Kitchen.NAME to KitchenCommandProcessor()
+        Command.Ladder.NAME to LadderCommandProcessor()
     )
 
     /**
@@ -48,7 +45,6 @@ class FulguroBot : ListenerAdapter() {
                 UserService(event.jda),
                 ExamService(event.jda),
                 LadderService(),
-                LeagueService(event.jda)
             )
         )
         gameScanner?.start()

@@ -2,17 +2,13 @@ package com.fulgurogo.utilities
 
 import com.fulgurogo.Config
 import com.fulgurogo.features.bot.Command
-import com.fulgurogo.features.exam.ExamPhantom
 import com.fulgurogo.features.exam.ExamPlayer
-import com.fulgurogo.features.ladder.LadderPlayer
 import net.dv8tion.jda.api.EmbedBuilder
 import net.dv8tion.jda.api.JDA
 import net.dv8tion.jda.api.events.interaction.SlashCommandEvent
 import net.dv8tion.jda.api.interactions.InteractionHook
 
 fun JDA.userName(hunter: ExamPlayer): String = userName(hunter.discordId)
-fun JDA.userName(phantom: ExamPhantom): String = userName(phantom.discordId)
-fun JDA.userName(ladderPlayer: LadderPlayer): String = userName(ladderPlayer.discordId)
 fun JDA.userName(discordId: String): String {
     val discordUser = getUserById(discordId)
     val guild = getGuildById(Config.Bot.GUILD_ID)

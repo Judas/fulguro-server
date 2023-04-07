@@ -65,7 +65,7 @@ class InfoCommandProcessor : CommandProcessor {
         log(INFO, "link")
 
         val hook = acknowledge(event)
-        DatabaseAccessor.ensureUser(event.user)
+        DatabaseAccessor.ensureUser(event.user.id)
 
         // It is safe to force args values (!!) here as they are required or command won't be evaluated
         val account = UserAccount.find(event.getOption(Command.Info.ACCOUNT_ARG)!!.asString)!!
@@ -84,6 +84,13 @@ class InfoCommandProcessor : CommandProcessor {
             else {
                 val realId = if (account == UserAccount.FOX) user?.pseudo()!! else user?.id()!!
                 DatabaseAccessor.linkUserAccount(event.user.id, account, realId)
+
+                // Update user info (pseudo / rank)
+                DatabaseAccessor
+                    .user(account, accountId)
+                    ?.cloneUserWithUpdatedProfile(event.jda)
+                    ?.let { DatabaseAccessor.updateUser(it) }
+
                 simpleMessage(
                     hook,
                     Command.Info.EMOJI,
@@ -98,7 +105,7 @@ class InfoCommandProcessor : CommandProcessor {
         log(INFO, "clean")
 
         val hook = acknowledge(event)
-        DatabaseAccessor.ensureUser(event.user)
+        DatabaseAccessor.ensureUser(event.user.id)
         DatabaseAccessor.deleteUser(event.user.id)
         simpleMessage(
             hook,
@@ -112,13 +119,13 @@ class InfoCommandProcessor : CommandProcessor {
         log(INFO, "profile")
 
         val hook = acknowledge(event)
-        DatabaseAccessor.ensureUser(event.user)
+        DatabaseAccessor.ensureUser(event.user.id)
 
         val targetUser = event.getOption(Command.USER_ARG)!!.asUser
         if (targetUser.isBot) {
             simpleError(hook, Command.Info.EMOJI, "FulguroBot ne peut dévoiler les infos des bots. :robot:")
         } else {
-            val user = DatabaseAccessor.ensureUser(targetUser)
+            val user = DatabaseAccessor.ensureUser(targetUser.id)
 
             val guild = event.guild!!
             val member = guild.getMember(targetUser)!!
@@ -162,8 +169,14 @@ class InfoCommandProcessor : CommandProcessor {
         // Fetch all games
         val games = DatabaseAccessor.infoGamesFor(user.discordId)
 
-        val wins = games.count { it.finished && it.mainPlayerWon == true }
-        val losses = games.count { it.finished && it.mainPlayerWon == false }
+        val wins = games.count {
+            if (it.blackPlayerDiscordId == user.discordId) it.blackPlayerWon == true
+            else it.whitePlayerWon == true
+        }
+        val losses = games.count {
+            if (it.blackPlayerDiscordId == user.discordId) it.whitePlayerWon == true
+            else it.blackPlayerWon == true
+        }
         val ratioString = if (games.isNotEmpty()) {
             val ratio = wins.toFloat() * 100 / (wins + losses).toFloat()
             "(**" + DecimalFormat("#.#").format(ratio.toDouble()) + "%** de victoires)"
@@ -175,15 +188,23 @@ class InfoCommandProcessor : CommandProcessor {
             message += "\n\n__Parties récentes :__\n"
             games
                 .sortedByDescending { it.date }
-                .take(15)
+                .take(10)
                 .forEach {
+                    val black = it.blackPlayerDiscordId == user.discordId
+
                     var description = ""
-                    description += if (!it.finished) ":timer:" else if (it.mainPlayerWon == true) ":white_check_mark:" else ":x:"
-                    description += " [${it.server}](${it.gameLink()}) "
-                    description += " " + if (it.mainPlayerIsBlack == true) ":black_circle:" else ":white_circle:"
+                    description += when {
+                        black && it.blackPlayerWon == true -> ":white_check_mark:"
+                        !black && it.whitePlayerWon == true -> ":white_check_mark:"
+                        black && it.whitePlayerWon == true -> ":x:"
+                        !black && it.blackPlayerWon == true -> ":x:"
+                        else -> ":o:"
+                    }
+                    description += " [${it.server}](${it.gameLink(black)}) "
+                    description += " " + if (black) ":black_circle:" else ":white_circle:"
                     description += " " + (if (it.handicap == 0) "`VS`" else it.handicap?.toHandicapEmoji()) + " "
-                    description += " " + if (it.mainPlayerIsBlack == true) ":white_circle:" else ":black_circle:"
-                    description += " ${it.opponentLink()} "
+                    description += " " + if (black) ":white_circle:" else ":black_circle:"
+                    description += " ${it.opponentLink(black)} "
                     message += "$description\n"
                 }
         }

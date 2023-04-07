@@ -23,9 +23,9 @@ class IgsClient : UserAccountClient {
 
     override fun user(user: User): IgsUser? = user(user.igsId)
     override fun userGames(user: User, from: Date, to: Date): List<UserAccountGame> = listOf()
-    override fun userGame(user: User, gameId: String): UserAccountGame? = null
+    override fun userGame(user: User, gameServerId: String): UserAccountGame? = null
 
-    private fun user(id: String?): IgsUser? = try {
+    fun user(id: String?): IgsUser? = try {
         if (id.isNullOrBlank())
             throw EmptyUserIdException
         else {

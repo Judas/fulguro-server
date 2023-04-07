@@ -44,23 +44,26 @@ class FoxClient : UserAccountClient {
             .asSequence()
             .filter { it.date().after(from) }
             .filter { it.date().before(to) }
-            .filter { it.boardsize == 19 }
+            .filter { it.isNineteen() }
             .sortedBy { it.gamestarttime }
             .toList()
 
-    override fun userGame(user: User, gameId: String): UserAccountGame? =
-        lastHundredGames(user).find { it.gameServerId() == gameId }
+    override fun userGame(user: User, gameServerId: String): UserAccountGame? =
+        lastHundredGames(user).find { it.serverId() == gameServerId }
 
     fun user(pseudo: String?): FoxUser? =
         if (pseudo.isNullOrBlank()) null
         else {
             val foxUser = get("${Config.Fox.API_URL}/${Config.Fox.USER_INFO}$pseudo", FoxUser::class.java)
-            if (foxUser.pseudo().isNullOrBlank()) null else {
-                foxUser.rank = lastHundredGames(foxUser.pseudo()!!)
-                    .firstOrNull()
-                    ?.mainPlayerRank()
-                foxUser
+            foxUser.pseudo()?.let {
+                val lastGame = lastHundredGames(foxUser.pseudo()!!).firstOrNull()
+                foxUser.rank = when (it) {
+                    lastGame?.blackPlayerPseudo() -> lastGame.blackPlayerRank()
+                    lastGame?.whitePlayerPseudo() -> lastGame.whitePlayerRank()
+                    else -> null
+                }
             }
+            foxUser
         }
 
     private fun lastHundredGames(user: User): List<FoxGame> =
@@ -73,13 +76,7 @@ class FoxClient : UserAccountClient {
             FoxGameList::class.java
         )
 
-        val games: MutableList<FoxGame> = ArrayList()
-        gameRequest
-            .chesslist
-            .forEach {
-                it.mainPlayerPseudo = pseudo
-                games.add(it)
-            }
+        val games = gameRequest.chesslist.toMutableList()
         log(INFO, "Found ${games.size} total games")
         return games
     }

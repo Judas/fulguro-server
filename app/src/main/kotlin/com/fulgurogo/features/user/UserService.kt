@@ -15,21 +15,22 @@ class UserService(private val jda: JDA) : GameScanListener {
             val user = rawUser.cloneUserWithUpdatedProfile(jda)
             DatabaseAccessor.updateUser(user)
 
-            // Update unfinished games status
-            DatabaseAccessor.gamesFor(user.discordId)
-                .filter { !it.finished }
-                .forEach {
-                    // Check if game is now finished and update flag in db
-                    val updatedGame = UserAccount.find(it.server)?.client?.userGame(user, it.serverId)
-                    if (updatedGame?.isFinished() == true) DatabaseAccessor.updateFinishedGame(user, it.id, updatedGame)
-                }
+            if (user.name == user.discordId) {
+                DatabaseAccessor.deleteUser(user.discordId)
+            } else {
+                // Update unfinished games status
+                DatabaseAccessor.gamesFor(user.discordId)
+                    .filter { !it.finished }
+                    .forEach {
+                        // Check if game is now finished and update flag in db
+                        val updatedGame = UserAccount.find(it.server)?.client?.userGame(user, it.gameServerId())
+                        if (updatedGame?.isFinished() == true) DatabaseAccessor.updateFinishedGame(user, updatedGame)
+                    }
+            }
         }
     }
 
     override fun onScanFinished() {
         log(INFO, "onScanFinished")
-
-        // Delete players who have left the server
-        DatabaseAccessor.cleanOldUsers()
     }
 }

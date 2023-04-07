@@ -116,6 +116,6 @@ class GameScanner(
         }
 
         // Update user scan date
-        DatabaseAccessor.updateUserCheckDate(user.discordId, scanEnd)
+        DatabaseAccessor.updateUserScanDate(user.discordId, scanEnd)
     }
 }

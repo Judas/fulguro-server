@@ -39,10 +39,10 @@ class OgsClient : UserAccountClient {
             .sortedBy { it.started }
             .toList()
 
-    override fun userGame(user: User, gameId: String): UserAccountGame? =
+    override fun userGame(user: User, gameServerId: String): UserAccountGame? =
         if (user.ogsId.isNullOrBlank()) throw EmptyUserIdException
         else {
-            val url = "${Config.Ogs.API_URL}/games/$gameId"
+            val url = "${Config.Ogs.API_URL}/games/$gameServerId"
             log(INFO, url)
 
             val request: Request = Request.Builder().url(url).get().build()
@@ -52,7 +52,6 @@ class OgsClient : UserAccountClient {
                 log(INFO, "GET SUCCESS ${response.code}")
                 val game = gson.fromJson(response.body!!.string(), OgsGame::class.java)
                 response.close()
-                game.mainPlayerId = user.ogsId.toInt()
                 game
             } else {
                 val error = ApiException("GET FAILURE " + response.code)
@@ -92,7 +91,6 @@ class OgsClient : UserAccountClient {
             }
 
             log(INFO, "Found ${games.size} games")
-            games.forEach { it.mainPlayerId = user.ogsId.toInt() }
             games
         }
 
