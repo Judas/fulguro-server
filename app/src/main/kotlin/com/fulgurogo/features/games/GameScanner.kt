@@ -79,19 +79,18 @@ class GameScanner(
     }
 
     fun scan() {
-        log(INFO, "scan")
-
+        log(INFO, "Scan started !")
         isScanning = true
+
         listeners.forEach { it.onScanStarted() }
-
         handleAllUsers(this::handleUser)
-
         listeners.forEach { it.onScanFinished() }
 
         // Clean older games
         DatabaseAccessor.cleanGames()
 
         isScanning = false
+        log(INFO, "Scan ended !")
     }
 
     private fun handleUser(user: User) {

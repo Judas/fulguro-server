@@ -191,7 +191,7 @@ object DatabaseAccessor {
                 .executeUpdate()
         }
 
-    fun deleteUser(discordId: String) = dao.open().use { connection ->
+    fun deleteUser(discordId: String): Connection = dao.open().use { connection ->
         listOf(
             "exam_phantoms",
             "exam_points",
@@ -703,7 +703,7 @@ object DatabaseAccessor {
                 " FROM ladder_ratings AS lr " +
                 " INNER JOIN ladder_tiers AS t ON (t.min <= lr.rating AND lr.rating < t.max) " +
                 " WHERE lr.${UserAccount.DISCORD.databaseId} = :discordId " +
-                " ORDER BY lr.date DESC LIMIT 1 "
+                " ORDER BY lr.rating_date DESC LIMIT 1 "
         log(INFO, "ladderRating [$query] $discordId")
         connection
             .createQuery(query)
@@ -722,7 +722,7 @@ object DatabaseAccessor {
                 " FROM ladder_ratings AS lr " +
                 " INNER JOIN ladder_tiers AS t ON (t.min <= lr.rating AND lr.rating < t.max) " +
                 " WHERE lr.${UserAccount.DISCORD.databaseId} = :discordId AND DATEDIFF(lr.rating_date, :ratingDate) < 0 " +
-                " ORDER BY lr.date DESC LIMIT 1 "
+                " ORDER BY lr.rating_date DESC LIMIT 1 "
 
         log(INFO, "ladderRatingsFor [$query] $playerId $date")
         connection
@@ -740,7 +740,7 @@ object DatabaseAccessor {
     }
 
     fun tierFor(rating: Double): Tier? = dao.open().use { connection ->
-        val query = "SELECT * FROM ladder_tiers WHERE min <= :rating AND :rating < t.max "
+        val query = "SELECT * FROM ladder_tiers WHERE min <= :rating AND :rating < max "
 
         log(INFO, "tierFor [$query] $rating")
         connection

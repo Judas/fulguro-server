@@ -3,7 +3,7 @@ package com.fulgurogo.features.user
 import java.util.*
 
 abstract class UserAccountGame {
-    fun gameId(): String = "${server()}/${serverId()}"
+    fun gameId(): String = "${server()}_${serverId()}"
     abstract fun date(): Date
     abstract fun server(): String
     abstract fun account(): UserAccount
