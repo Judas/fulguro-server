@@ -78,10 +78,13 @@ object DatabaseAccessor {
             "white_player_rating_gain" to "whitePlayerRatingGain",
             "long_game" to "longGame",
             "rating_date" to "ratingDate",
+            "bg_color" to "bgColor",
+            "fg_color" to "fgColor",
             "tier_name" to "tierName",
-            "tier_color" to "tierColor",
+            "tier_bg_color" to "tierBgColor",
+            "tier_fg_color" to "tierFgColor",
             "game_count" to "gameCount",
-            "ladder_game_count" to "ladderGameCount",
+            "ladder_game_count" to "ladderGameCount"
         )
     }
 
@@ -699,7 +702,8 @@ object DatabaseAccessor {
                 " lr.deviation AS deviation, " +
                 " lr.volatility AS volatility, " +
                 " t.name AS tierName, " +
-                " t.color AS tierColor " +
+                " t.bg_color AS tierBgColor, " +
+                " t.fg_color AS tierFgColor " +
                 " FROM ladder_ratings AS lr " +
                 " INNER JOIN ladder_tiers AS t ON (t.min <= lr.rating AND lr.rating < t.max) " +
                 " WHERE lr.${UserAccount.DISCORD.databaseId} = :discordId " +
@@ -718,7 +722,8 @@ object DatabaseAccessor {
                 " lr.deviation AS deviation, " +
                 " lr.volatility AS volatility, " +
                 " t.name AS tierName, " +
-                " t.color AS tierColor " +
+                " t.bg_color AS tierBgColor, " +
+                " t.fg_color AS tierFgColor " +
                 " FROM ladder_ratings AS lr " +
                 " INNER JOIN ladder_tiers AS t ON (t.min <= lr.rating AND lr.rating < t.max) " +
                 " WHERE lr.${UserAccount.DISCORD.databaseId} = :discordId AND DATEDIFF(lr.rating_date, :ratingDate) < 0 " +

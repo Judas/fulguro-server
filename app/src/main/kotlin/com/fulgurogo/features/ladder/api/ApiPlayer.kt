@@ -8,7 +8,8 @@ data class ApiPlayer(
     val rating: Double,
     val deviation: Double,
     val tierName: String,
-    val tierColor: String,
+    val tierBgColor: String,
+    val tierFgColor: String,
     val stable: Boolean,
 
     var stability: ApiStability? = null,

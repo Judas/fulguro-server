@@ -10,7 +10,8 @@ data class ApiRating(
     val rating: Int,
     val deviation: Int,
     val tierName: String,
-    val tierColor: String
+    val tierBgColor: String,
+    val tierFgColor: String
 ) {
     companion object {
         fun default(): ApiRating {
@@ -19,7 +20,8 @@ data class ApiRating(
                 rating = INITIAL_RATING.roundToInt(),
                 deviation = INITIAL_DEVIATION.roundToInt(),
                 tierName = tier?.name ?: "Grade inconnu",
-                tierColor = tier?.color ?: "#FF00FF"
+                tierBgColor = tier?.bgColor ?: "#FF00FF",
+                tierFgColor = tier?.fgColor ?: "#000000"
             )
         }
 
@@ -27,7 +29,8 @@ data class ApiRating(
             rating = rating.rating.roundToInt(),
             deviation = rating.deviation.roundToInt(),
             tierName = rating.tierName,
-            tierColor = rating.tierColor,
+            tierBgColor = rating.tierBgColor,
+            tierFgColor = rating.tierFgColor
         )
     }
 }

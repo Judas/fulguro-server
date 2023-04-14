@@ -5,5 +5,6 @@ data class Tier(
     val name: String,
     val min: Int,
     val max: Int,
-    val color: String
+    val bgColor: String,
+    val fgColor: String
 )

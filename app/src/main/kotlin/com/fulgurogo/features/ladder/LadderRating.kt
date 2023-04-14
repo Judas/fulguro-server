@@ -5,5 +5,6 @@ data class LadderRating(
     val deviation: Double,
     val volatility: Double,
     val tierName: String,
-    val tierColor: String
+    val tierBgColor: String,
+    val tierFgColor: String
 )
