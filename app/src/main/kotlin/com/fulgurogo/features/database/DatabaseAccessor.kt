@@ -173,7 +173,7 @@ object DatabaseAccessor {
         val query = "UPDATE users SET " +
                 " last_game_scan = :lastGameScan " +
                 " WHERE ${UserAccount.DISCORD.databaseId} = :discordId "
-        log(INFO, "updateUserCheckDate [$query] $discordId")
+        log(INFO, "updateUserScanDate [$query] $discordId")
         connection
             .createQuery(query)
             .addParameter("discordId", discordId)
@@ -237,7 +237,7 @@ object DatabaseAccessor {
     fun existGame(game: UserAccountGame): Boolean = dao.open().use { connection ->
         val query = " SELECT * FROM games WHERE id = :id "
 
-        log(INFO, "existGame [$query]")
+        log(INFO, "existGame [$query] ${game.gameId()}")
         connection
             .createQuery(query)
             .addParameter("id", game.gameId())
@@ -255,7 +255,7 @@ object DatabaseAccessor {
                 " :whitePlayerDiscordId, :whitePlayerServerId, :whitePlayerPseudo, :whitePlayerRank, :whitePlayerWon, " +
                 " :handicap, :komi, :longGame, :finished) "
 
-        log(INFO, "saveGame [$query] $game")
+        log(INFO, "saveGame [$query] ${game.gameId()}")
 
         val blackPlayerDiscordId = user(game.account(), game.blackPlayerServerId())?.discordId
         val whitePlayerDiscordId = user(game.account(), game.whitePlayerServerId())?.discordId
@@ -289,7 +289,7 @@ object DatabaseAccessor {
                 " finished = 1 " +
                 " WHERE id = :id "
 
-        log(INFO, "updateFinishedGame [$query]")
+        log(INFO, "updateFinishedGame [$query] ${game.gameId()}")
         connection
             .createQuery(query)
             .addParameter("id", game.gameId())
@@ -326,7 +326,7 @@ object DatabaseAccessor {
                 " WHERE black_player_discord_id = :playerId OR white_player_discord_id = :playerId " +
                 " ORDER BY date "
 
-        log(INFO, "gamesFor [$query]")
+        log(INFO, "gamesFor [$query] $discordId")
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)
@@ -550,7 +550,7 @@ object DatabaseAccessor {
 
     fun resetSpec(specialization: ExamSpecialization): Connection = dao.open().use { connection ->
         val query = "UPDATE exam_points SET ${specialization.databaseId} = 0"
-        log(INFO, "resetSpec [$query]")
+        log(INFO, "resetSpec [$query] ${specialization.name}")
         connection
             .createQuery(query)
             .executeUpdate()
@@ -563,7 +563,7 @@ object DatabaseAccessor {
             val capQuery =
                 "UPDATE exam_points SET ${specialization.databaseId} = 4 WHERE ${UserAccount.DISCORD.databaseId} = :discordId AND ${specialization.databaseId} > 4"
 
-            log(INFO, "incrementSpec [$updateQuery] ${hunter.discordId}")
+            log(INFO, "incrementSpec [$updateQuery] ${hunter.discordId} ${specialization.name}")
             connection.createQuery(updateQuery).addParameter("discordId", hunter.discordId).executeUpdate()
 
             log(INFO, "capQuery [$capQuery] ${hunter.discordId}")
