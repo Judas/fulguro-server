@@ -1,5 +1,6 @@
 package com.fulgurogo.features.user
 
+import com.fulgurogo.Config.Ladder.DEFAULT_AVATAR
 import com.fulgurogo.features.user.egf.EgfClient
 import com.fulgurogo.features.user.ffg.FfgClient
 import com.fulgurogo.features.user.fox.FoxClient
@@ -58,7 +59,7 @@ data class User(
         return User(
             discordId = discordId,
             name = jda.userName(discordId),
-            avatar = jda.getUserById(discordId)?.effectiveAvatarUrl,
+            avatar = jda.getUserById(discordId)?.effectiveAvatarUrl ?: DEFAULT_AVATAR,
             titles = titles,
             lastGameScan = lastGameScan,
             kgsId = kgsId,

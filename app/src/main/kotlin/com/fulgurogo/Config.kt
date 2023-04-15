@@ -40,6 +40,8 @@ object Config {
         const val INITIAL_VOLATILITY = 0.06
         const val PLAY_CHANNEL = "<ENTER_PLAY_CHANNEL_ID>"
         const val WEBSITE_URL = "https://fulguro-gold.onrender.com"
+        const val DEFAULT_AVATAR =
+            "https://cdn.discordapp.com/attachments/675445987938009088/992769070296477818/LOGOGo.png"
     }
 
     object Kgs {
