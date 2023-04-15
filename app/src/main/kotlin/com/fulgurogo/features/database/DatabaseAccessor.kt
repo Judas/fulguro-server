@@ -70,12 +70,36 @@ object DatabaseAccessor {
             "black_player_rank" to "blackPlayerRank",
             "black_player_won" to "blackPlayerWon",
             "black_player_rating_gain" to "blackPlayerRatingGain",
+            "black_current_rating" to "blackCurrentRating",
+            "black_current_deviation" to "blackCurrentDeviation",
+            "black_current_volatility" to "blackCurrentVolatility",
+            "black_current_tier_name" to "blackCurrentTierName",
+            "black_current_tier_bg_color" to "blackCurrentTierBgColor",
+            "black_current_tier_fg_color" to "blackCurrentTierFgColor",
+            "black_historical_rating" to "blackHistoricalRating",
+            "black_historical_deviation" to "blackHistoricalDeviation",
+            "black_historical_volatility" to "blackHistoricalVolatility",
+            "black_historical_tier_name" to "blackHistoricalTierName",
+            "black_historical_tier_bg_color" to "blackHistoricalTierBgColor",
+            "black_historical_tier_fg_color" to "blackHistoricalTierFgColor",
             "white_player_discord_id" to "whitePlayerDiscordId",
             "white_player_server_id" to "whitePlayerServerId",
             "white_player_pseudo" to "whitePlayerPseudo",
             "white_player_rank" to "whitePlayerRank",
             "white_player_won" to "whitePlayerWon",
             "white_player_rating_gain" to "whitePlayerRatingGain",
+            "white_current_rating" to "whiteCurrentRating",
+            "white_current_deviation" to "whiteCurrentDeviation",
+            "white_current_volatility" to "whiteCurrentVolatility",
+            "white_current_tier_name" to "whiteCurrentTierName",
+            "white_current_tier_bg_color" to "whiteCurrentTierBgColor",
+            "white_current_tier_fg_color" to "whiteCurrentTierFgColor",
+            "white_historical_rating" to "whiteHistoricalRating",
+            "white_historical_deviation" to "whiteHistoricalDeviation",
+            "white_historical_volatility" to "whiteHistoricalVolatility",
+            "white_historical_tier_name" to "whiteHistoricalTierName",
+            "white_historical_tier_bg_color" to "whiteHistoricalTierBgColor",
+            "white_historical_tier_fg_color" to "whiteHistoricalTierFgColor",
             "long_game" to "longGame",
             "rating_date" to "ratingDate",
             "bg_color" to "bgColor",
@@ -282,6 +306,21 @@ object DatabaseAccessor {
             .executeUpdate()
     }
 
+    fun unfinishedGamesFor(discordId: String): List<Game> = dao.open().use { connection ->
+        val query = " SELECT * " +
+                " FROM games " +
+                " WHERE black_player_discord_id = :playerId OR white_player_discord_id = :playerId " +
+                " AND finished = 0 " +
+                " ORDER BY date "
+
+        log(INFO, "gamesFor [$query] $discordId")
+        connection
+            .createQuery(query)
+            .throwOnMappingFailure(false)
+            .addParameter("playerId", discordId)
+            .executeAndFetch(Game::class.java)
+    }
+
     fun updateFinishedGame(user: User, game: UserAccountGame): Connection = dao.open().use { connection ->
         val query = " UPDATE games SET " +
                 " black_player_won = :blackPlayerWon, " +
@@ -309,24 +348,14 @@ object DatabaseAccessor {
             .executeUpdate()
     }
 
-    private fun games(): List<Game> = dao.open().use { connection ->
-        val query = " SELECT * " +
-                " FROM games " +
-                " ORDER BY date "
-
-        log(INFO, "games [$query]")
-        connection
-            .createQuery(query)
-            .executeAndFetch(Game::class.java)
-    }
-
-    fun gamesFor(discordId: String): List<Game> = dao.open().use { connection ->
+    fun infoGamesFor(discordId: String): List<Game> = dao.open().use { connection ->
         val query = " SELECT * " +
                 " FROM games " +
                 " WHERE black_player_discord_id = :playerId OR white_player_discord_id = :playerId " +
+                " AND finished = 1 " +
                 " ORDER BY date "
 
-        log(INFO, "gamesFor [$query] $discordId")
+        log(INFO, "infoGamesFor [$query] $discordId")
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)
@@ -334,33 +363,56 @@ object DatabaseAccessor {
             .executeAndFetch(Game::class.java)
     }
 
-    fun infoGamesFor(discordId: String): List<Game> = gamesFor(discordId)
-        .asSequence()
-        .filter { it.finished }
-        .toList()
+    fun examGames(from: Date, to: Date): List<Game> = dao.open().use { connection ->
+        val query = " SELECT * " +
+                " FROM games " +
+                " WHERE " +
+                " finished = 1 AND :from < date AND date < :to " +
+                " ORDER BY date "
 
-    fun examGames(from: Date, to: Date): List<Game> = games()
-        .filter { it.date.after(from) }
-        .filter { it.date.before(to) }
-        .filter { it.finished }
+        log(INFO, "examGames [$query]")
+        connection
+            .createQuery(query)
+            .throwOnMappingFailure(false)
+            .addParameter("from", from)
+            .addParameter("to", to)
+            .executeAndFetch(Game::class.java)
+    }
 
-    fun ladderGames(): List<Game> = games()
-        .asSequence()
-        .filter { it.finished }
-        .filter { it.blackPlayerDiscordId != null }
-        .filter { it.whitePlayerDiscordId != null }
-        .filter { it.hasNoHandicap() }
-        .toList()
+    fun ladderGames(): List<Game> = dao.open().use { connection ->
+        val query = " SELECT * " +
+                " FROM games " +
+                " WHERE " +
+                " black_player_discord_id IS NOT NULL AND white_player_discord_id IS NOT NULL " +
+                " AND finished = 1 AND handicap = 0 AND 6 < komi AND komi < 9 " +
+                " ORDER BY date "
 
-    fun ladderGamesFor(discordId: String, from: Date, to: Date): List<Game> = gamesFor(discordId)
-        .asSequence()
-        .filter { it.date.after(from) }
-        .filter { it.date.before(to) }
-        .filter { it.finished }
-        .filter { it.blackPlayerDiscordId != null }
-        .filter { it.whitePlayerDiscordId != null }
-        .filter { it.hasNoHandicap() }
-        .toList()
+        log(INFO, "ladderGames [$query]")
+        connection
+            .createQuery(query)
+            .throwOnMappingFailure(false)
+            .executeAndFetch(Game::class.java)
+    }
+
+    fun ladderGamesFor(discordId: String, from: Date, to: Date): List<Game> = dao.open().use { connection ->
+        val query = " SELECT * " +
+                " FROM games " +
+                " WHERE " +
+                " ((black_player_discord_id = :playerId AND white_player_discord_id IS NOT NULL) OR " +
+                " (white_player_discord_id = :playerId AND black_player_discord_id IS NOT NULL)) " +
+                " AND finished = 1 AND handicap = 0 AND 6 < komi AND komi < 9 " +
+                " AND :from < date AND date < :to " +
+                " ORDER BY date "
+
+        log(INFO, "ladderGamesFor [$query] $discordId")
+        connection
+            .createQuery(query)
+            .throwOnMappingFailure(false)
+            .addParameter("playerId", discordId)
+            .addParameter("from", from)
+            .addParameter("to", to)
+            .executeAndFetch(Game::class.java)
+    }
 
     fun countDailyGamesBetween(blackPlayerDiscordId: String, whitePlayerDiscordId: String, date: Date): Int =
         dao.open().use { connection ->
@@ -696,26 +748,6 @@ object DatabaseAccessor {
             .executeUpdate()
     }
 
-    fun ladderRating(discordId: String): LadderRating? = dao.open().use { connection ->
-        val query = "SELECT " +
-                " lr.rating AS rating, " +
-                " lr.deviation AS deviation, " +
-                " lr.volatility AS volatility, " +
-                " t.name AS tierName, " +
-                " t.bg_color AS tierBgColor, " +
-                " t.fg_color AS tierFgColor " +
-                " FROM ladder_ratings AS lr " +
-                " INNER JOIN ladder_tiers AS t ON (t.min <= lr.rating AND lr.rating < t.max) " +
-                " WHERE lr.${UserAccount.DISCORD.databaseId} = :discordId " +
-                " ORDER BY lr.rating_date DESC LIMIT 1 "
-        log(INFO, "ladderRating [$query] $discordId")
-        connection
-            .createQuery(query)
-            .throwOnMappingFailure(false)
-            .addParameter("discordId", discordId)
-            .executeAndFetchFirst(LadderRating::class.java)
-    }
-
     fun ladderRatingAt(playerId: String, date: Date): LadderRating? = dao.open().use { connection ->
         val query = "SELECT " +
                 " lr.rating AS rating, " +
@@ -729,7 +761,7 @@ object DatabaseAccessor {
                 " WHERE lr.${UserAccount.DISCORD.databaseId} = :discordId AND DATEDIFF(lr.rating_date, :ratingDate) < 0 " +
                 " ORDER BY lr.rating_date DESC LIMIT 1 "
 
-        log(INFO, "ladderRatingsFor [$query] $playerId $date")
+        log(INFO, "ladderRatingAt [$query] $playerId $date")
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)
@@ -776,6 +808,38 @@ object DatabaseAccessor {
             .throwOnMappingFailure(false)
             .addParameter("discordId", discordId)
             .executeAndFetchFirst(ApiPlayer::class.java)
+    }
+
+    fun apiLadderGame(gameId: String): Game? = dao.open().use { connection ->
+        val query = "SELECT * FROM ladder_recent_games " +
+                " WHERE id = :gameId "
+        log(INFO, "apiLadderGame [$query] $gameId")
+        connection
+            .createQuery(query)
+            .throwOnMappingFailure(false)
+            .addParameter("gameId", gameId)
+            .executeAndFetchFirst(Game::class.java)
+    }
+
+    fun apiLadderGamesFor(discordId: String): List<Game> = dao.open().use { connection ->
+        val query = "SELECT * FROM ladder_recent_games " +
+                " WHERE ${UserAccount.DISCORD.databaseId} = :discordId " +
+                " ORDER BY date DESC LIMIT 10 "
+        log(INFO, "apiLadderGamesFor [$query] $discordId")
+        connection
+            .createQuery(query)
+            .throwOnMappingFailure(false)
+            .addParameter("discordId", discordId)
+            .executeAndFetch(Game::class.java)
+    }
+
+    fun apiLadderRecentGames(): List<Game> = dao.open().use { connection ->
+        val query = "SELECT * FROM ladder_recent_games ORDER BY date DESC LIMIT 20 "
+        log(INFO, "apiLadderRecentGames [$query]")
+        connection
+            .createQuery(query)
+            .throwOnMappingFailure(false)
+            .executeAndFetch(Game::class.java)
     }
 
     fun stability(discordId: String): ApiStability = dao.open().use { connection ->

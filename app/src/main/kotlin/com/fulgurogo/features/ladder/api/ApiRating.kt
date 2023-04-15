@@ -3,7 +3,7 @@ package com.fulgurogo.features.ladder.api
 import com.fulgurogo.Config.Ladder.INITIAL_DEVIATION
 import com.fulgurogo.Config.Ladder.INITIAL_RATING
 import com.fulgurogo.features.database.DatabaseAccessor
-import com.fulgurogo.features.ladder.LadderRating
+import com.fulgurogo.features.games.Game
 import kotlin.math.roundToInt
 
 data class ApiRating(
@@ -25,12 +25,39 @@ data class ApiRating(
             )
         }
 
-        fun from(rating: LadderRating): ApiRating = ApiRating(
-            rating = rating.rating.roundToInt(),
-            deviation = rating.deviation.roundToInt(),
-            tierName = rating.tierName,
-            tierBgColor = rating.tierBgColor,
-            tierFgColor = rating.tierFgColor
-        )
+        fun from(game: Game, black: Boolean, current: Boolean): ApiRating =
+            when {
+                black && current -> ApiRating(
+                    rating = (game.blackCurrentRating ?: INITIAL_RATING).roundToInt(),
+                    deviation = (game.blackCurrentDeviation ?: INITIAL_DEVIATION).roundToInt(),
+                    tierName = game.blackCurrentTierName ?: "Grade inconnu",
+                    tierBgColor = game.blackCurrentTierBgColor ?: "#FF00FF",
+                    tierFgColor = game.blackCurrentTierBgColor ?: "#000000"
+                )
+
+                !black && current -> ApiRating(
+                    rating = (game.whiteCurrentRating ?: INITIAL_RATING).roundToInt(),
+                    deviation = (game.whiteCurrentDeviation ?: INITIAL_DEVIATION).roundToInt(),
+                    tierName = game.whiteCurrentTierName ?: "Grade inconnu",
+                    tierBgColor = game.whiteCurrentTierBgColor ?: "#FF00FF",
+                    tierFgColor = game.whiteCurrentTierBgColor ?: "#000000"
+                )
+
+                black && !current -> ApiRating(
+                    rating = (game.blackHistoricalRating ?: INITIAL_RATING).roundToInt(),
+                    deviation = (game.blackHistoricalDeviation ?: INITIAL_DEVIATION).roundToInt(),
+                    tierName = game.blackHistoricalTierName ?: "Grade inconnu",
+                    tierBgColor = game.blackHistoricalTierBgColor ?: "#FF00FF",
+                    tierFgColor = game.blackHistoricalTierFgColor ?: "#000000"
+                )
+
+                else -> ApiRating(
+                    rating = (game.whiteHistoricalRating ?: INITIAL_RATING).roundToInt(),
+                    deviation = (game.whiteHistoricalDeviation ?: INITIAL_DEVIATION).roundToInt(),
+                    tierName = game.whiteHistoricalTierName ?: "Grade inconnu",
+                    tierBgColor = game.whiteHistoricalTierBgColor ?: "#FF00FF",
+                    tierFgColor = game.whiteHistoricalTierFgColor ?: "#000000"
+                )
+            }
     }
 }

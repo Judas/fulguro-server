@@ -26,13 +26,8 @@ object LadderApi {
             p.stability = DatabaseAccessor.stability(p.discordId)
 
             // Games
-            val now = ZonedDateTime.now(DATE_ZONE)
-            val start = now.minusMonths(1).toDate()
-            val end = now.toDate()
-            p.games = DatabaseAccessor.ladderGamesFor(p.discordId, start, end)
-                .sortedByDescending { it.date }
+            p.games = DatabaseAccessor.apiLadderGamesFor(p.discordId)
                 .map { ApiGame.from(it, p.discordId == it.blackPlayerDiscordId) }
-                .take(10)
                 .toMutableList()
 
             context.standardResponse(p)
@@ -42,9 +37,7 @@ object LadderApi {
     fun getRecentGames(context: Context) {
         context.rateLimit()
         val latestGames = DatabaseAccessor
-            .ladderGames()
-            .sortedByDescending { it.date }
-            .take(20)
+            .apiLadderRecentGames()
             .map { ApiGame.from(it) }
         context.standardResponse(latestGames)
     }
@@ -54,10 +47,8 @@ object LadderApi {
         val gameId = context.pathParam("id")
 
         val game = DatabaseAccessor
-            .ladderGames()
-            .filter { it.id == gameId }
-            .map { ApiGame.from(it) }
-            .firstOrNull()
+            .apiLadderGame(gameId)
+            ?.let { ApiGame.from(it) }
 
         game?.let { context.standardResponse(it) } ?: context.status(404)
     }

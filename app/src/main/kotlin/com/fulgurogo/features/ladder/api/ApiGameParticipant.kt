@@ -36,13 +36,8 @@ data class ApiGameParticipant(
                     else -> ""
                 }
 
-                val currentRating = DatabaseAccessor.ladderRating(id)
-                    ?.let { ApiRating.from(it) }
-                    ?: ApiRating.default()
-
-                val historicalRating = DatabaseAccessor.ladderRatingAt(id, game.date)
-                    ?.let { ApiRating.from(it) }
-                    ?: currentRating
+                val currentRating = ApiRating.from(game, black, true)
+                val historicalRating = ApiRating.from(game, black, false)
 
                 val winner = (black && game.blackPlayerWon == true) || (!black && game.whitePlayerWon == true)
 

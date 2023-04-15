@@ -11,7 +11,7 @@ import com.fulgurogo.features.user.UserAccount
 import com.fulgurogo.utilities.toRankInt
 import java.util.*
 
-data class Game(
+open class Game(
     val id: String,
     val date: Date,
     val server: String,
@@ -22,6 +22,18 @@ data class Game(
     val blackPlayerRank: String? = null,
     val blackPlayerWon: Boolean? = null,
     val blackPlayerRatingGain: Double? = null,
+    val blackCurrentRating: Double? = null,
+    val blackCurrentDeviation: Double? = null,
+    val blackCurrentVolatility: Double? = null,
+    val blackCurrentTierName: String? = null,
+    val blackCurrentTierBgColor: String? = null,
+    val blackCurrentTierFgColor: String? = null,
+    val blackHistoricalRating: Double? = null,
+    val blackHistoricalDeviation: Double? = null,
+    val blackHistoricalVolatility: Double? = null,
+    val blackHistoricalTierName: String? = null,
+    val blackHistoricalTierBgColor: String? = null,
+    val blackHistoricalTierFgColor: String? = null,
 
     val whitePlayerDiscordId: String? = null,
     val whitePlayerServerId: String,
@@ -29,6 +41,18 @@ data class Game(
     val whitePlayerRank: String? = null,
     val whitePlayerWon: Boolean? = null,
     val whitePlayerRatingGain: Double? = null,
+    val whiteCurrentRating: Double? = null,
+    val whiteCurrentDeviation: Double? = null,
+    val whiteCurrentVolatility: Double? = null,
+    val whiteCurrentTierName: String? = null,
+    val whiteCurrentTierBgColor: String? = null,
+    val whiteCurrentTierFgColor: String? = null,
+    val whiteHistoricalRating: Double? = null,
+    val whiteHistoricalDeviation: Double? = null,
+    val whiteHistoricalVolatility: Double? = null,
+    val whiteHistoricalTierName: String? = null,
+    val whiteHistoricalTierBgColor: String? = null,
+    val whiteHistoricalTierFgColor: String? = null,
 
     val handicap: Int? = null,
     val komi: Double? = null,
