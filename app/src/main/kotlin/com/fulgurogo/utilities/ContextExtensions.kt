@@ -9,6 +9,14 @@ fun Context.standardResponse(data: Any) {
     json(data)
 }
 
+fun Context.notFoundError() {
+    status(404)
+}
+
+fun Context.internalError() {
+    status(500)
+}
+
 fun Context.rateLimit() {
     NaiveRateLimit.requestPerTimeUnit(this, 30, TimeUnit.MINUTES)
 }

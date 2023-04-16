@@ -1,21 +1,22 @@
 package com.fulgurogo.features.ladder.api
 
 import com.fulgurogo.features.database.DatabaseAccessor
-import com.fulgurogo.utilities.DATE_ZONE
+import com.fulgurogo.utilities.internalError
+import com.fulgurogo.utilities.notFoundError
 import com.fulgurogo.utilities.rateLimit
 import com.fulgurogo.utilities.standardResponse
-import com.fulgurogo.utilities.toDate
 import io.javalin.http.Context
-import java.time.ZonedDateTime
 
 object LadderApi {
-    fun getPlayers(context: Context) {
+    fun getPlayers(context: Context) = try {
         context.rateLimit()
         val players = DatabaseAccessor.apiLadderPlayers()
         context.standardResponse(players)
+    } catch (e: Exception) {
+        context.internalError()
     }
 
-    fun getPlayerProfile(context: Context) {
+    fun getPlayerProfile(context: Context) = try {
         context.rateLimit()
 
         val playerId = context.pathParam("id")
@@ -31,18 +32,23 @@ object LadderApi {
                 .toMutableList()
 
             context.standardResponse(p)
-        } ?: context.status(404)
+        } ?: context.notFoundError()
+    } catch (e: Exception) {
+        context.internalError()
     }
 
-    fun getRecentGames(context: Context) {
+    fun getRecentGames(context: Context) = try {
         context.rateLimit()
         val latestGames = DatabaseAccessor
             .apiLadderRecentGames()
             .map { ApiGame.from(it) }
+
         context.standardResponse(latestGames)
+    } catch (e: Exception) {
+        context.internalError()
     }
 
-    fun getGame(context: Context) {
+    fun getGame(context: Context) = try {
         context.rateLimit()
         val gameId = context.pathParam("id")
 
@@ -50,13 +56,17 @@ object LadderApi {
             .apiLadderGame(gameId)
             ?.let { ApiGame.from(it) }
 
-        game?.let { context.standardResponse(it) } ?: context.status(404)
+        game?.let { context.standardResponse(it) } ?: context.notFoundError()
+    } catch (e: Exception) {
+        context.internalError()
     }
 
-    fun getStabilityOptions(context: Context) {
+    fun getStabilityOptions(context: Context) = try {
         context.rateLimit()
         DatabaseAccessor.stability()
             ?.let { context.standardResponse(it) }
-            ?: context.status(404)
+            ?: context.notFoundError()
+    } catch (e: Exception) {
+        context.internalError()
     }
 }

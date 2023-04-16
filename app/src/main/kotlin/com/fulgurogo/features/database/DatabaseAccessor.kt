@@ -65,6 +65,8 @@ object DatabaseAccessor {
             "egf_pseudo" to "egfPseudo",
             "egf_rank" to "egfRank",
             "black_player_discord_id" to "blackPlayerDiscordId",
+            "black_name" to "blackPlayerName",
+            "black_avatar" to "blackPlayerAvatar",
             "black_player_server_id" to "blackPlayerServerId",
             "black_player_pseudo" to "blackPlayerPseudo",
             "black_player_rank" to "blackPlayerRank",
@@ -73,16 +75,16 @@ object DatabaseAccessor {
             "black_current_rating" to "blackCurrentRating",
             "black_current_deviation" to "blackCurrentDeviation",
             "black_current_volatility" to "blackCurrentVolatility",
+            "black_current_tier_rank" to "blackCurrentTierRank",
             "black_current_tier_name" to "blackCurrentTierName",
-            "black_current_tier_bg_color" to "blackCurrentTierBgColor",
-            "black_current_tier_fg_color" to "blackCurrentTierFgColor",
             "black_historical_rating" to "blackHistoricalRating",
             "black_historical_deviation" to "blackHistoricalDeviation",
             "black_historical_volatility" to "blackHistoricalVolatility",
+            "black_historical_tier_rank" to "blackHistoricalTierRank",
             "black_historical_tier_name" to "blackHistoricalTierName",
-            "black_historical_tier_bg_color" to "blackHistoricalTierBgColor",
-            "black_historical_tier_fg_color" to "blackHistoricalTierFgColor",
             "white_player_discord_id" to "whitePlayerDiscordId",
+            "white_name" to "whitePlayerName",
+            "white_avatar" to "whitePlayerAvatar",
             "white_player_server_id" to "whitePlayerServerId",
             "white_player_pseudo" to "whitePlayerPseudo",
             "white_player_rank" to "whitePlayerRank",
@@ -91,22 +93,19 @@ object DatabaseAccessor {
             "white_current_rating" to "whiteCurrentRating",
             "white_current_deviation" to "whiteCurrentDeviation",
             "white_current_volatility" to "whiteCurrentVolatility",
+            "white_current_tier_rank" to "whiteCurrentTierRank",
             "white_current_tier_name" to "whiteCurrentTierName",
-            "white_current_tier_bg_color" to "whiteCurrentTierBgColor",
-            "white_current_tier_fg_color" to "whiteCurrentTierFgColor",
             "white_historical_rating" to "whiteHistoricalRating",
             "white_historical_deviation" to "whiteHistoricalDeviation",
             "white_historical_volatility" to "whiteHistoricalVolatility",
+            "white_historical_tier_rank" to "whiteHistoricalTierRank",
             "white_historical_tier_name" to "whiteHistoricalTierName",
-            "white_historical_tier_bg_color" to "whiteHistoricalTierBgColor",
-            "white_historical_tier_fg_color" to "whiteHistoricalTierFgColor",
             "long_game" to "longGame",
             "rating_date" to "ratingDate",
             "bg_color" to "bgColor",
             "fg_color" to "fgColor",
+            "tier_rank" to "tierRank",
             "tier_name" to "tierName",
-            "tier_bg_color" to "tierBgColor",
-            "tier_fg_color" to "tierFgColor",
             "game_count" to "gameCount",
             "ladder_game_count" to "ladderGameCount"
         )
@@ -753,9 +752,8 @@ object DatabaseAccessor {
                 " lr.rating AS rating, " +
                 " lr.deviation AS deviation, " +
                 " lr.volatility AS volatility, " +
-                " t.name AS tierName, " +
-                " t.bg_color AS tierBgColor, " +
-                " t.fg_color AS tierFgColor " +
+                " t.rank AS tierRank, " +
+                " t.name AS tierName " +
                 " FROM ladder_ratings AS lr " +
                 " INNER JOIN ladder_tiers AS t ON (t.min <= lr.rating AND lr.rating < t.max) " +
                 " WHERE lr.${UserAccount.DISCORD.databaseId} = :discordId AND DATEDIFF(lr.rating_date, :ratingDate) < 0 " +
@@ -811,7 +809,7 @@ object DatabaseAccessor {
     }
 
     fun apiLadderGame(gameId: String): Game? = dao.open().use { connection ->
-        val query = "SELECT * FROM ladder_recent_games " +
+        val query = "SELECT * FROM ladder_games " +
                 " WHERE id = :gameId "
         log(INFO, "apiLadderGame [$query] $gameId")
         connection
@@ -822,7 +820,7 @@ object DatabaseAccessor {
     }
 
     fun apiLadderGamesFor(discordId: String): List<Game> = dao.open().use { connection ->
-        val query = "SELECT * FROM ladder_recent_games " +
+        val query = "SELECT * FROM ladder_games " +
                 " WHERE ${UserAccount.DISCORD.databaseId} = :discordId " +
                 " ORDER BY date DESC LIMIT 10 "
         log(INFO, "apiLadderGamesFor [$query] $discordId")
@@ -834,7 +832,7 @@ object DatabaseAccessor {
     }
 
     fun apiLadderRecentGames(): List<Game> = dao.open().use { connection ->
-        val query = "SELECT * FROM ladder_recent_games ORDER BY date DESC LIMIT 20 "
+        val query = "SELECT * FROM ladder_games ORDER BY date DESC LIMIT 20 "
         log(INFO, "apiLadderRecentGames [$query]")
         connection
             .createQuery(query)
