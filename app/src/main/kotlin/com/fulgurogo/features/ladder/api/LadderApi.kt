@@ -1,10 +1,8 @@
 package com.fulgurogo.features.ladder.api
 
 import com.fulgurogo.features.database.DatabaseAccessor
-import com.fulgurogo.utilities.internalError
-import com.fulgurogo.utilities.notFoundError
-import com.fulgurogo.utilities.rateLimit
-import com.fulgurogo.utilities.standardResponse
+import com.fulgurogo.utilities.*
+import com.fulgurogo.utilities.Logger.Level.ERROR
 import io.javalin.http.Context
 
 object LadderApi {
@@ -13,6 +11,7 @@ object LadderApi {
         val players = DatabaseAccessor.apiLadderPlayers()
         context.standardResponse(players)
     } catch (e: Exception) {
+        log(ERROR, "getPlayers", e)
         context.internalError()
     }
 
@@ -34,6 +33,7 @@ object LadderApi {
             context.standardResponse(p)
         } ?: context.notFoundError()
     } catch (e: Exception) {
+        log(ERROR, "getPlayerProfile", e)
         context.internalError()
     }
 
@@ -45,6 +45,7 @@ object LadderApi {
 
         context.standardResponse(latestGames)
     } catch (e: Exception) {
+        log(ERROR, "getRecentGames", e)
         context.internalError()
     }
 
@@ -58,6 +59,7 @@ object LadderApi {
 
         game?.let { context.standardResponse(it) } ?: context.notFoundError()
     } catch (e: Exception) {
+        log(ERROR, "getGame", e)
         context.internalError()
     }
 
@@ -67,6 +69,7 @@ object LadderApi {
             ?.let { context.standardResponse(it) }
             ?: context.notFoundError()
     } catch (e: Exception) {
+        log(ERROR, "getStabilityOptions", e)
         context.internalError()
     }
 }
