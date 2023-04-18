@@ -821,7 +821,7 @@ object DatabaseAccessor {
 
     fun apiLadderGamesFor(discordId: String): List<Game> = dao.open().use { connection ->
         val query = "SELECT * FROM ladder_games " +
-                " WHERE ${UserAccount.DISCORD.databaseId} = :discordId " +
+                " WHERE black_player_discord_id = :discordId OR white_player_discord_id = :discordId " +
                 " ORDER BY date DESC LIMIT 10 "
         log(INFO, "apiLadderGamesFor [$query] $discordId")
         connection
