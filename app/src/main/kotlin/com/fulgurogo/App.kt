@@ -37,5 +37,6 @@ fun main() {
             get("/gold/api/game/{id}", LadderApi::getGame)
 
             get("/gold/api/stability", LadderApi::getStabilityOptions)
+            get("/gold/api/tiers", LadderApi::getTiers)
         }
 }

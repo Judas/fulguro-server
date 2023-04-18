@@ -774,17 +774,6 @@ object DatabaseAccessor {
         connection.createQuery(query).executeUpdate()
     }
 
-    fun tierFor(rating: Double): Tier? = dao.open().use { connection ->
-        val query = "SELECT * FROM ladder_tiers WHERE min <= :rating AND :rating < max "
-
-        log(INFO, "tierFor [$query] $rating")
-        connection
-            .createQuery(query)
-            .throwOnMappingFailure(false)
-            .addParameter("rating", rating)
-            .executeAndFetchFirst(Tier::class.java)
-    }
-
     // endregion
 
     // region ladder API
@@ -886,6 +875,15 @@ object DatabaseAccessor {
             .createQuery(query)
             .throwOnMappingFailure(false)
             .executeAndFetchFirst(ApiStability::class.java)
+    }
+
+    fun tiers(): List<Tier> = dao.open().use { connection ->
+        val query = " SELECT * FROM ladder_tiers "
+        log(INFO, "tiers [$query]")
+        connection
+            .createQuery(query)
+            .throwOnMappingFailure(false)
+            .executeAndFetch(Tier::class.java)
     }
 
     // endregion
