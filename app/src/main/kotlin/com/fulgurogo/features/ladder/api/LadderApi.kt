@@ -30,6 +30,9 @@ object LadderApi {
                 .map { ApiGame.from(it, p.discordId == it.blackPlayerDiscordId) }
                 .toMutableList()
 
+            // Accounts
+            p.accounts = DatabaseAccessor.ensureUser(p.discordId).toApiAccounts()
+
             context.standardResponse(p)
         } ?: context.notFoundError()
     } catch (e: Exception) {

@@ -1,6 +1,7 @@
 package com.fulgurogo.features.user
 
 import com.fulgurogo.Config.Ladder.DEFAULT_AVATAR
+import com.fulgurogo.features.ladder.api.ApiAccount
 import com.fulgurogo.features.user.egf.EgfClient
 import com.fulgurogo.features.user.ffg.FfgClient
 import com.fulgurogo.features.user.fox.FoxClient
@@ -91,5 +92,74 @@ data class User(
         UserAccount.FFG -> (UserAccount.FFG.client as FfgClient).user(ffgId)
         UserAccount.EGF -> (UserAccount.EGF.client as EgfClient).user(egfId)
         else -> null
+    }
+
+    fun toApiAccounts(): MutableList<ApiAccount> {
+        val accounts = mutableListOf<ApiAccount>()
+        kgsId?.let {
+            accounts.add(
+                ApiAccount(
+                    name = UserAccount.KGS.fullName,
+                    id = kgsId,
+                    pseudo = kgsPseudo,
+                    rank = kgsRank,
+                    link = "https://www.gokgs.com/graphPage.jsp?user=$kgsId"
+                )
+            )
+        }
+        ogsId?.let {
+            accounts.add(
+                ApiAccount(
+                    name = UserAccount.OGS.fullName,
+                    id = ogsId,
+                    pseudo = ogsPseudo,
+                    rank = ogsRank,
+                    link = "https://online-go.com/player/$ogsId"
+                )
+            )
+        }
+        foxPseudo?.let {
+            accounts.add(
+                ApiAccount(
+                    name = UserAccount.FOX.fullName,
+                    id = foxId,
+                    pseudo = foxPseudo,
+                    rank = foxRank
+                )
+            )
+        }
+        igsId?.let {
+            accounts.add(
+                ApiAccount(
+                    name = UserAccount.IGS.fullName,
+                    id = igsId,
+                    pseudo = igsPseudo,
+                    rank = igsRank
+                )
+            )
+        }
+        ffgId?.let {
+            accounts.add(
+                ApiAccount(
+                    name = UserAccount.FFG.fullName,
+                    id = ffgId,
+                    pseudo = ffgPseudo,
+                    rank = ffgRank,
+                    link = "https://ffg.jeudego.org/php/affichePersonne.php?id=$ffgId"
+                )
+            )
+        }
+        egfId?.let {
+            accounts.add(
+                ApiAccount(
+                    name = UserAccount.EGF.fullName,
+                    id = egfId,
+                    pseudo = egfPseudo,
+                    rank = egfRank,
+                    link = "https://www.europeangodatabase.eu/EGD/Player_Card.php?key=$egfId"
+                )
+            )
+        }
+        return accounts
     }
 }

@@ -12,5 +12,6 @@ data class ApiPlayer(
     val stable: Boolean,
 
     var stability: ApiStability? = null,
-    var games: MutableList<ApiGame>? = null
+    var games: MutableList<ApiGame>? = null,
+    var accounts: MutableList<ApiAccount>? = null
 )
