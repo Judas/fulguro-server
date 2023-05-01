@@ -19,8 +19,7 @@ class UserService(private val jda: JDA) : GameScanListener {
                 DatabaseAccessor.deleteUser(user.discordId)
             } else {
                 // Update unfinished games status
-                DatabaseAccessor.gamesFor(user.discordId)
-                    .filter { !it.finished }
+                DatabaseAccessor.unfinishedGamesFor(user.discordId)
                     .forEach {
                         // Check if game is now finished and update flag in db
                         val updatedGame = UserAccount.find(it.server)?.client?.userGame(user, it.gameServerId())
