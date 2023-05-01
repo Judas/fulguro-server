@@ -248,8 +248,8 @@ class ExamService(private val jda: JDA) : GameScanListener {
             .reversed()
             .take(2)
             .filter {
-                if (specialization == ExamSpecialization.HEAD) it.participation > 5 // At least 5 games played
-                else specialization.pointsCallback(it) > 5 // At least 5 points earned
+                if (specialization == ExamSpecialization.HEAD) it.participation >= 5 // At least 5 games played
+                else specialization.pointsCallback(it) >= 5 // At least 5 points earned
             }
 
         // Nobody is eligible
