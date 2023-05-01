@@ -1,10 +1,9 @@
 package com.fulgurogo
 
 import com.fulgurogo.features.bot.FulguroBot
-import com.fulgurogo.features.ladder.api.FulguroApi
+import com.fulgurogo.features.ladder.api.LadderApi
 import com.fulgurogo.features.ssh.SSHConnector
 import io.javalin.Javalin
-import io.javalin.http.staticfiles.Location
 import net.dv8tion.jda.api.JDABuilder
 import net.dv8tion.jda.api.requests.GatewayIntent
 import net.dv8tion.jda.api.utils.ChunkingFilter
@@ -26,18 +25,18 @@ fun main() {
     Javalin
         .create { config ->
             config.http.defaultContentType = "application/json"
-
-            config.staticFiles.add { staticFileConfig ->
-                staticFileConfig.hostedPath = Config.Ladder.STATIC_PATH
-                staticFileConfig.directory = Config.Ladder.STATIC_FOLDER
-                staticFileConfig.location = Location.EXTERNAL
-            }
-
             if (Config.DEV) config.plugins.enableDevLogging()
             config.plugins.enableCors { cors -> cors.add { it.anyHost() } }
         }
         .start(Config.Server.PORT)
         .apply {
-            get("/gold/api/v5/players", FulguroApi::getPlayers)
+            get("/gold/api/players", LadderApi::getPlayers)
+            get("/gold/api/player/{id}", LadderApi::getPlayerProfile)
+
+            get("/gold/api/games", LadderApi::getRecentGames)
+            get("/gold/api/game/{id}", LadderApi::getGame)
+
+            get("/gold/api/stability", LadderApi::getStabilityOptions)
+            get("/gold/api/tiers", LadderApi::getTiers)
         }
 }

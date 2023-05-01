@@ -24,9 +24,9 @@ class EgfClient : UserAccountClient {
 
     override fun user(user: User): EgfUser? = user(user.egfId)
     override fun userGames(user: User, from: Date, to: Date): List<UserAccountGame> = listOf()
-    override fun userGame(user: User, gameId: String): UserAccountGame? = null
+    override fun userGame(user: User, gameServerId: String): UserAccountGame? = null
 
-    private fun user(id: String?): EgfUser? = try {
+    fun user(id: String?): EgfUser? = try {
         if (id.isNullOrBlank())
             throw EmptyUserIdException
         else {

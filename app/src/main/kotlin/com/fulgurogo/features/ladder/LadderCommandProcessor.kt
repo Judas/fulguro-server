@@ -66,10 +66,9 @@ class LadderCommandProcessor : CommandProcessor {
         log(INFO, "play")
 
         val hook = acknowledge(event)
-        val fulguroUser = DatabaseAccessor.ensureUser(event.user)
 
-        DatabaseAccessor.ladderPlayer(fulguroUser)?.let {
-            val rank = "${it.rating.toRank().rankToString(false)}${if (!it.ranked) "?" else ""}"
+        val fulguroUser = DatabaseAccessor.ensureUser(event.user.id)
+        DatabaseAccessor.apiLadderPlayer(fulguroUser.discordId)?.let {
             val ogsLink =
                 if (fulguroUser.ogsId.isNullOrBlank().not())
                     "[OGS](${Config.Ogs.WEBSITE_URL}/player/${fulguroUser.ogsId})"
@@ -79,7 +78,7 @@ class LadderCommandProcessor : CommandProcessor {
                     "[KGS](${Config.Kgs.GRAPH_URL}?user=${fulguroUser.kgsId})"
                 else null
             val goldLink =
-                "[**${event.jda.userName(it)} ($rank)**](${Config.Ladder.WEBSITE_URL}/players/${it.discordId})"
+                "[**${event.jda.userName(it.discordId)} (${it.tierName})**](${Config.Ladder.WEBSITE_URL}/players/${it.discordId})"
             var links = ""
             if (ogsLink != null) links += ogsLink
             if (kgsLink != null) {

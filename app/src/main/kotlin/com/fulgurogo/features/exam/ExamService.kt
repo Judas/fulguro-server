@@ -3,6 +3,7 @@ package com.fulgurogo.features.exam
 import com.fulgurogo.Config
 import com.fulgurogo.features.bot.Command
 import com.fulgurogo.features.database.DatabaseAccessor
+import com.fulgurogo.features.games.Game
 import com.fulgurogo.features.games.GameScanListener
 import com.fulgurogo.utilities.*
 import com.fulgurogo.utilities.Logger.Level.INFO
@@ -10,6 +11,7 @@ import net.dv8tion.jda.api.JDA
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
+import kotlin.math.min
 
 class ExamService(private val jda: JDA) : GameScanListener {
     override fun onScanStarted() {
@@ -57,27 +59,36 @@ class ExamService(private val jda: JDA) : GameScanListener {
         DatabaseAccessor.examGames(from, to)
             .forEach { game ->
                 log(INFO, "Treating game ${game.id}")
-
-                // Game standard points
-                DatabaseAccessor.addExamGame(game.mainPlayerId, ExamPoints.fromGame(game))
-
-                // Game phantom points
-                game.opponentId?.let { opponentDiscordId ->
-                    val opponentPhantom =
-                        DatabaseAccessor.examPhantoms().firstOrNull { it.discordId == opponentDiscordId }
-                    if (opponentPhantom != null && !opponentPhantom.revealed && game.mainPlayerWon == true) {
-                        // Phantom revealed !
-                        DatabaseAccessor.revealExamPhantom(game.mainPlayerId, game.opponentId)
-
-                        val revealerName = jda.userName(game.mainPlayerId)
-                        val phantomName = jda.userName(game.opponentId)
-                        jda.publicMessage(
-                            Config.Exam.CHANNEL_ID,
-                            ":ghost: $revealerName a démasqué un membre de la **Brigade Fantôme** : $phantomName :ghost:"
-                        )
-                    }
-                }
+                addExamPoints(game, game.blackPlayerDiscordId, game.whitePlayerDiscordId, game.blackPlayerWon, true)
+                addExamPoints(game, game.whitePlayerDiscordId, game.blackPlayerDiscordId, game.whitePlayerWon, false)
             }
+    }
+
+    private fun addExamPoints(
+        game: Game,
+        mainPlayerDiscordId: String?,
+        opponentPlayerDiscordId: String?,
+        mainPlayerWon: Boolean?,
+        isBlack: Boolean
+    ) {
+        DatabaseAccessor.addExamPoints(mainPlayerDiscordId, ExamPoints.fromGame(game, isBlack))
+
+        // No phantom points is one of the players isn't in the community
+        if (mainPlayerDiscordId == null || opponentPlayerDiscordId == null) return
+
+        val opponentPhantom =
+            DatabaseAccessor.examPhantoms().firstOrNull { it.discordId == opponentPlayerDiscordId }
+        if (opponentPhantom != null && !opponentPhantom.revealed && mainPlayerWon == true) {
+            // Phantom revealed !
+            DatabaseAccessor.revealExamPhantom(mainPlayerDiscordId, opponentPlayerDiscordId)
+
+            val revealerName = jda.userName(mainPlayerDiscordId)
+            val phantomName = jda.userName(opponentPlayerDiscordId)
+            jda.publicMessage(
+                Config.Exam.CHANNEL_ID,
+                ":ghost: $revealerName a démasqué un membre de la **Brigade Fantôme** : $phantomName :ghost:"
+            )
+        }
     }
 
     private fun printDailyRanking() {
@@ -110,10 +121,10 @@ class ExamService(private val jda: JDA) : GameScanListener {
         message += "\n\n__Netero Award__\n\n"
         DatabaseAccessor.savePromotionScore(promoName, stats.promoTotal)
         val award = DatabaseAccessor.examAward()
-        message += if (award.score == stats.promoTotal)
+        message += if (award?.score == stats.promoTotal)
             "En établissant le nouveau record de points jamais attribué en une session d'examen, la promotion $promoName se voit attribuer le **Netero Award** ! Bravo à tous les participants !"
         else
-            "La promotion $promoName n'arrive pas à détrôner celle de ${award.promo}, qui conserve donc le **Netero Award** pour un mois supplémentaire !"
+            "La promotion $promoName n'arrive pas à détrôner celle de ${award?.promo ?: "????"}, qui conserve donc le **Netero Award** pour un mois supplémentaire !"
 
         jda.publicMessage(
             Config.Exam.HOF_CHANNEL_ID,
@@ -237,8 +248,8 @@ class ExamService(private val jda: JDA) : GameScanListener {
             .reversed()
             .take(2)
             .filter {
-                if (specialization == ExamSpecialization.HEAD) it.participation > 5 // At least 5 games played
-                else specialization.pointsCallback(it) > 5 // At least 5 points earned
+                if (specialization == ExamSpecialization.HEAD) it.participation >= 5 // At least 5 games played
+                else specialization.pointsCallback(it) >= 5 // At least 5 points earned
             }
 
         // Nobody is eligible
@@ -284,7 +295,7 @@ class ExamService(private val jda: JDA) : GameScanListener {
         DatabaseAccessor.incrementSpec(hunter, specialization)
 
         // Compute stars (use title count before increment to get the good number of stars)
-        val starCount = specialization.titleCountCallback(hunter)
+        val starCount = min(3, specialization.titleCountCallback(hunter))
         var stars = ""
         for (i in 0 until starCount) stars += ":star:"
 
@@ -303,6 +314,7 @@ class ExamService(private val jda: JDA) : GameScanListener {
 
         DatabaseAccessor.clearExamPoints()
         DatabaseAccessor.clearPhantomPoints()
+        DatabaseAccessor.clearPhantoms()
 
         var message = "${Command.Exam.EMOJI} __Clôture de l'**Examen Hunter**__ ${Command.Exam.EMOJI}\n"
         message += "\nL'**Examen Hunter** $promoName est désormais clos. Une nouvelle session commence.\nQue brûlent vos nens ! :fire:"

@@ -35,8 +35,6 @@ data class OgsGame(
         private const val CORRESPONDENCE_TIME_PER_MOVE = 89280
     }
 
-    var mainPlayerId = 0
-
     override fun date(): Date = try {
         SimpleDateFormat(DATE_FORMAT).parse(started, ParsePosition(0))
     } catch (e: Exception) {
@@ -45,42 +43,25 @@ data class OgsGame(
 
     override fun server(): String = UserAccount.OGS.fullName
     override fun account(): UserAccount = UserAccount.OGS
-    override fun gameServerId(): String = id.toString()
+    override fun serverId(): String = id.toString()
 
-    private fun mainPlayer(): OgsUser = historicalRatings.let {
-        if (it.black.id == mainPlayerId) it.black
-        else it.white
+    override fun blackPlayerServerId(): String = historicalRatings.black.id.toString()
+    override fun blackPlayerPseudo(): String = historicalRatings.black.username ?: ""
+    override fun blackPlayerRank(): String = with(historicalRatings.black) {
+        return rankString() + if (hasStableRank()) "" else "?"
     }
 
-    override fun mainPlayerAccountId(): String = mainPlayerId.toString()
-    override fun mainPlayerRank(): String =
-        with(mainPlayer()) { return rankString() + if (hasStableRank()) "" else "?" }
+    override fun blackPlayerWon(): Boolean = !isDraw() && whiteLost
 
-    private fun opponent(): OgsUser = historicalRatings.let {
-        if (it.black.id == mainPlayerId) it.white
-        else it.black
+    override fun whitePlayerServerId(): String = historicalRatings.white.id.toString()
+    override fun whitePlayerPseudo(): String = historicalRatings.white.username ?: ""
+    override fun whitePlayerRank(): String = with(historicalRatings.white) {
+        return rankString() + if (hasStableRank()) "" else "?"
     }
 
-    override fun opponentAccountId(): String = opponent().id.toString()
-    override fun opponentRank(): String = with(opponent()) { return rankString() + if (hasStableRank()) "" else "?" }
-
-    override fun opponentPseudo(): String = opponent().username ?: ""
+    override fun whitePlayerWon(): Boolean = !isDraw() && blackLost
 
     override fun isFinished(): Boolean = outcome.isNotBlank()
-    override fun isBlack(): Boolean = historicalRatings.black.id == mainPlayerId
-    override fun isWin(): Boolean = when {
-        isDraw() -> false
-        historicalRatings.black.id == mainPlayerId -> whiteLost
-        else -> blackLost
-    }
-
-    override fun isLoss(): Boolean = when {
-        isDraw() -> false
-        historicalRatings.black.id == mainPlayerId -> blackLost
-        else -> whiteLost
-    }
-
-    private fun isDraw() = outcome == "0 points"
     override fun handicap(): Int = handicap
     override fun komi(): Double = komi.toDouble()
     override fun isLongGame(): Boolean = isLiveGame() && when (timeControl) {
@@ -90,6 +71,7 @@ data class OgsGame(
         else -> false
     }
 
+    private fun isDraw() = outcome == "0 points"
     fun isNotCancelled(): Boolean = !cancelled
     fun isLiveGame(): Boolean =
         (timeControlParams.contains("\"speed\": \"live\"") || timePerMove in (BLITZ_TIME_PER_MOVE + 1) until CORRESPONDENCE_TIME_PER_MOVE)

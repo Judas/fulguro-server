@@ -62,7 +62,7 @@ class ExamCommandProcessor : CommandProcessor {
         log(INFO, "ranking")
 
         val hook = acknowledge(event)
-        DatabaseAccessor.ensureUser(event.user)
+        DatabaseAccessor.ensureUser(event.user.id)
 
         var message = ""
         DatabaseAccessor.examPlayers()
@@ -81,7 +81,7 @@ class ExamCommandProcessor : CommandProcessor {
         log(INFO, "position")
 
         val hook = acknowledge(event)
-        DatabaseAccessor.ensureUser(event.user)
+        DatabaseAccessor.ensureUser(event.user.id)
 
         val targetUser = event.getOption(Command.USER_ARG)!!.asUser
         if (targetUser.isBot) {
@@ -114,7 +114,7 @@ class ExamCommandProcessor : CommandProcessor {
         log(INFO, "hunters")
 
         val hook = acknowledge(event)
-        DatabaseAccessor.ensureUser(event.user)
+        DatabaseAccessor.ensureUser(event.user.id)
 
         var message = ""
         DatabaseAccessor
@@ -130,7 +130,7 @@ class ExamCommandProcessor : CommandProcessor {
         log(INFO, "leaders")
 
         val hook = acknowledge(event)
-        DatabaseAccessor.ensureUser(event.user)
+        DatabaseAccessor.ensureUser(event.user.id)
 
         val allHunters = DatabaseAccessor.examPlayers()
         val hunters = allHunters.sortedWith(ExamPlayerComparator())
@@ -149,7 +149,7 @@ class ExamCommandProcessor : CommandProcessor {
         log(INFO, "stats")
 
         val hook = acknowledge(event)
-        DatabaseAccessor.ensureUser(event.user)
+        DatabaseAccessor.ensureUser(event.user.id)
 
         val promoName = DateTimeFormatter
             .ofPattern("MMMM YYYY", Locale.FRANCE)
@@ -163,7 +163,7 @@ class ExamCommandProcessor : CommandProcessor {
         var message =
             "Les **${stats.candidates} candidats** de la promotion **$promoName** ont cumulé **${stats.promoTotal} points** "
         message += "en jouant **${stats.gamesPlayed()} parties**, dont **${stats.internalGamesPlayed()}** entre membres de la promotion."
-        message += "\n\n Le **Netero Award** est actuellement détenu par la promotion **${award.promo}** avec un score de ${award.score} points"
+        message += "\n\n Le **Netero Award** est actuellement détenu par la promotion **${award?.promo ?: "????"}** avec un score de ${award?.score ?: "????"} points"
 
         simpleMessage(hook, Command.Exam.EMOJI, "Statistiques de la promotion $promoName", message)
     }

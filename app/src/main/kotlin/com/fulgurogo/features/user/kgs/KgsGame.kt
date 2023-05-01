@@ -2,7 +2,6 @@ package com.fulgurogo.features.user.kgs
 
 import com.fulgurogo.features.user.UserAccount
 import com.fulgurogo.features.user.UserAccountGame
-import com.fulgurogo.utilities.InvalidUserException
 import java.text.ParsePosition
 import java.text.SimpleDateFormat
 import java.util.*
@@ -22,32 +21,24 @@ data class KgsGame(
         private const val FREE = "free"
     }
 
-    var mainPlayer: KgsUser? = null
     var isShortGame: Boolean? = null
-
-    private fun mainPlayerIsBlack(): Boolean = mainPlayer?.let { it.name.equals(players.black.name, true) }
-        ?: throw InvalidUserException
 
     override fun date(): Date = SimpleDateFormat(DATE_FORMAT).parse(timestamp, ParsePosition(0))
     override fun server(): String = UserAccount.KGS.fullName
     override fun account(): UserAccount = UserAccount.KGS
-    override fun gameServerId(): String = timestamp
+    override fun serverId(): String = timestamp
 
-    private fun mainPlayer(): KgsUser = if (mainPlayerIsBlack()) players.black else players.white
-    override fun mainPlayerAccountId(): String = mainPlayer().name
-    override fun mainPlayerRank(): String = mainPlayer().rank
+    override fun blackPlayerServerId(): String = players.black.name
+    override fun blackPlayerPseudo(): String = players.black.name
+    override fun blackPlayerRank(): String = players.black.rank
+    override fun blackPlayerWon(): Boolean = score.toDoubleOrNull()?.let { it > 0 } ?: run { score.startsWith("B+") }
 
-    private fun opponent(): KgsUser = if (mainPlayerIsBlack()) players.white else players.black
-    override fun opponentAccountId(): String = opponent().name
-    override fun opponentRank(): String = opponent().rank
-    override fun opponentPseudo(): String = opponent().name
+    override fun whitePlayerServerId(): String = players.white.name
+    override fun whitePlayerPseudo(): String = players.white.name
+    override fun whitePlayerRank(): String = players.black.rank
+    override fun whitePlayerWon(): Boolean = score.toDoubleOrNull()?.let { it < 0 } ?: run { score.startsWith("W+") }
 
     override fun isFinished(): Boolean = score.isNotBlank() && score != "UNFINISHED"
-    private fun blackWon(): Boolean = score.toDoubleOrNull()?.let { it > 0 } ?: run { score.startsWith("B+") }
-    private fun whiteWon(): Boolean = score.toDoubleOrNull()?.let { it < 0 } ?: run { score.startsWith("W+") }
-    override fun isBlack(): Boolean = mainPlayerIsBlack()
-    override fun isWin(): Boolean = if (mainPlayerIsBlack()) blackWon() else whiteWon()
-    override fun isLoss(): Boolean = if (mainPlayerIsBlack()) whiteWon() else blackWon()
     override fun handicap(): Int = handicap
     override fun komi(): Double = komi
     override fun isLongGame(): Boolean = isShortGame == false

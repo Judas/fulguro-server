@@ -4,7 +4,6 @@ import com.fulgurogo.features.bot.Command
 import com.fulgurogo.features.bot.CommandProcessor
 import com.fulgurogo.features.database.DatabaseAccessor
 import com.fulgurogo.features.games.GameScanner
-import com.fulgurogo.features.league.LeagueService
 import com.fulgurogo.utilities.*
 import com.fulgurogo.utilities.Logger.Level.INFO
 import kotlinx.coroutines.CoroutineScope
@@ -25,12 +24,6 @@ class AdminCommandProcessor : CommandProcessor {
                 scanner?.isScanning
             ) { scan(it, scanner) }
 
-            Command.Admin.Oteai.subcommandData.name -> event.scanCheck(
-                Command.Admin.Oteai,
-                scanner?.isScanning,
-                this::oteai
-            )
-
             else -> processUnknownCommand(event)
         }
     }
@@ -49,7 +42,7 @@ class AdminCommandProcessor : CommandProcessor {
         log(INFO, "scan")
 
         val hook = acknowledge(event)
-        DatabaseAccessor.ensureUser(event.user)
+        DatabaseAccessor.ensureUser(event.user.id)
 
         val asimov = event.guild?.getMember(event.user)?.roles?.any { it.name == "Asimov" } ?: false
         if (asimov) {
@@ -58,22 +51,6 @@ class AdminCommandProcessor : CommandProcessor {
                 gameScanner?.scan()
             }
             simpleMessage(hook, ":robot:", "Scan manuel", "Scan démarré")
-        } else simpleError(hook, Command.Exam.EMOJI, ":robot: *Commande réservée aux admins*")
-    }
-
-    private fun oteai(event: SlashCommandEvent) {
-        log(INFO, "oteai")
-
-        val hook = acknowledge(event)
-        DatabaseAccessor.ensureUser(event.user)
-
-        val asimov = event.guild?.getMember(event.user)?.roles?.any { it.name == "Asimov" } ?: false
-        if (asimov) {
-            CoroutineScope(Dispatchers.IO).launch {
-                log(INFO, "Starting manual oteai rush draw.")
-                LeagueService(event.jda).drawPairings()
-            }
-            simpleMessage(hook, ":robot:", "Tirage manuel", "Tirage lancé")
         } else simpleError(hook, Command.Exam.EMOJI, ":robot: *Commande réservée aux admins*")
     }
 }

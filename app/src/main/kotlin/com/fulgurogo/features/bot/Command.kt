@@ -31,7 +31,7 @@ sealed class Command(val emoji: String, val subcommandData: SubcommandData, val 
             val COMMANDS = listOf(Help)
             val GROUP = CommandData(NAME, DESC)
                 .addSubcommands(COMMANDS.map { it.subcommandData })
-                .addSubcommandGroups(Info.GROUP, Kitchen.GROUP, Exam.GROUP, Ladder.GROUP, Admin.GROUP)
+                .addSubcommandGroups(Info.GROUP, Exam.GROUP, Ladder.GROUP, Admin.GROUP)
         }
 
         object Help : Command(
@@ -87,35 +87,6 @@ sealed class Command(val emoji: String, val subcommandData: SubcommandData, val 
                 "profil", "Affiche les informations d'un utilisateur."
             ).addOptions(userOption()),
             false
-        )
-    }
-
-    sealed class Kitchen {
-        companion object {
-            const val NAME = "chef"
-            const val EMOJI = ":cook:"
-            const val TITLE = "Cuisine Grottesque"
-            const val DESC = "Commandes de la Cuisine Grottesque"
-            val COMMANDS = listOf(Help, Cook)
-            val GROUP = SubcommandGroupData(NAME, DESC).addSubcommands(COMMANDS.map { it.subcommandData })
-
-            const val MEAL_ARG = "plat"
-
-            private fun recipeOption(): OptionData = OptionData(
-                OptionType.STRING, MEAL_ARG, "Le plat à préparer"
-            ).setRequired(true)
-        }
-
-        object Help : Command(
-            ":question:", SubcommandData(
-                "aide", "Affiche l'aide des commandes de la Cuisine Grottesque."
-            )
-        )
-
-        object Cook : Command(
-            ":fork_and_knife:", SubcommandData(
-                "cuisiner", "Prépare un plat."
-            ).addOptions(recipeOption())
         )
     }
 
@@ -195,19 +166,13 @@ sealed class Command(val emoji: String, val subcommandData: SubcommandData, val 
             const val EMOJI = ":robot:"
             const val TITLE = "Administration"
             const val DESC = "Commandes admin du Bot"
-            val COMMANDS = listOf(Scan, Oteai)
+            val COMMANDS = listOf(Scan)
             val GROUP = SubcommandGroupData(NAME, DESC).addSubcommands(COMMANDS.map { it.subcommandData })
         }
 
         object Scan : Command(
             ":mag:",
             SubcommandData("scan", "Force un scan des parties."),
-            false
-        )
-
-        object Oteai : Command(
-            ":robot:",
-            SubcommandData("oteai", "Force un tirage Oteai."),
             false
         )
     }

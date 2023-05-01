@@ -5,83 +5,87 @@ import com.fulgurogo.Config.Ladder.INITIAL_DEVIATION
 import com.fulgurogo.Config.Ladder.INITIAL_RATING
 import com.fulgurogo.Config.Ladder.INITIAL_VOLATILITY
 import com.fulgurogo.features.database.DatabaseAccessor
-import com.fulgurogo.features.ladder.LadderRating
 import com.fulgurogo.features.ladder.glicko.Glickotlin
 import com.fulgurogo.features.user.User
 import com.fulgurogo.features.user.UserAccount
-import com.fulgurogo.utilities.toRank
 import com.fulgurogo.utilities.toRankInt
-import com.fulgurogo.utilities.toRating
 import java.util.*
 
-data class Game(
-    val id: Int,
+open class Game(
+    val id: String,
     val date: Date,
     val server: String,
-    val serverId: String,
-    val mainPlayerId: String,
-    val mainPlayerServerRank: String? = null,
-    val opponentId: String? = null,
-    val opponentServerId: String? = null,
-    val opponentServerPseudo: String? = null,
-    val opponentServerRank: String? = null,
-    val mainPlayerIsBlack: Boolean? = null,
-    val mainPlayerWon: Boolean? = null,
-    val mainPlayerRatingGain: Double? = null,
+
+    val blackPlayerName: String? = null,
+    val blackPlayerAvatar: String? = null,
+    val blackPlayerDiscordId: String? = null,
+    val blackPlayerServerId: String,
+    val blackPlayerPseudo: String? = null,
+    val blackPlayerRank: String? = null,
+    val blackPlayerWon: Boolean? = null,
+    val blackPlayerRatingGain: Double? = null,
+    val blackCurrentRating: Double? = null,
+    val blackCurrentDeviation: Double? = null,
+    val blackCurrentVolatility: Double? = null,
+    val blackCurrentTierRank: Int? = null,
+    val blackCurrentTierName: String? = null,
+    val blackHistoricalRating: Double? = null,
+    val blackHistoricalDeviation: Double? = null,
+    val blackHistoricalVolatility: Double? = null,
+    val blackHistoricalTierRank: Int? = null,
+    val blackHistoricalTierName: String? = null,
+
+    val whitePlayerName: String? = null,
+    val whitePlayerAvatar: String? = null,
+    val whitePlayerDiscordId: String? = null,
+    val whitePlayerServerId: String,
+    val whitePlayerPseudo: String? = null,
+    val whitePlayerRank: String? = null,
+    val whitePlayerWon: Boolean? = null,
+    val whitePlayerRatingGain: Double? = null,
+    val whiteCurrentRating: Double? = null,
+    val whiteCurrentDeviation: Double? = null,
+    val whiteCurrentVolatility: Double? = null,
+    val whiteCurrentTierRank: Int? = null,
+    val whiteCurrentTierName: String? = null,
+    val whiteHistoricalRating: Double? = null,
+    val whiteHistoricalDeviation: Double? = null,
+    val whiteHistoricalVolatility: Double? = null,
+    val whiteHistoricalTierRank: Int? = null,
+    val whiteHistoricalTierName: String? = null,
+
     val handicap: Int? = null,
     val komi: Double? = null,
     val longGame: Boolean? = null,
     val finished: Boolean,
+    val tags: String? = null
 ) {
-    // Sen game on KGS : komi 0.5 + handicap 0
-    // Sen game on OGS : komi 0.5 + handicap 1
+    // id format is serverName/gameId (OGS/1234567)
+    fun gameServerId(): String = id.split("_").last()
+
     fun hasStandardHandicap(): Boolean = komi != null && handicap != null
             && handicap <= 9 && ((handicap == 0 && komi >= 6) || komi == 0.5)
 
-    private fun standardHandicap(): Int = if (hasStandardHandicap() && handicap != null) {
-        if (mainPlayerIsBlack == true) -handicap else handicap
-    } else throw IllegalStateException("Invalid handicap settings")
+    fun hasNoHandicap(): Boolean = komi != null && handicap != null
+            && handicap == 0 && komi in 6.0..9.0
 
-    fun toGlickoGame(): Glickotlin.Game? {
-        if (opponentId == null) return null
-
-        // Create opponent player object with translated handicap
-        val opponentLadderRating = DatabaseAccessor.ladderRatingAt(opponentId, date)
-            ?: DatabaseAccessor.ladderPlayer(User(opponentId))
-                ?.let { LadderRating(it.discordId, date, it.rating, it.deviation, it.volatility) }
-            ?: LadderRating(opponentId, date, INITIAL_RATING, INITIAL_DEVIATION, INITIAL_VOLATILITY)
-
-        val opponentRating = if (handicap != 0)
-            (opponentLadderRating.rating.toRank() + standardHandicap().toDouble()).toRating()
-        else opponentLadderRating.rating
-
-        val opponentPlayer = Glickotlin.Player(
-            opponentRating,
-            opponentLadderRating.deviation,
-            opponentLadderRating.volatility
-        )
-
-        return Glickotlin.Game(
-            opponentPlayer,
-            when (mainPlayerWon) {
-                true -> Glickotlin.GameResult.VICTORY
-                false -> Glickotlin.GameResult.DEFEAT
-                null -> Glickotlin.GameResult.DRAW
-            }
-        )
+    fun rankGap(black: Boolean): Int {
+        val playerRank = if (black) whitePlayerRank else blackPlayerRank
+        val opponentRank = if (black) whitePlayerRank else blackPlayerRank
+        return when {
+            playerRank.isNullOrBlank() -> 0
+            opponentRank.isNullOrBlank() -> 0
+            playerRank.contains("?") -> 0
+            opponentRank.contains("?") -> 0
+            else -> playerRank.toRankInt() - opponentRank.toRankInt()
+        }
     }
 
-    fun rankGap(): Int {
-        if (mainPlayerServerRank.isNullOrBlank() || opponentServerRank.isNullOrBlank()) return 0
-        if (mainPlayerServerRank.contains("?") || opponentServerRank.contains("?")) return 0
-        return mainPlayerServerRank.toRankInt() - opponentServerRank.toRankInt()
-    }
-
-    fun gameLink(): String = when (server) {
-        UserAccount.OGS.fullName -> "${Config.Ogs.WEBSITE_URL}/game/$serverId"
-        UserAccount.FOX.fullName -> "${Config.Fox.GAME_LINK}$serverId"
+    fun gameLink(black: Boolean): String = when (server) {
+        UserAccount.OGS.fullName -> "${Config.Ogs.WEBSITE_URL}/game/${gameServerId()}"
+        UserAccount.FOX.fullName -> "${Config.Fox.GAME_LINK}${gameServerId()}"
         UserAccount.KGS.fullName -> {
-            val pseudo = DatabaseAccessor.ensureUser(mainPlayerId).kgsPseudo
+            val pseudo = if (black) blackPlayerPseudo else whitePlayerPseudo
             val calendar = Calendar.getInstance()
             calendar.time = date
             val year = calendar.get(Calendar.YEAR)
@@ -93,33 +97,58 @@ data class Game(
     }
 
     fun sgfLink(): String = when (server) {
-        UserAccount.OGS.fullName -> "${Config.Ogs.API_URL}/games/${serverId}/sgf"
-        UserAccount.FOX.fullName -> "${Config.Fox.API_URL}/${Config.Fox.GAME_SGF}$serverId"
-        UserAccount.KGS.fullName ->
-            if (opponentId == null) gameLink()
+        UserAccount.OGS.fullName -> "${Config.Ogs.API_URL}/games/${gameServerId()}/sgf"
+        UserAccount.FOX.fullName -> "${Config.Fox.API_URL}/${Config.Fox.GAME_SGF}${gameServerId()}"
+        UserAccount.KGS.fullName -> {
+            if (blackPlayerDiscordId == null || whitePlayerDiscordId == null) gameLink(true)
             else {
                 val calendar = Calendar.getInstance()
                 calendar.time = date
                 val year = calendar.get(Calendar.YEAR)
                 val month = calendar.get(Calendar.MONTH) + 1 // Java months start at 0...
                 val day = calendar.get(Calendar.DAY_OF_MONTH)
-                val mainPlayer = DatabaseAccessor.ensureUser(mainPlayerId)
-                val opponent = DatabaseAccessor.ensureUser(opponentId)
-                val black = if (mainPlayerIsBlack == true) mainPlayer.kgsPseudo else opponent.kgsPseudo
-                val white = if (mainPlayerIsBlack == true) opponent.kgsPseudo else mainPlayer.kgsPseudo
-                val occurences = DatabaseAccessor.countDayGamesBetween(mainPlayerId, opponentId, date).let {
-                    if (it < 2) "" else "-$it"
-                }
-                "${Config.Kgs.GAME_LINK}/$year/$month/$day/$white-$black$occurences.sgf"
+                val occurrences =
+                    DatabaseAccessor.countDailyGamesBetween(blackPlayerDiscordId, whitePlayerDiscordId, date)
+                        .let { if (it < 2) "" else "-$it" }
+                "${Config.Kgs.GAME_LINK}/$year/$month/$day/$whitePlayerPseudo-$blackPlayerPseudo$occurrences.sgf"
             }
+        }
 
         else -> ""
     }
 
-    fun opponentLink(): String = when (server) {
-        UserAccount.OGS.fullName -> "[$opponentServerPseudo ($opponentServerRank)](${Config.Ogs.WEBSITE_URL}/player/$opponentServerId)"
-        UserAccount.KGS.fullName -> "[$opponentServerPseudo ($opponentServerRank)](${Config.Kgs.GRAPH_URL}?user=$opponentServerPseudo)"
-        UserAccount.FOX.fullName -> "$opponentServerPseudo ($opponentServerRank)"
-        else -> ""
+    fun opponentLink(black: Boolean): String {
+        val opponentPseudo = if (black) whitePlayerPseudo else blackPlayerPseudo
+        val opponentRank = if (black) whitePlayerRank else blackPlayerRank
+        val opponentServerId = if (black) whitePlayerServerId else blackPlayerServerId
+        return when (server) {
+            UserAccount.OGS.fullName -> "[$opponentPseudo ($opponentRank)](${Config.Ogs.WEBSITE_URL}/player/$opponentServerId)"
+            UserAccount.KGS.fullName -> "[$opponentPseudo ($opponentRank)](${Config.Kgs.GRAPH_URL}?user=$opponentPseudo)"
+            UserAccount.FOX.fullName -> "$opponentPseudo ($opponentRank)"
+            else -> ""
+        }
+    }
+
+    fun toGlickoGame(black: Boolean): Glickotlin.Game? {
+        val playerDiscordId = if (black) blackPlayerDiscordId else whitePlayerDiscordId
+        val opponentDiscordId = if (black) whitePlayerDiscordId else blackPlayerDiscordId
+        if (playerDiscordId == null || opponentDiscordId == null) return null
+        val mainPlayerWon = if (black) blackPlayerWon else whitePlayerWon
+
+        // Create opponent player object
+        val opponentPlayer = DatabaseAccessor.ladderRatingAt(opponentDiscordId, date)
+            ?.let { Glickotlin.Player(it.rating, it.deviation, it.volatility) }
+            ?: DatabaseAccessor.ladderPlayer(User(opponentDiscordId))
+                ?.let { Glickotlin.Player(it.rating, it.deviation, it.volatility) }
+            ?: Glickotlin.Player(INITIAL_RATING, INITIAL_DEVIATION, INITIAL_VOLATILITY)
+
+        return Glickotlin.Game(
+            opponentPlayer,
+            when (mainPlayerWon) {
+                true -> Glickotlin.GameResult.VICTORY
+                false -> Glickotlin.GameResult.DEFEAT
+                null -> Glickotlin.GameResult.DRAW
+            }
+        )
     }
 }
