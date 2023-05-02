@@ -60,9 +60,7 @@ class LadderService : GameScanListener {
         val to = now.toDate()
 
         // Fetch ladder games in interval
-        val ladderGames = DatabaseAccessor.ladderGamesFor(ladderPlayer.discordId, from, to).sortedBy { it.date }
-
-        // If player is not ranked yet and hasn't played in the interval, no ladder evolution
+        val ladderGames = DatabaseAccessor.ladderGamesFor(ladderPlayer.discordId, from, to)
         if (ladderGames.isNotEmpty()) {
             // Update player ratings using his/her games
             log(
@@ -70,9 +68,9 @@ class LadderService : GameScanListener {
                 "Applying Glicko algorithm to ${ladderGames.size} games for user ${ladderPlayer.discordId}"
             )
 
+            var tmpPlayer = ladderPlayer.clone()
             ladderGames.forEach { game ->
                 val black = ladderPlayer.discordId == game.blackPlayerDiscordId
-                var tmpPlayer = ladderPlayer.clone()
                 game.toGlickoGame(black)?.let { glickoGame ->
                     val opponentPlayer = glickoGame.opponent
                     val logicalResult = when (glickoGame.result) {
