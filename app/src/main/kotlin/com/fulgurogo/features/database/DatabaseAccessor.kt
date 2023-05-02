@@ -312,7 +312,7 @@ object DatabaseAccessor {
                 " AND finished = 0 " +
                 " ORDER BY date "
 
-        log(INFO, "gamesFor [$query] $discordId")
+        log(INFO, "unfinishedGamesFor [$query] $discordId")
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)
@@ -403,7 +403,7 @@ object DatabaseAccessor {
                 " AND :from < date AND date < :to " +
                 " ORDER BY date "
 
-        log(INFO, "ladderGamesFor [$query] $discordId")
+        log(INFO, "ladderGamesFor [$query] $discordId from ($from) to ($to)")
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)
