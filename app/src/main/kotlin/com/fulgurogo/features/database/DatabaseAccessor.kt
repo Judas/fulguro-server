@@ -334,17 +334,6 @@ object DatabaseAccessor {
             .addParameter("blackPlayerWon", game.blackPlayerWon())
             .addParameter("whitePlayerWon", game.whitePlayerWon())
             .executeUpdate()
-
-        // Update ladder rating date if needed
-        val dateQuery =
-            " UPDATE ladder SET rating_date = LEAST(rating_date, :date) WHERE ${UserAccount.DISCORD.databaseId} = :discordId"
-
-        log(INFO, "updateFinishedGame [$dateQuery]")
-        connection
-            .createQuery(dateQuery)
-            .addParameter("discordId", user.discordId)
-            .addParameter("date", game.date())
-            .executeUpdate()
     }
 
     fun infoGamesFor(discordId: String): List<Game> = dao.open().use { connection ->
