@@ -24,7 +24,8 @@ data class OgsGame(
     val rengo: Boolean = false,
     @SerializedName("disable_analysis") val analysisDisabled: Boolean = false,
     val outcome: String = "",
-    @SerializedName("gamedata") val gameData: OgsGameData? = null
+    @SerializedName("time_control") val timeControl: String = "",
+    @SerializedName("time_control_parameters") val timeControlParams: String = ""
 ) : UserAccountGame() {
     companion object {
         private const val DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSSSSX"
@@ -60,12 +61,49 @@ data class OgsGame(
     override fun isFinished(): Boolean = outcome.isNotBlank()
     override fun handicap(): Int = handicap
     override fun komi(): Double = komi.toDouble()
-    override fun isLongGame(): Boolean = gameData?.timeControl?.isLongGame() ?: false
+
+    override fun isLongGame(): Boolean {
+        val speed = extractTimeControlParamString("speed")
+        return if (speed.isNotBlank()) speed == "live"
+        else when (extractTimeControlParamString("system")) {
+            "byoyomi", "canadian" -> extractTimeControlParamInt("main_time") >= 1200
+            "absolute" -> extractTimeControlParamInt("total_time") >= 2400
+            "simple" -> extractTimeControlParamInt("per_move") >= 30
+            "fischer" -> extractTimeControlParamInt("initial_time") >= 600
+                    && extractTimeControlParamInt("time_increment") >= 20
+
+            else -> false
+        }
+    }
+
+    fun isNotCorrespondence(): Boolean {
+        val speed = extractTimeControlParamString("speed")
+        return speed.isNotBlank() && speed != "correspondence"
+    }
 
     private fun isDraw() = outcome == "0 points"
     fun isNotCancelled(): Boolean = !cancelled
-    fun isCorrespondenceGame(): Boolean = gameData?.timeControl?.isCorrespondenceGame() ?: true
     fun isNineteen(): Boolean = width == 19 && height == 19
     fun isNotBotGame(): Boolean = !historicalRatings.black.isBot() && !historicalRatings.white.isBot()
     fun isRengo(): Boolean = rengo
+
+    private fun extractTimeControlParamString(key: String): String {
+        if (!timeControlParams.contains("\"$key\": ")) return ""
+
+        var value: String = timeControlParams.substring(timeControlParams.indexOf("\"$key\": "))
+        value = value.substring(("\"$key\": ").length)
+
+        var end = value.indexOf(",")
+        if (end == -1) end = value.indexOf("}")
+        if (end == -1) end = value.length
+        value = value.substring(0, end)
+
+        return value
+    }
+
+    private fun extractTimeControlParamInt(key: String): Int = try {
+        extractTimeControlParamString(key).toInt()
+    } catch (e: NumberFormatException) {
+        0
+    }
 }

@@ -35,7 +35,7 @@ class OgsClient : UserAccountClient {
             .filter { !it.isRengo() }
             .filter { it.isNotBotGame() }
             .filter { it.isNotCancelled() }
-            .filter { it.isCorrespondenceGame().not() }
+            .filter { it.isNotCorrespondence() }
             .sortedBy { it.started }
             .toList()
 
