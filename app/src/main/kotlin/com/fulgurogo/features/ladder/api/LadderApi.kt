@@ -78,9 +78,7 @@ object LadderApi {
 
     fun getTiers(context: Context) = try {
         context.rateLimit()
-        DatabaseAccessor.tiers()
-            ?.let { context.standardResponse(it) }
-            ?: context.notFoundError()
+        DatabaseAccessor.tiers().let { context.standardResponse(it) }
     } catch (e: Exception) {
         log(ERROR, "getTiers", e)
         context.internalError()

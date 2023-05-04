@@ -23,7 +23,7 @@ class UserService(private val jda: JDA) : GameScanListener {
                     .forEach {
                         // Check if game is now finished and update flag in db
                         val updatedGame = UserAccount.find(it.server)?.client?.userGame(user, it.gameServerId())
-                        if (updatedGame?.isFinished() == true) DatabaseAccessor.updateFinishedGame(user, updatedGame)
+                        if (updatedGame?.isFinished() == true) DatabaseAccessor.updateFinishedGame(updatedGame)
                     }
             }
         }

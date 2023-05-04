@@ -15,7 +15,8 @@ data class ExamPoints(
     companion object {
         fun fromGame(game: Game, black: Boolean): ExamPoints? {
             // Quick exit if main player is not exam player (random server player)
-            val mainPlayerId = (if (black) game.blackPlayerDiscordId else game.whitePlayerDiscordId) ?: return null
+            (if (black) game.blackPlayerDiscordId else game.whitePlayerDiscordId) ?: return null
+
             val opponentId = if (black) game.whitePlayerDiscordId else game.blackPlayerDiscordId
             val community = opponentId != null
             val victory = if (black) game.blackPlayerWon else game.whitePlayerWon

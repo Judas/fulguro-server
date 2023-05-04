@@ -320,7 +320,7 @@ object DatabaseAccessor {
             .executeAndFetch(Game::class.java)
     }
 
-    fun updateFinishedGame(user: User, game: UserAccountGame): Connection = dao.open().use { connection ->
+    fun updateFinishedGame(game: UserAccountGame): Connection = dao.open().use { connection ->
         val query = " UPDATE games SET " +
                 " black_player_won = :blackPlayerWon, " +
                 " white_player_won = :whitePlayerWon, " +
