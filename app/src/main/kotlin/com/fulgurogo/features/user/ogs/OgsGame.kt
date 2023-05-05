@@ -24,7 +24,6 @@ data class OgsGame(
     val rengo: Boolean = false,
     @SerializedName("disable_analysis") val analysisDisabled: Boolean = false,
     val outcome: String = "",
-    @SerializedName("time_control") val timeControl: String = "",
     @SerializedName("time_control_parameters") val timeControlParams: String = ""
 ) : UserAccountGame() {
     companion object {
@@ -87,11 +86,12 @@ data class OgsGame(
     fun isNotBotGame(): Boolean = !historicalRatings.black.isBot() && !historicalRatings.white.isBot()
     fun isRengo(): Boolean = rengo
 
-    private fun extractTimeControlParamString(key: String): String {
-        if (!timeControlParams.contains("\"$key\": ")) return ""
+    private fun extractTimeControlParam(key: String): String {
+        val keyString = "\"$key\": "
+        if (!timeControlParams.contains(keyString)) return ""
 
-        var value: String = timeControlParams.substring(timeControlParams.indexOf("\"$key\": "))
-        value = value.substring(("\"$key\": ").length)
+        var value: String = timeControlParams.substring(timeControlParams.indexOf(keyString))
+        value = value.substring(keyString.length)
 
         var end = value.indexOf(",")
         if (end == -1) end = value.indexOf("}")
@@ -102,8 +102,10 @@ data class OgsGame(
     }
 
     private fun extractTimeControlParamInt(key: String): Int = try {
-        extractTimeControlParamString(key).toInt()
+        extractTimeControlParam(key).toInt()
     } catch (e: NumberFormatException) {
         0
     }
+
+    private fun extractTimeControlParamString(key: String): String = extractTimeControlParam(key).filter { it != '"' }
 }
