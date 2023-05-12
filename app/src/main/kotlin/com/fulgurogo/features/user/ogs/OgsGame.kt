@@ -77,7 +77,7 @@ data class OgsGame(
 
     fun isNotCorrespondence(): Boolean {
         val speed = extractTimeControlParamString("speed")
-        return speed.isNotBlank() && speed != "correspondence"
+        return speed != "correspondence"
     }
 
     private fun isDraw() = outcome == "0 points"
