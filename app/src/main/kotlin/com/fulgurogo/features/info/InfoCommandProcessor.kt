@@ -151,10 +151,9 @@ class InfoCommandProcessor : CommandProcessor {
         }
 
         // Add GOLD field
-        DatabaseAccessor.ladderPlayer(user)?.let {
-            val rank = it.rating.toRank().rankToString(false)
-            val link = "${Config.Ladder.WEBSITE_URL}/players/${it.discordId}"
-            addEmbedField(msgBuilder, "GOLD ($rank)", "[${user.name}]($link)")
+        DatabaseAccessor.apiLadderPlayer(user.discordId)?.let {
+            val link = "${Config.Ladder.WEBSITE_URL}/player/${it.discordId}"
+            addEmbedField(msgBuilder, "GOLD (${it.tierName})", "[${user.name}]($link)")
         }
 
         // Add titles field
