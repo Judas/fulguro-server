@@ -758,8 +758,8 @@ object DatabaseAccessor {
     }
 
     fun cleanLadderRatings(): Connection = dao.open().use { connection ->
-        val query = "DELETE FROM ladder_ratings WHERE DATEDIFF(NOW(), rating_date) > 30"
-        log(INFO, "cleanLadderHistory [$query]")
+        val query = "DELETE FROM ladder_ratings WHERE DATEDIFF(NOW(), rating_date) > 40"
+        log(INFO, "cleanLadderRatings [$query]")
         connection.createQuery(query).executeUpdate()
     }
 
