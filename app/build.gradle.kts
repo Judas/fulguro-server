@@ -15,13 +15,13 @@ dependencies {
     // Kotlin
     implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
 
     // Discord
     implementation("net.dv8tion:JDA:4.4.0_352")
 
     // Javalin
-    implementation("io.javalin:javalin:5.3.2")
+    implementation("io.javalin:javalin:5.6.2")
 
     // Database
     implementation("mysql:mysql-connector-java:8.0.32")
