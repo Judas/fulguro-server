@@ -68,7 +68,7 @@ class OgsClient : UserAccountClient {
         if (user.ogsId.isNullOrBlank()) throw EmptyUserIdException
         else {
             val games: MutableList<OgsGame> = ArrayList()
-            var url: String? = "${Config.Ogs.API_URL}/players/${user.ogsId}/games?page=last&ordering=started"
+            var url: String? = "${Config.Ogs.API_URL}/players/${user.ogsId}/games?ordering=-ended"
 
             while (url.isNullOrBlank().not()) {
                 log(INFO, "$url")
@@ -81,8 +81,8 @@ class OgsClient : UserAccountClient {
                     val gameList = gson.fromJson(response.body!!.string(), OgsGameList::class.java)
                     response.close()
                     games.addAll(gameList.results)
-                    if (gameList.results.firstOrNull()?.date()?.before(limitDate) == true) null
-                    else gameList.previous
+                    if (gameList.results.lastOrNull()?.date()?.before(limitDate) == true) null
+                    else gameList.next
                 } else {
                     val error = ApiException("GET FAILURE " + response.code)
                     log(ERROR, error.message!!, error)
