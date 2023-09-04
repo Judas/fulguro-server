@@ -5,6 +5,7 @@ import com.fulgurogo.features.user.User
 import com.fulgurogo.features.user.UserAccountClient
 import com.fulgurogo.features.user.UserAccountGame
 import com.fulgurogo.utilities.ApiException
+import com.fulgurogo.utilities.DATE_ZONE
 import com.fulgurogo.utilities.EmptyUserIdException
 import com.fulgurogo.utilities.Logger.Level.ERROR
 import com.fulgurogo.utilities.Logger.Level.INFO
@@ -15,6 +16,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.net.CookieManager
 import java.net.CookiePolicy
+import java.time.ZonedDateTime
 import java.util.*
 
 class OgsClient : UserAccountClient {
@@ -23,6 +25,7 @@ class OgsClient : UserAccountClient {
         .cookieJar(JavaNetCookieJar(CookieManager().apply { setCookiePolicy(CookiePolicy.ACCEPT_ALL) }))
         .followRedirects(true)
         .build()
+    private var lastCallTime: ZonedDateTime = ZonedDateTime.now(DATE_ZONE)
 
     override fun user(user: User): OgsUser? = user(user.ogsId)
 
@@ -95,6 +98,13 @@ class OgsClient : UserAccountClient {
         }
 
     private fun <T : Any> get(route: String, className: Class<T>): T {
+        if (lastCallTime.plusSeconds(1).isAfter(ZonedDateTime.now(DATE_ZONE))) {
+            // Delay to avoid spamming OGS API
+            log(INFO, "Waiting to avoid OGS spam")
+            Thread.sleep(Config.Ogs.API_DELAY_IN_SECONDS * 1000L)
+        }
+        lastCallTime = ZonedDateTime.now(DATE_ZONE)
+
         val request: Request = Request.Builder().url(route).get().build()
         log(INFO, "GET REQUEST $route")
         val response = okHttpClient.newCall(request).execute()

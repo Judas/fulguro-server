@@ -59,6 +59,7 @@ object Config {
         const val API_URL = "https://online-go.com/api/v1"
         const val TERMINATION_API_URL = "https://online-go.com/termination-api"
         const val WEBSITE_URL = "https://online-go.com"
+        const val API_DELAY_IN_SECONDS = 1
     }
 
     object Fox {
