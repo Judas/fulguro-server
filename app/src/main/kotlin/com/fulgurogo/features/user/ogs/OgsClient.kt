@@ -42,25 +42,12 @@ class OgsClient : UserAccountClient {
             .sortedBy { it.started }
             .toList()
 
-    override fun userGame(user: User, gameServerId: String): UserAccountGame? =
+    override fun userGame(user: User, gameServerId: String): UserAccountGame =
         if (user.ogsId.isNullOrBlank()) throw EmptyUserIdException
         else {
             val url = "${Config.Ogs.API_URL}/games/$gameServerId"
             log(INFO, url)
-
-            val request: Request = Request.Builder().url(url).get().build()
-            val response = okHttpClient.newCall(request).execute()
-
-            if (response.isSuccessful) {
-                log(INFO, "GET SUCCESS ${response.code}")
-                val game = gson.fromJson(response.body!!.string(), OgsGame::class.java)
-                response.close()
-                game
-            } else {
-                val error = ApiException("GET FAILURE " + response.code)
-                log(ERROR, error.message!!, error)
-                throw error
-            }
+            get(url, OgsGame::class.java)
         }
 
     fun user(id: String?): OgsUser? =
@@ -76,21 +63,11 @@ class OgsClient : UserAccountClient {
             while (url.isNullOrBlank().not()) {
                 log(INFO, "$url")
 
-                val request: Request = Request.Builder().url(url!!).get().build()
-                val response = okHttpClient.newCall(request).execute()
+                val gameList = get(url!!, OgsGameList::class.java)
+                games.addAll(gameList.results)
 
-                url = if (response.isSuccessful) {
-                    log(INFO, "GET SUCCESS ${response.code}")
-                    val gameList = gson.fromJson(response.body!!.string(), OgsGameList::class.java)
-                    response.close()
-                    games.addAll(gameList.results)
-                    if (gameList.results.lastOrNull()?.date()?.before(limitDate) == true) null
-                    else gameList.next
-                } else {
-                    val error = ApiException("GET FAILURE " + response.code)
-                    log(ERROR, error.message!!, error)
-                    throw error
-                }
+                url = if (gameList.results.lastOrNull()?.date()?.before(limitDate) == true) null
+                else gameList.next
             }
 
             log(INFO, "Found ${games.size} games")
