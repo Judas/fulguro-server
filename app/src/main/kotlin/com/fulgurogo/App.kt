@@ -38,5 +38,8 @@ fun main() {
 
             get("/gold/api/stability", LadderApi::getStabilityOptions)
             get("/gold/api/tiers", LadderApi::getTiers)
+
+            get("/gold/api/auth", LadderApi::authenticateUser)
+            get("/gold/api/auth/profile", LadderApi::getAuthProfile)
         }
 }

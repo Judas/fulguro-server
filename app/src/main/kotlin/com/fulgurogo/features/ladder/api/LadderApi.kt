@@ -1,11 +1,26 @@
 package com.fulgurogo.features.ladder.api
 
+import com.fulgurogo.Config
 import com.fulgurogo.features.database.DatabaseAccessor
 import com.fulgurogo.utilities.*
 import com.fulgurogo.utilities.Logger.Level.ERROR
+import com.fulgurogo.utilities.Logger.Level.INFO
+import com.google.gson.Gson
 import io.javalin.http.Context
+import okhttp3.JavaNetCookieJar
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody
+import java.net.CookieManager
+import java.net.CookiePolicy
+import java.time.ZonedDateTime
+
 
 object LadderApi {
+    private val gson: Gson = Gson()
+    private val okHttpClient: OkHttpClient = OkHttpClient.Builder()
+        .cookieJar(JavaNetCookieJar(CookieManager().apply { setCookiePolicy(CookiePolicy.ACCEPT_ALL) })).build()
+
     fun getPlayers(context: Context) = try {
         context.rateLimit()
         val players = DatabaseAccessor.apiLadderPlayers()
@@ -82,5 +97,111 @@ object LadderApi {
     } catch (e: Exception) {
         log(ERROR, "getTiers", e)
         context.internalError()
+    }
+
+    fun authenticateUser(context: Context) = try {
+        context.rateLimit()
+
+        val authCode = context.queryParam("code")
+        val goldId = context.queryParam("goldId")
+        if (goldId == null || authCode == null) {
+            log(ERROR, "DISCORD AUTH MISSING PARAMS")
+            context.notFoundError()
+        } else {
+            val authRequestResponse = requestAuthToken(authCode)
+            DatabaseAccessor.saveAuthCredentials(goldId, authRequestResponse)
+            context.standardResponse()
+        }
+    } catch (e: Exception) {
+        log(ERROR, "authenticateUser", e)
+        context.internalError()
+    }
+
+    fun getAuthProfile(context: Context) = try {
+        context.rateLimit()
+
+        val goldIdParam = context.queryParam("goldId")
+        goldIdParam?.let { goldId ->
+            // Get corresponding token
+            val credentials = DatabaseAccessor.getAuthCredentials(goldId)
+            credentials?.let { creds ->
+                var validCredentials: AuthCredentials? = creds
+
+                // Check expiration
+                if (creds.expirationDate.before(ZonedDateTime.now(DATE_ZONE).toDate())) {
+                    log(INFO, "Refreshing expired token")
+                    val authRequestResponse = refreshAuthToken(refreshToken = creds.refreshToken)
+                    DatabaseAccessor.saveAuthCredentials(goldId, authRequestResponse)
+                    validCredentials = DatabaseAccessor.getAuthCredentials(goldId)
+                }
+
+                validCredentials?.let { validCreds ->
+                    // Fetch user discord id
+                    val discordId = getUserDiscordId(validCreds)
+                    val player = DatabaseAccessor.apiLadderPlayer(discordId)
+                    player?.let {
+                        val profile = ApiProfile(it.discordId, it.name, it.avatar, validCreds.expirationDate)
+                        context.standardResponse(profile)
+                    } ?: context.notFoundError()
+                } ?: context.notFoundError()
+            } ?: context.notFoundError()
+        } ?: context.notFoundError()
+    } catch (e: Exception) {
+        log(ERROR, "getAuthProfile", e)
+        context.internalError()
+    }
+
+    private fun requestAuthToken(authCode: String): AuthRequestResponse {
+        val body: RequestBody = AuthRequestPayload(code = authCode).toFormBody()
+        val request: Request = Request.Builder().url(Config.Ladder.DISCORD_AUTH_TOKEN_URL).post(body).build()
+        val response = okHttpClient.newCall(request).execute()
+
+        if (!response.isSuccessful) {
+            val error = ApiException("DISCORD AUTH REQUEST FAILURE " + response.code)
+            log(ERROR, error.message!!, error)
+            throw error
+        }
+
+        log(INFO, "DISCORD AUTH REQUEST SUCCESS ${response.code}")
+        val responseBody = response.body?.string()
+        response.close()
+        return gson.fromJson(responseBody, AuthRequestResponse::class.java)
+    }
+
+    private fun refreshAuthToken(refreshToken: String): AuthRequestResponse {
+        val body: RequestBody = AuthRefreshPayload(refreshToken = refreshToken).toFormBody()
+        val request: Request = Request.Builder().url(Config.Ladder.DISCORD_AUTH_TOKEN_URL).post(body).build()
+        val response = okHttpClient.newCall(request).execute()
+
+        if (!response.isSuccessful) {
+            val error = ApiException("DISCORD AUTH REFRESH FAILURE " + response.code)
+            log(ERROR, error.message!!, error)
+            throw error
+        }
+
+        log(INFO, "DISCORD AUTH REFRESH SUCCESS ${response.code}")
+        val responseBody = response.body?.string()
+        response.close()
+        return gson.fromJson(responseBody, AuthRequestResponse::class.java)
+    }
+
+    private fun getUserDiscordId(authCredentials: AuthCredentials): String {
+        val url = "${Config.Ladder.DISCORD_API_URL}/users/@me"
+        val request: Request = Request.Builder()
+            .url(url)
+            .header("Authorization", "${authCredentials.tokenType} ${authCredentials.accessToken}")
+            .get().build()
+        val response = okHttpClient.newCall(request).execute()
+
+        if (!response.isSuccessful) {
+            val error = ApiException("DISCORD PROFILE REQUEST FAILURE " + response.code)
+            log(ERROR, error.message!!, error)
+            throw error
+        }
+
+        log(INFO, "DISCORD PROFILE REQUEST SUCCESS ${response.code}")
+        val responseBody = response.body?.string()
+        response.close()
+        return gson.fromJson(responseBody, ProfileRequestResponse::class.java).id
     }
 }

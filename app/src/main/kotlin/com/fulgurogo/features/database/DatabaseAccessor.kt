@@ -9,18 +9,23 @@ import com.fulgurogo.features.ladder.LadderRating
 import com.fulgurogo.features.ladder.Tier
 import com.fulgurogo.features.ladder.api.ApiPlayer
 import com.fulgurogo.features.ladder.api.ApiStability
+import com.fulgurogo.features.ladder.api.AuthCredentials
+import com.fulgurogo.features.ladder.api.AuthRequestResponse
 import com.fulgurogo.features.ladder.glicko.Glickotlin
 import com.fulgurogo.features.user.User
 import com.fulgurogo.features.user.UserAccount
 import com.fulgurogo.features.user.UserAccount.Companion.SUPPORTED_PLAYABLE_ACCOUNTS
 import com.fulgurogo.features.user.UserAccountGame
+import com.fulgurogo.utilities.DATE_ZONE
 import com.fulgurogo.utilities.Logger.Level.INFO
 import com.fulgurogo.utilities.log
+import com.fulgurogo.utilities.toDate
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import org.sql2o.Connection
 import org.sql2o.Sql2o
 import org.sql2o.quirks.NoQuirks
+import java.time.ZonedDateTime
 import java.util.*
 import javax.sql.DataSource
 import kotlin.math.roundToInt
@@ -107,7 +112,12 @@ object DatabaseAccessor {
             "tier_rank" to "tierRank",
             "tier_name" to "tierName",
             "game_count" to "gameCount",
-            "ladder_game_count" to "ladderGameCount"
+            "ladder_game_count" to "ladderGameCount",
+            "gold_id" to "goldId",
+            "access_token" to "accessToken",
+            "token_type" to "tokenType",
+            "refresh_token" to "refreshToken",
+            "expiration_date" to "expirationDate"
         )
     }
 
@@ -873,6 +883,40 @@ object DatabaseAccessor {
             .createQuery(query)
             .throwOnMappingFailure(false)
             .executeAndFetch(Tier::class.java)
+    }
+
+    fun saveAuthCredentials(goldId: String, authCredentials: AuthRequestResponse): Connection =
+        dao.open().use { connection ->
+            val query =
+                "INSERT INTO auth_credentials(gold_id, access_token, token_type, refresh_token, expiration_date) " +
+                        " VALUES (:gold_id, :access_token, :token_type, :refresh_token, :expiration_date) " +
+                        " ON DUPLICATE KEY UPDATE " +
+                        " access_token=VALUES(access_token), " +
+                        " token_type=VALUES(token_type), " +
+                        " refresh_token=VALUES(refresh_token), " +
+                        " expiration_date=VALUES(expiration_date)"
+            log(INFO, "saveAuthCredentials [$query] $goldId $authCredentials")
+            connection
+                .createQuery(query)
+                .addParameter("gold_id", goldId)
+                .addParameter("access_token", authCredentials.access_token)
+                .addParameter("token_type", authCredentials.token_type)
+                .addParameter("refresh_token", authCredentials.refresh_token)
+                .addParameter(
+                    "expiration_date",
+                    ZonedDateTime.now(DATE_ZONE).plusSeconds(authCredentials.expires_in).toDate()
+                )
+                .executeUpdate()
+        }
+
+    fun getAuthCredentials(goldId: String): AuthCredentials? = dao.open().use { connection ->
+        val query = " SELECT * FROM auth_credentials WHERE gold_id = :goldId"
+        log(INFO, "getAuthCredentials [$query] $goldId")
+        connection
+            .createQuery(query)
+            .addParameter("goldId", goldId)
+            .throwOnMappingFailure(false)
+            .executeAndFetchFirst(AuthCredentials::class.java)
     }
 
     // endregion

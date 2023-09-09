@@ -41,7 +41,12 @@ object Config {
         const val PLAY_CHANNEL = "<ENTER_PLAY_CHANNEL_ID>"
         const val WEBSITE_URL = "https://fulguro-gold.onrender.com"
         const val DEFAULT_AVATAR =
-            "https://cdn.discordapp.com/attachments/675445987938009088/992769070296477818/LOGOGo.png"
+            "https://cdn.discordapp.com/app-icons/772833152434831381/39981f8231efcd7aebf265764ce80b7c.png"
+        const val DISCORD_API_URL = "https://discord.com/api"
+        const val DISCORD_AUTH_TOKEN_URL = "https://discord.com/api/oauth2/token"
+        const val DISCORD_AUTH_CLIENT_ID = "<ENTER_DISCORD_AUTH_CLIENT_ID>"
+        const val DISCORD_AUTH_CLIENT_SECRET = "<ENTER_DISCORD_AUTH_CLIENT_SECRET>"
+        const val DISCORD_AUTH_REDIRECT_URI = "<ENTER_DISCORD_AUTH_REDIRECT_URI>"
     }
 
     object Kgs {

@@ -9,6 +9,10 @@ fun Context.standardResponse(data: Any) {
     json(data)
 }
 
+fun Context.standardResponse() {
+    status(204)
+}
+
 fun Context.notFoundError() {
     status(404)
 }
