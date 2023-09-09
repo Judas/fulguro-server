@@ -78,7 +78,7 @@ class LadderCommandProcessor : CommandProcessor {
                     "[KGS](${Config.Kgs.GRAPH_URL}?user=${fulguroUser.kgsId})"
                 else null
             val goldLink =
-                "[**${event.jda.userName(it.discordId)} (${it.tierName})**](${Config.Ladder.WEBSITE_URL}/players/${it.discordId})"
+                "[**${event.jda.userName(it.discordId)} (${it.tierName})**](${Config.Ladder.WEBSITE_URL}/player/${it.discordId})"
             var links = ""
             if (ogsLink != null) links += ogsLink
             if (kgsLink != null) {
