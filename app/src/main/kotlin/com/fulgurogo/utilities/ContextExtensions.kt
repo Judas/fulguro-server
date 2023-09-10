@@ -22,5 +22,5 @@ fun Context.internalError() {
 }
 
 fun Context.rateLimit() {
-    NaiveRateLimit.requestPerTimeUnit(this, 30, TimeUnit.MINUTES)
+    NaiveRateLimit.requestPerTimeUnit(this, 60, TimeUnit.MINUTES)
 }
