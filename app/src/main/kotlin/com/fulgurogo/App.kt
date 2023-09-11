@@ -14,7 +14,7 @@ fun main() {
     if (Config.DEV) SSHConnector.connect()
 
     // Launching bot
-    JDABuilder.createDefault(Config.Bot.TOKEN)
+    val jda = JDABuilder.createDefault(Config.Bot.TOKEN)
         .setChunkingFilter(ChunkingFilter.ALL)
         .setMemberCachePolicy(MemberCachePolicy.ALL)
         .enableIntents(GatewayIntent.GUILD_MEMBERS)
@@ -22,6 +22,7 @@ fun main() {
         .build()
 
     // Launching API server
+    val ladderApi = LadderApi(jda)
     Javalin
         .create { config ->
             config.http.defaultContentType = "application/json"
@@ -30,16 +31,16 @@ fun main() {
         }
         .start(Config.Server.PORT)
         .apply {
-            get("/gold/api/players", LadderApi::getPlayers)
-            get("/gold/api/player/{id}", LadderApi::getPlayerProfile)
+            get("/gold/api/players", ladderApi::getPlayers)
+            get("/gold/api/player/{id}", ladderApi::getPlayerProfile)
 
-            get("/gold/api/games", LadderApi::getRecentGames)
-            get("/gold/api/game/{id}", LadderApi::getGame)
+            get("/gold/api/games", ladderApi::getRecentGames)
+            get("/gold/api/game/{id}", ladderApi::getGame)
 
-            get("/gold/api/stability", LadderApi::getStabilityOptions)
-            get("/gold/api/tiers", LadderApi::getTiers)
+            get("/gold/api/stability", ladderApi::getStabilityOptions)
+            get("/gold/api/tiers", ladderApi::getTiers)
 
-            get("/gold/api/auth", LadderApi::authenticateUser)
-            get("/gold/api/auth/profile", LadderApi::getAuthProfile)
+            get("/gold/api/auth", ladderApi::authenticateUser)
+            get("/gold/api/auth/profile", ladderApi::getAuthProfile)
         }
 }

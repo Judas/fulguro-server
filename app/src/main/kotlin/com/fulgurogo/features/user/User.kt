@@ -49,40 +49,46 @@ data class User(
         }
     }
 
-    fun cloneUserWithUpdatedProfile(jda: JDA): User {
-        val kgs = fetchUser(UserAccount.KGS)
-        val ogs = fetchUser(UserAccount.OGS)
-        val fox = fetchUser(UserAccount.FOX)
-        val igs = fetchUser(UserAccount.IGS)
-        val ffg = fetchUser(UserAccount.FFG)
-        val egf = fetchUser(UserAccount.EGF)
-
-        return User(
-            discordId = discordId,
-            name = jda.userName(discordId),
-            avatar = jda.getUserById(discordId)?.effectiveAvatarUrl ?: DEFAULT_AVATAR,
-            titles = titles,
-            lastGameScan = lastGameScan,
-            kgsId = kgsId,
-            kgsPseudo = kgs?.pseudo(),
-            kgsRank = kgs?.rank(),
-            ogsId = ogsId,
-            ogsPseudo = ogs?.pseudo(),
-            ogsRank = ogs?.rank(),
-            foxId = fox?.id(),
-            foxPseudo = foxPseudo,
-            foxRank = fox?.rank(),
-            igsId = igsId,
-            igsPseudo = igs?.pseudo(),
-            igsRank = igs?.rank(),
-            ffgId = ffgId,
-            ffgPseudo = ffg?.pseudo(),
-            ffgRank = ffg?.rank(),
-            egfId = egfId,
-            egfPseudo = egf?.pseudo(),
-            egfRank = egf?.rank()
-        )
-    }
+    fun cloneUserWithUpdatedProfile(jda: JDA, full: Boolean): User =
+        if (full) {
+            val kgs = fetchUser(UserAccount.KGS)
+            val ogs = fetchUser(UserAccount.OGS)
+            val fox = fetchUser(UserAccount.FOX)
+            val igs = fetchUser(UserAccount.IGS)
+            val ffg = fetchUser(UserAccount.FFG)
+            val egf = fetchUser(UserAccount.EGF)
+            User(
+                discordId = discordId,
+                name = jda.userName(discordId),
+                avatar = jda.getUserById(discordId)?.effectiveAvatarUrl ?: DEFAULT_AVATAR,
+                titles = titles,
+                lastGameScan = lastGameScan,
+                kgsId = kgsId,
+                kgsPseudo = kgs?.pseudo(),
+                kgsRank = kgs?.rank(),
+                ogsId = ogsId,
+                ogsPseudo = ogs?.pseudo(),
+                ogsRank = ogs?.rank(),
+                foxId = fox?.id(),
+                foxPseudo = foxPseudo,
+                foxRank = fox?.rank(),
+                igsId = igsId,
+                igsPseudo = igs?.pseudo(),
+                igsRank = igs?.rank(),
+                ffgId = ffgId,
+                ffgPseudo = ffg?.pseudo(),
+                ffgRank = ffg?.rank(),
+                egfId = egfId,
+                egfPseudo = egf?.pseudo(),
+                egfRank = egf?.rank()
+            )
+        } else {
+            User(
+                discordId = discordId,
+                name = jda.userName(discordId),
+                avatar = jda.getUserById(discordId)?.effectiveAvatarUrl ?: DEFAULT_AVATAR
+            )
+        }
 
     private fun fetchUser(account: UserAccount): ServerUser? = when (account) {
         UserAccount.KGS -> (UserAccount.KGS.client as KgsClient).user(kgsId)

@@ -7,6 +7,7 @@ import com.fulgurogo.utilities.Logger.Level.ERROR
 import com.fulgurogo.utilities.Logger.Level.INFO
 import com.google.gson.Gson
 import io.javalin.http.Context
+import net.dv8tion.jda.api.JDA
 import okhttp3.JavaNetCookieJar
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -15,8 +16,7 @@ import java.net.CookieManager
 import java.net.CookiePolicy
 import java.time.ZonedDateTime
 
-
-object LadderApi {
+class LadderApi(private val jda: JDA) {
     private val gson: Gson = Gson()
     private val okHttpClient: OkHttpClient = OkHttpClient.Builder()
         .cookieJar(JavaNetCookieJar(CookieManager().apply { setCookiePolicy(CookiePolicy.ACCEPT_ALL) })).build()
@@ -138,11 +138,18 @@ object LadderApi {
                 validCredentials?.let { validCreds ->
                     // Fetch user discord id
                     val discordId = getUserDiscordId(validCreds)
-                    val player = DatabaseAccessor.apiLadderPlayer(discordId)
-                    player?.let {
-                        val profile = ApiProfile(it.discordId, it.name, it.avatar, validCreds.expirationDate)
+
+                    // Create user if needed
+                    val rawUser = DatabaseAccessor.ensureUser(discordId)
+                    val user = rawUser.cloneUserWithUpdatedProfile(jda, false)
+                    if (user.name == user.discordId) {
+                        // User is not on the server
+                        context.notFoundError()
+                    } else {
+                        DatabaseAccessor.updateUser(user)
+                        val profile = ApiProfile(user.discordId, user.name, user.avatar, validCreds.expirationDate)
                         context.standardResponse(profile)
-                    } ?: context.notFoundError()
+                    }
                 } ?: context.notFoundError()
             } ?: context.notFoundError()
         } ?: context.notFoundError()

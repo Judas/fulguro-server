@@ -88,7 +88,7 @@ class InfoCommandProcessor : CommandProcessor {
                 // Update user info (pseudo / rank)
                 DatabaseAccessor
                     .user(account, accountId)
-                    ?.cloneUserWithUpdatedProfile(event.jda)
+                    ?.cloneUserWithUpdatedProfile(event.jda, true)
                     ?.let { DatabaseAccessor.updateUser(it) }
 
                 simpleMessage(

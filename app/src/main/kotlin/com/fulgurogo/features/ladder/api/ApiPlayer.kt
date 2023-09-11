@@ -7,6 +7,7 @@ data class ApiPlayer(
 
     val rating: Double,
     val deviation: Double,
+    val ranked: Boolean,
     val tierRank: Int,
     val tierName: String,
     val stable: Boolean,

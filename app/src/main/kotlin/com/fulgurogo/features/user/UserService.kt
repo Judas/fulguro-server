@@ -12,7 +12,7 @@ class UserService(private val jda: JDA) : GameScanListener {
         log(INFO, "onScanStarted")
         handleAllUsers { rawUser ->
             // Update user profile info
-            val user = rawUser.cloneUserWithUpdatedProfile(jda)
+            val user = rawUser.cloneUserWithUpdatedProfile(jda, true)
             DatabaseAccessor.updateUser(user)
 
             if (user.name == user.discordId) {
