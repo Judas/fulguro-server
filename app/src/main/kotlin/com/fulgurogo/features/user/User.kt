@@ -1,7 +1,7 @@
 package com.fulgurogo.features.user
 
 import com.fulgurogo.Config.Ladder.DEFAULT_AVATAR
-import com.fulgurogo.features.ladder.api.ApiAccount
+import com.fulgurogo.features.api.ApiAccount
 import com.fulgurogo.features.user.egf.EgfClient
 import com.fulgurogo.features.user.ffg.FfgClient
 import com.fulgurogo.features.user.fox.FoxClient
@@ -37,18 +37,6 @@ data class User(
     val egfPseudo: String? = null,
     val egfRank: String? = null
 ) {
-    companion object {
-        fun dummyFrom(discordId: String, account: UserAccount, accountId: String): User = when (account) {
-            UserAccount.KGS -> User(discordId, kgsId = accountId)
-            UserAccount.OGS -> User(discordId, ogsId = accountId)
-            UserAccount.FOX -> User(discordId, foxPseudo = accountId)
-            UserAccount.IGS -> User(discordId, igsId = accountId)
-            UserAccount.FFG -> User(discordId, ffgId = accountId)
-            UserAccount.EGF -> User(discordId, egfId = accountId)
-            else -> User(discordId)
-        }
-    }
-
     fun cloneUserWithUpdatedProfile(jda: JDA, full: Boolean): User =
         if (full) {
             val kgs = fetchUser(UserAccount.KGS)

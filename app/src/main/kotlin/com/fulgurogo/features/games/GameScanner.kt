@@ -1,7 +1,10 @@
 package com.fulgurogo.features.games
 
 import com.fulgurogo.Config
+import com.fulgurogo.features.bot.FulguroBot
 import com.fulgurogo.features.database.DatabaseAccessor
+import com.fulgurogo.features.exam.ExamPointsService
+import com.fulgurogo.features.ladder.LadderRatingsService
 import com.fulgurogo.features.user.User
 import com.fulgurogo.features.user.UserAccount
 import com.fulgurogo.features.user.UserAccountClient
@@ -11,17 +14,14 @@ import com.fulgurogo.utilities.Logger.Level.INFO
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import net.dv8tion.jda.api.JDA
 import java.time.ZonedDateTime
 
-class GameScanner(
-    private val listeners: List<GameScanListener>
-) {
+object GameScanner {
     var isScanning: Boolean = false
         private set
-    var lastScanDate: ZonedDateTime = ZonedDateTime.now(DATE_ZONE)
-        private set
-    var nextScanDate: ZonedDateTime = ZonedDateTime.now(DATE_ZONE)
-        private set
+    private var lastScanDate: ZonedDateTime = ZonedDateTime.now(DATE_ZONE)
+    private var nextScanDate: ZonedDateTime = ZonedDateTime.now(DATE_ZONE)
 
     private val scanFlow: Flow<ZonedDateTime> = flow {
         refreshScanDates()
@@ -46,7 +46,6 @@ class GameScanner(
             log(INFO, "starting scan job")
             scanFlow.collect {
                 log(INFO, "scanFlow tick")
-
                 when {
                     isScanning -> log(INFO, "Skip scan, previous scan is still ongoing")
                     Config.DEV -> log(INFO, "Skip scan in developer mode")
@@ -79,42 +78,76 @@ class GameScanner(
     }
 
     fun scan() {
-        log(INFO, "Scan started !")
-        isScanning = true
+        FulguroBot.jda?.let { jda ->
+            log(INFO, "Scan started !")
+            isScanning = true
 
-        listeners.forEach { it.onScanStarted() }
-        handleAllUsers(this::handleUser)
-        listeners.forEach { it.onScanFinished() }
+            handleAllUsers { rawUser ->
+                val user = refreshUserProfile(jda, rawUser)
+                updateUnfinishedGamesStatus(user)
+                createUserExamLadder(user)
+                fetchUserGames(user)
+            }
+            LadderRatingsService.refresh()
+            ExamPointsService(jda).refresh()
+            cleanDatabase()
 
-        // Clean older games
-        DatabaseAccessor.cleanGames()
-
-        isScanning = false
-        log(INFO, "Scan ended !")
+            isScanning = false
+            log(INFO, "Scan ended !")
+        } ?: log(ERROR, "Can't start scan, JDA is null")
     }
 
-    private fun handleUser(user: User) {
-        // Compute date interval for games
+    private fun refreshUserProfile(jda: JDA, rawUser: User): User {
+        log(INFO, "Refreshing user profile")
+        val user = rawUser.cloneUserWithUpdatedProfile(jda, true)
+        DatabaseAccessor.updateUser(user)
+        if (user.name == user.discordId) {
+            DatabaseAccessor.deleteUser(user.discordId)
+            throw InvalidUserException
+        }
+        return user
+    }
+
+    private fun updateUnfinishedGamesStatus(user: User) {
+        log(INFO, "Updating unfinished games status")
+        DatabaseAccessor.unfinishedGamesFor(user.discordId)
+            .forEach {
+                // Check if game is now finished and update flag in db
+                val updatedGame = UserAccount.find(it.server)?.client?.userGame(user, it.gameServerId())
+                if (updatedGame?.isFinished() == true) DatabaseAccessor.updateFinishedGame(updatedGame)
+            }
+    }
+
+    private fun createUserExamLadder(user: User) {
+        log(INFO, "Creating exam player if needed")
+        DatabaseAccessor.ensureExamPlayer(user)
+
+        log(INFO, "Creating ladder player if needed")
+        val ladderPlayer = DatabaseAccessor.ladderPlayer(user)
+        if (ladderPlayer == null) DatabaseAccessor.createLadderPlayer(user.discordId)
+    }
+
+    private fun fetchUserGames(user: User) {
         val scanStart = user.lastGameScan ?: ZonedDateTime.now(DATE_ZONE).toStartOfMonth().toDate()
         val scanEnd = ZonedDateTime.now(DATE_ZONE).toDate()
-
-        // Fetch all games in interval
-        log(INFO, "Fetching games between $scanStart | $scanEnd")
+        log(INFO, "Fetching user games between $scanStart | $scanEnd")
 
         val clients = mutableListOf<UserAccountClient>()
         user.kgsId?.let { clients.add(UserAccount.KGS.client) }
         user.ogsId?.let { clients.add(UserAccount.OGS.client) }
         user.foxPseudo?.let { clients.add(UserAccount.FOX.client) }
-
         val allGames = clients.map { it.userGames(user, scanStart, scanEnd) }.flatten()
         log(INFO, "Fetched ${allGames.size} valid games !")
 
-        // Save game in DB
+        log(INFO, "Saving user games in database")
         allGames.forEach {
             if (!DatabaseAccessor.existGame(it)) DatabaseAccessor.saveGame(it)
         }
-
-        // Update user scan date
         DatabaseAccessor.updateUserScanDate(user.discordId, scanEnd)
+    }
+
+    private fun cleanDatabase() {
+        log(INFO, "Deleting old games")
+        DatabaseAccessor.cleanGames()
     }
 }

@@ -1,10 +1,8 @@
 package com.fulgurogo.features.exam
 
 import com.fulgurogo.Config
-import com.fulgurogo.features.bot.Command
 import com.fulgurogo.features.database.DatabaseAccessor
 import com.fulgurogo.features.games.Game
-import com.fulgurogo.features.games.GameScanListener
 import com.fulgurogo.utilities.*
 import com.fulgurogo.utilities.Logger.Level.INFO
 import net.dv8tion.jda.api.JDA
@@ -13,16 +11,15 @@ import java.time.format.DateTimeFormatter
 import java.util.*
 import kotlin.math.min
 
-class ExamService(private val jda: JDA) : GameScanListener {
-    override fun onScanStarted() {
-        log(INFO, "onScanStarted")
-        handleAllUsers { DatabaseAccessor.ensureExamPlayer(it) }
+class ExamPointsService(private val jda: JDA) {
+    companion object {
+        private const val EMOJI = ":crossed_swords:"
     }
 
-    override fun onScanFinished() {
-        log(INFO, "onScanFinished")
+    fun refresh() {
+        log(INFO, "refresh")
 
-        // Clear all exam points
+        log(INFO, "Clearing all exam points")
         DatabaseAccessor.clearExamPoints()
 
         val now = ZonedDateTime.now(DATE_ZONE)
@@ -34,7 +31,7 @@ class ExamService(private val jda: JDA) : GameScanListener {
 
         val shouldCloseSession = !DatabaseAccessor.hasPromotionScore(promoName)
         if (shouldCloseSession) {
-            log(INFO, "Promotion $promoName is not closed, closing it.")
+            log(INFO, "Closing Promotion $promoName.")
             val start = now.minusMonths(1).toStartOfMonth().toDate()
             val end = now.toStartOfMonth().toDate()
             processGames(from = start, to = end)
@@ -56,6 +53,8 @@ class ExamService(private val jda: JDA) : GameScanListener {
     }
 
     private fun processGames(from: Date, to: Date) {
+        log(INFO, "Processing exam games from $from to $to")
+
         DatabaseAccessor.examGames(from, to)
             .forEach { game ->
                 log(INFO, "Treating game ${game.id}")
@@ -103,7 +102,7 @@ class ExamService(private val jda: JDA) : GameScanListener {
                 message += "\n**${index + 1}.** ${jda.userName(hunter)} *(${hunter.totalPointsString()})*${hunter.title()}"
             }
 
-        val title = "${Command.Exam.EMOJI} __Classement de l'**Examen Hunter**__ ${Command.Exam.EMOJI}"
+        val title = "$EMOJI __Classement de l'**Examen Hunter**__ $EMOJI"
         if (message.isBlank()) message = "*Aucun participant n'a de points*"
         jda.publicMessage(Config.Exam.CHANNEL_ID, "$title\n$message")
     }
@@ -129,7 +128,7 @@ class ExamService(private val jda: JDA) : GameScanListener {
         jda.publicMessage(
             Config.Exam.HOF_CHANNEL_ID,
             message,
-            "${Command.Exam.EMOJI} __**Examen Hunter** ${promoName}__ ${Command.Exam.EMOJI}"
+            "$EMOJI __**Examen Hunter** ${promoName}__ $EMOJI"
         )
     }
 
@@ -137,7 +136,7 @@ class ExamService(private val jda: JDA) : GameScanListener {
         log(INFO, "printFinalRanking")
 
         val title =
-            "${Command.Exam.EMOJI} __Classement final de l'**Examen Hunter** ${promoName}__ ${Command.Exam.EMOJI}"
+            "$EMOJI __Classement final de l'**Examen Hunter** ${promoName}__ $EMOJI"
 
         // Print all in normal chanel
         jda.publicMessage(Config.Exam.CHANNEL_ID, title)
@@ -228,7 +227,7 @@ class ExamService(private val jda: JDA) : GameScanListener {
         jda.publicMessage(
             Config.Exam.HOF_CHANNEL_ID,
             hunterMessage,
-            "${Command.Exam.EMOJI} __**Hunters** de la promotion ${promoName}__ ${Command.Exam.EMOJI}"
+            "$EMOJI __**Hunters** de la promotion ${promoName}__ $EMOJI"
         )
 
         var specMessage = ""
@@ -236,7 +235,7 @@ class ExamService(private val jda: JDA) : GameScanListener {
         jda.publicMessage(
             Config.Exam.HOF_CHANNEL_ID,
             specMessage,
-            "${Command.Exam.EMOJI} __Spécialisations **Hunter** attribuées__ ${Command.Exam.EMOJI}"
+            "$EMOJI __Spécialisations **Hunter** attribuées__ $EMOJI"
         )
     }
 
@@ -316,7 +315,7 @@ class ExamService(private val jda: JDA) : GameScanListener {
         DatabaseAccessor.clearPhantomPoints()
         DatabaseAccessor.clearPhantoms()
 
-        var message = "${Command.Exam.EMOJI} __Clôture de l'**Examen Hunter**__ ${Command.Exam.EMOJI}\n"
+        var message = "$EMOJI __Clôture de l'**Examen Hunter**__ $EMOJI\n"
         message += "\nL'**Examen Hunter** $promoName est désormais clos. Une nouvelle session commence.\nQue brûlent vos nens ! :fire:"
         jda.publicMessage(Config.Exam.CHANNEL_ID, message)
     }

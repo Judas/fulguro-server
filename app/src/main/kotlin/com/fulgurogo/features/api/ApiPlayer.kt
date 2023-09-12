@@ -1,4 +1,4 @@
-package com.fulgurogo.features.ladder.api
+package com.fulgurogo.features.api
 
 data class ApiPlayer(
     val discordId: String,

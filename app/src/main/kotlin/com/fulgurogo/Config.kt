@@ -38,8 +38,6 @@ object Config {
         const val INITIAL_RATING = 1150.0
         const val INITIAL_DEVIATION = 350.0
         const val INITIAL_VOLATILITY = 0.06
-        const val PLAY_CHANNEL = "<ENTER_PLAY_CHANNEL_ID>"
-        const val WEBSITE_URL = "https://fulguro-gold.onrender.com"
         const val DEFAULT_AVATAR =
             "https://cdn.discordapp.com/app-icons/772833152434831381/39981f8231efcd7aebf265764ce80b7c.png"
         const val DISCORD_API_URL = "https://discord.com/api"

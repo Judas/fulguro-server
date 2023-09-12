@@ -11,17 +11,19 @@ fun Any.handleAllUsers(process: (User) -> Unit) {
     val failedUsers = mutableListOf<User>()
     users.forEachIndexed { index, user ->
         try {
+            log(INFO, "===================================")
             log(INFO, "[${index + 1}/${users.size}] Processing user ${user.discordId}")
             process(user)
         } catch (e: Exception) {
             log(ERROR, "Error processing user ${user.discordId}", e)
-            failedUsers.add(user)
+            if (e !is InvalidUserException) failedUsers.add(user)
         }
     }
 
     // Try a second time for failed users (it may come from a timeout issue)
     failedUsers.forEachIndexed { index, user ->
         try {
+            log(INFO, "===================================")
             log(INFO, "[${index + 1}/${failedUsers.size}] Processing failed user ${user.discordId}")
             process(user)
         } catch (e: Exception) {

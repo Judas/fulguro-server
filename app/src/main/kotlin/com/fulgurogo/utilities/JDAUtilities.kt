@@ -1,7 +1,6 @@
 package com.fulgurogo.utilities
 
 import com.fulgurogo.Config
-import com.fulgurogo.features.bot.Command
 import com.fulgurogo.features.exam.ExamPlayer
 import net.dv8tion.jda.api.EmbedBuilder
 import net.dv8tion.jda.api.JDA
@@ -42,20 +41,3 @@ fun simpleError(hook: InteractionHook, emoji: String, errorMessage: String) =
 private fun sendMessage(hook: InteractionHook, title: String, description: String) = hook.sendMessageEmbeds(
     EmbedBuilder().setColor(Config.Bot.EMBED_COLOR).setTitle(title).setDescription(description.ellipsize(2048)).build()
 ).queue()
-
-fun addEmbedField(msgBuilder: EmbedBuilder, title: String, value: String?) {
-    if (value.orEmpty().isNotBlank()) {
-        msgBuilder.addField(title, value, true)
-    }
-}
-
-fun SlashCommandEvent.scanCheck(
-    command: Command,
-    scanning: Boolean?,
-    process: (SlashCommandEvent) -> Unit
-) = if (scanning == true && !command.scanCompatible) simpleError(
-    acknowledge(this),
-    Command.Fulguro.EMOJI,
-    "*Les commandes du bot sont désactivées lorsque le :robot: met à jour les parties*"
-)
-else process(this)

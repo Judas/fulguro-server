@@ -1,4 +1,4 @@
-package com.fulgurogo.features.ladder.api
+package com.fulgurogo.features.api
 
 import java.util.*
 

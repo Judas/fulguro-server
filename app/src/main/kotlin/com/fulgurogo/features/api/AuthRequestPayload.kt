@@ -1,4 +1,4 @@
-package com.fulgurogo.features.ladder.api
+package com.fulgurogo.features.api
 
 import com.fulgurogo.Config
 import okhttp3.FormBody

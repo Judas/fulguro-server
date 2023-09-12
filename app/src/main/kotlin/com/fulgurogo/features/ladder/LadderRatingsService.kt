@@ -3,7 +3,6 @@ package com.fulgurogo.features.ladder
 import com.fulgurogo.Config.Ladder.INITIAL_DEVIATION
 import com.fulgurogo.Config.Ladder.INITIAL_VOLATILITY
 import com.fulgurogo.features.database.DatabaseAccessor
-import com.fulgurogo.features.games.GameScanListener
 import com.fulgurogo.features.ladder.glicko.Glickotlin
 import com.fulgurogo.features.user.UserAccount
 import com.fulgurogo.features.user.kgs.KgsClient
@@ -13,41 +12,9 @@ import com.fulgurogo.utilities.*
 import com.fulgurogo.utilities.Logger.Level.INFO
 import java.time.ZonedDateTime
 
-class LadderService : GameScanListener {
-    override fun onScanStarted() {
-        log(INFO, "onScanStarted")
-        handleAllUsers { user ->
-            // Create ladder player
-            val ladderPlayer = DatabaseAccessor.ladderPlayer(user)
-            if (ladderPlayer == null || !ladderPlayer.ranked) {
-                // Player not created or not ranked yet => (re)compute initial ranking
-                var kgsPlayerRating: Glickotlin.Player? = null
-                var ogsPlayerRating: Glickotlin.Player? = null
-
-                (UserAccount.KGS.client as KgsClient).user(user)?.let { kgsUser ->
-                    // Only count KGS if rank is stable (no ?), and offset by -1 stone
-                    if (kgsUser.hasStableRank()) kgsPlayerRating = Glickotlin.Player(
-                        kgsUser.rank.toRating(-1),
-                        INITIAL_DEVIATION,
-                        INITIAL_VOLATILITY
-                    )
-                }
-
-                (UserAccount.OGS.client as OgsClient).user(user)?.let { ogsUser ->
-                    val rating: OgsUser.Rating = ogsUser.fullRatings.live19
-                    ogsPlayerRating = Glickotlin.Player(rating.rating, INITIAL_DEVIATION, INITIAL_VOLATILITY)
-                }
-
-                val player = kgsPlayerRating.averageWith(ogsPlayerRating)
-
-                if (ladderPlayer == null) DatabaseAccessor.createLadderPlayer(user.discordId, player)
-                else DatabaseAccessor.updateLadderPlayerInitialRating(user.discordId, player)
-            }
-        }
-    }
-
-    override fun onScanFinished() {
-        log(INFO, "onScanFinished")
+object LadderRatingsService {
+    fun refresh() {
+        log(INFO, "refresh")
 
         applyRatingAlgorithm()
         DatabaseAccessor.cleanLadderRatings()
@@ -62,12 +29,13 @@ class LadderService : GameScanListener {
         // Fetch ladder games in interval
         val ladderGames = DatabaseAccessor.ladderGamesFor(ladderPlayer.discordId, from, to)
         if (ladderGames.isNotEmpty()) {
+            if (!ladderPlayer.ranked) refreshInitialRating(ladderPlayer)
+
             // Update player ratings using his/her games
             log(
                 INFO,
                 "Applying Glicko algorithm to ${ladderGames.size} games for user ${ladderPlayer.discordId}"
             )
-
             var tmpPlayer = ladderPlayer.clone()
             ladderGames.forEach { game ->
                 val black = ladderPlayer.discordId == game.blackPlayerDiscordId
@@ -106,11 +74,12 @@ class LadderService : GameScanListener {
                 }
             }
         } else if (ladderPlayer.ranked && now.hour in 2..3) {
-            // For players without games on whole day, apply glicko algo only once a day
+            // For players without games only apply glicko algo once a day (to increase deviation)
             val noGames = DatabaseAccessor
                 .ladderGamesFor(ladderPlayer.discordId, now.minusDays(1).toDate(), to)
                 .isEmpty()
             if (noGames) {
+                log(INFO, "User has no games for 24h, applying empty Glicko algorithm.")
                 val glickoPlayer =
                     Glickotlin.Player(ladderPlayer.rating, ladderPlayer.deviation, ladderPlayer.volatility)
                 Glickotlin.Algorithm().updateRating(glickoPlayer, listOf())
@@ -126,7 +95,41 @@ class LadderService : GameScanListener {
                 // Save updated rating in DB
                 DatabaseAccessor.updateLadderPlayer(updatedPlayer)
                 DatabaseAccessor.saveLadderRating(updatedPlayer)
-            } else log(INFO, "Skipping algorithm, scan empty but ranked player has recent games.")
-        } else log(INFO, "Skipping algorithm, no games (player unranked or not good time to update empty).")
+            } else log(INFO, "Skipping algorithm, scan is empty but player has played today.")
+        } else log(
+            INFO,
+            "Skipping algorithm, either the player is unranked or it is not yet the time to applying empty algo."
+        )
+    }
+
+
+    private fun refreshInitialRating(ladderPlayer: LadderPlayer) {
+        log(INFO, "Refreshing initial rating")
+
+        DatabaseAccessor.user(UserAccount.DISCORD, ladderPlayer.discordId)?.let { user ->
+            // Player not ranked yet => compute initial ranking
+            var kgsPlayerRating: Glickotlin.Player? = null
+            var ogsPlayerRating: Glickotlin.Player? = null
+
+            (UserAccount.KGS.client as KgsClient).user(user)?.let { kgsUser ->
+                log(INFO, "Fetching KGS rank")
+                // Only count KGS if rank is stable (no ?), and offset by -1 stone
+                if (kgsUser.hasStableRank()) kgsPlayerRating = Glickotlin.Player(
+                    kgsUser.rank.toRating(-1), INITIAL_DEVIATION, INITIAL_VOLATILITY
+                )
+            }
+
+            (UserAccount.OGS.client as OgsClient).user(user)?.let { ogsUser ->
+                log(INFO, "Fetching OGS rank")
+                val rating: OgsUser.Rating = ogsUser.fullRatings.live19
+                ogsPlayerRating = Glickotlin.Player(
+                    rating.rating, INITIAL_DEVIATION, INITIAL_VOLATILITY
+                )
+            }
+
+            val player = kgsPlayerRating.averageWith(ogsPlayerRating)
+            DatabaseAccessor.updateLadderPlayerInitialRating(user.discordId, player)
+        } ?: throw InvalidUserException
+
     }
 }

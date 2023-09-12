@@ -1,4 +1,4 @@
-package com.fulgurogo.features.ladder.api
+package com.fulgurogo.features.api
 
 import com.fulgurogo.Config.Ladder.INITIAL_DEVIATION
 import com.fulgurogo.Config.Ladder.INITIAL_RATING

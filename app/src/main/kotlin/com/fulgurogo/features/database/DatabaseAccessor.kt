@@ -2,15 +2,17 @@ package com.fulgurogo.features.database
 
 import com.fulgurogo.Config
 import com.fulgurogo.Config.Ladder.INITIAL_DEVIATION
+import com.fulgurogo.Config.Ladder.INITIAL_RATING
+import com.fulgurogo.Config.Ladder.INITIAL_VOLATILITY
+import com.fulgurogo.features.api.ApiPlayer
+import com.fulgurogo.features.api.ApiStability
+import com.fulgurogo.features.api.AuthCredentials
+import com.fulgurogo.features.api.AuthRequestResponse
 import com.fulgurogo.features.exam.*
 import com.fulgurogo.features.games.Game
 import com.fulgurogo.features.ladder.LadderPlayer
 import com.fulgurogo.features.ladder.LadderRating
 import com.fulgurogo.features.ladder.Tier
-import com.fulgurogo.features.ladder.api.ApiPlayer
-import com.fulgurogo.features.ladder.api.ApiStability
-import com.fulgurogo.features.ladder.api.AuthCredentials
-import com.fulgurogo.features.ladder.api.AuthRequestResponse
 import com.fulgurogo.features.ladder.glicko.Glickotlin
 import com.fulgurogo.features.user.User
 import com.fulgurogo.features.user.UserAccount
@@ -683,7 +685,7 @@ object DatabaseAccessor {
             .executeAndFetchFirst(LadderPlayer::class.java)
     }
 
-    fun createLadderPlayer(discordId: String, rating: Glickotlin.Player): Connection = dao.open().use { connection ->
+    fun createLadderPlayer(discordId: String): Connection = dao.open().use { connection ->
         val query = "INSERT INTO ladder( " +
                 " ${UserAccount.DISCORD.databaseId}, " +
                 " rating, " +
@@ -695,9 +697,9 @@ object DatabaseAccessor {
         connection
             .createQuery(query)
             .addParameter("discordId", discordId)
-            .addParameter("rating", rating.rating())
-            .addParameter("deviation", rating.deviation())
-            .addParameter("volatility", rating.volatility())
+            .addParameter("rating", INITIAL_RATING)
+            .addParameter("deviation", INITIAL_DEVIATION)
+            .addParameter("volatility", INITIAL_VOLATILITY)
             .executeUpdate()
     }
 

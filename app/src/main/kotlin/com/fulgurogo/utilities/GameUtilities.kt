@@ -58,17 +58,3 @@ fun Glickotlin.Player?.averageWith(otherPlayer: Glickotlin.Player?): Glickotlin.
         INITIAL_DEVIATION,
         INITIAL_VOLATILITY
     )
-
-fun Int?.toHandicapEmoji(): String = when (this) {
-    9 -> ":nine:"
-    8 -> ":eight:"
-    7 -> ":seven:"
-    6 -> ":six:"
-    5 -> ":five:"
-    4 -> ":four:"
-    3 -> ":three:"
-    2 -> ":two:"
-    1 -> ":one:"
-    0 -> ":zero:"
-    else -> ":zero:"
-}

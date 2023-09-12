@@ -1,4 +1,4 @@
-package com.fulgurogo.features.ladder.api
+package com.fulgurogo.features.api
 
 import com.fulgurogo.features.games.Game
 import com.fulgurogo.utilities.InvalidUserException

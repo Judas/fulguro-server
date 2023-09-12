@@ -1,8 +1,4 @@
-package com.fulgurogo.features.ladder.api
-
-import com.fulgurogo.utilities.toDate
-import java.time.ZonedDateTime
-import java.util.*
+package com.fulgurogo.features.api
 
 data class AuthRequestResponse(
     val access_token: String,

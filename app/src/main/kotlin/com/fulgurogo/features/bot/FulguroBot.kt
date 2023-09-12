@@ -1,36 +1,25 @@
 package com.fulgurogo.features.bot
 
-import com.fulgurogo.Config.Bot
-import com.fulgurogo.features.admin.AdminCommandProcessor
-import com.fulgurogo.features.exam.ExamCommandProcessor
-import com.fulgurogo.features.exam.ExamService
+import com.fulgurogo.features.database.DatabaseAccessor
 import com.fulgurogo.features.games.GameScanner
-import com.fulgurogo.features.info.InfoCommandProcessor
-import com.fulgurogo.features.ladder.LadderCommandProcessor
-import com.fulgurogo.features.ladder.LadderService
-import com.fulgurogo.features.user.UserService
 import com.fulgurogo.utilities.Logger.Level.INFO
+import com.fulgurogo.utilities.acknowledge
 import com.fulgurogo.utilities.log
-import net.dv8tion.jda.api.EmbedBuilder
+import com.fulgurogo.utilities.simpleError
+import com.fulgurogo.utilities.simpleMessage
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import net.dv8tion.jda.api.JDA
 import net.dv8tion.jda.api.events.ReadyEvent
 import net.dv8tion.jda.api.events.ShutdownEvent
 import net.dv8tion.jda.api.events.interaction.SlashCommandEvent
-import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent
-import net.dv8tion.jda.api.events.message.priv.PrivateMessageReceivedEvent
 import net.dv8tion.jda.api.hooks.ListenerAdapter
-import net.dv8tion.jda.api.requests.RestAction
-import java.util.*
+import net.dv8tion.jda.api.interactions.commands.build.CommandData
+import net.dv8tion.jda.api.interactions.commands.build.SubcommandData
 
-class FulguroBot : ListenerAdapter() {
-    private var gameScanner: GameScanner? = null
-
-    private var mainCommandProcessor: MainCommandProcessor = MainCommandProcessor()
-    private val subcommandProcessors: MutableMap<String, CommandProcessor> = mutableMapOf(
-        Command.Admin.NAME to AdminCommandProcessor(),
-        Command.Info.NAME to InfoCommandProcessor(),
-        Command.Exam.NAME to ExamCommandProcessor(),
-        Command.Ladder.NAME to LadderCommandProcessor()
-    )
+object FulguroBot : ListenerAdapter() {
+    var jda: JDA? = null
 
     /**
      * When ready, create slash commands and start services.
@@ -39,19 +28,13 @@ class FulguroBot : ListenerAdapter() {
         super.onReady(event)
         log(INFO, "onReady")
 
-        // Start game scanner
-        gameScanner = GameScanner(
-            listOf(
-                UserService(event.jda),
-                ExamService(event.jda),
-                LadderService(),
-            )
-        )
-        gameScanner?.start()
+        jda = event.jda
 
         // Add bot commands to guild
+        val command = CommandData("fulguro", "Commandes Admin de FulguroBot")
+            .addSubcommands(SubcommandData("scan", "Lance un scan des parties."))
         for (guild in event.jda.guilds) {
-            guild.updateCommands().addCommands(Command.Fulguro.GROUP).queue()
+            guild.updateCommands().addCommands(command).queue()
         }
     }
 
@@ -61,9 +44,7 @@ class FulguroBot : ListenerAdapter() {
     override fun onShutdown(event: ShutdownEvent) {
         super.onShutdown(event)
         log(INFO, "onShutdown")
-
-        // Stop game scanner
-        gameScanner?.stop()
+        jda = null
     }
 
     /**
@@ -72,36 +53,29 @@ class FulguroBot : ListenerAdapter() {
     override fun onSlashCommand(event: SlashCommandEvent) {
         super.onSlashCommand(event)
         log(INFO, "onSlashCommand ${event.name} ${event.subcommandName}")
-        if (event.name == Command.Fulguro.NAME) {
-            (subcommandProcessors[event.subcommandGroup] ?: mainCommandProcessor)
-                .processCommand(event, gameScanner)
-        } else mainCommandProcessor.processUnknownCommand(event)
+
+        if (event.name == "fulguro" && event.subcommandName == "scan")
+            scan(event)
+        else simpleError(
+            acknowledge(event),
+            ":robot:",
+            "Commande inconnue."
+        )
     }
 
-    /**
-     * When receiving a malformed command, delete it and send a private message to the author.
-     */
-    override fun onGuildMessageReceived(event: GuildMessageReceivedEvent) {
-        super.onGuildMessageReceived(event)
+    private fun scan(event: SlashCommandEvent) {
+        log(INFO, "scan")
 
-        val originalMessage = event.message.contentDisplay
-        val trimmed = originalMessage.trim().replace(" ".toRegex(), "").lowercase(Locale.ROOT)
-        if (trimmed.startsWith("/" + Command.Fulguro.NAME)) {
-            log(INFO, "Filtering command $originalMessage")
+        val hook = acknowledge(event)
+        DatabaseAccessor.ensureUser(event.user.id)
 
-            val embed = EmbedBuilder().setColor(Bot.EMBED_COLOR)
-                .setTitle(Command.Fulguro.EMOJI + "    __Commandes FulguroBot__    " + Command.Fulguro.EMOJI)
-                .setDescription("Ta commande était malformée, je l'ai supprimée du salon. Voilà ce que tu as tapé : \n**$originalMessage**")
-                .build()
-
-            val deleteOriginal: RestAction<Void> = event.message.delete()
-            val sendPM = event.author.openPrivateChannel().flatMap { channel -> channel.sendMessageEmbeds(embed) }
-            deleteOriginal.and(sendPM).queue()
-        }
-    }
-
-    override fun onPrivateMessageReceived(event: PrivateMessageReceivedEvent) {
-        super.onPrivateMessageReceived(event)
-        log(INFO, "onPrivateMessageReceived")
+        val asimov = event.guild?.getMember(event.user)?.roles?.any { it.name == "Asimov" } ?: false
+        if (asimov) {
+            CoroutineScope(Dispatchers.IO).launch {
+                log(INFO, "Starting manual scan.")
+                GameScanner.scan()
+            }
+            simpleMessage(hook, ":robot:", "Scan manuel", "Scan démarré")
+        } else simpleError(hook, ":robot:", ":robot: *Commande réservée aux admins*")
     }
 }
