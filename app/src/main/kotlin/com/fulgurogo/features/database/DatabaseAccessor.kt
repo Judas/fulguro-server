@@ -245,7 +245,6 @@ object DatabaseAccessor {
 
     fun deleteUser(discordId: String): Connection = dao.open().use { connection ->
         listOf(
-            "exam_phantoms",
             "exam_points",
             "ladder",
             "ladder_ratings",
@@ -531,43 +530,12 @@ object DatabaseAccessor {
         }
     }
 
-    fun revealExamPhantom(revealerId: String, phantomId: String): Connection = dao.open().use { connection ->
-        val queryUpdate = "UPDATE exam_phantoms SET " +
-                " revealed = 1, " +
-                " revealer = :revealerId " +
-                " WHERE ${UserAccount.DISCORD.databaseId} = :phantomId "
-        log(INFO, "revealExamPhantom [$queryUpdate] $revealerId $phantomId")
-        connection
-            .createQuery(queryUpdate)
-            .addParameter("revealerId", revealerId)
-            .addParameter("phantomId", phantomId)
-            .executeUpdate()
-
-        val queryPoints = "UPDATE exam_points SET phantom = phantom + :phantom " +
-                " WHERE ${UserAccount.DISCORD.databaseId} = :revealerId "
-        log(INFO, "revealExamPhantom [$queryPoints] $revealerId")
-        connection
-            .createQuery(queryPoints)
-            .addParameter("revealerId", revealerId)
-            .addParameter("phantom", 20)
-            .executeUpdate()
-    }
-
-    fun examPhantoms(): List<ExamPhantom> = dao.open().use { connection ->
-        val query = "SELECT * FROM exam_phantoms"
-        log(INFO, "examPhantoms [$query]")
-        connection
-            .createQuery(query)
-            .throwOnMappingFailure(false)
-            .executeAndFetch(ExamPhantom::class.java)
-    }
-
     fun examStats(): ExamSessionStats = dao.open().use { connection ->
         val query = "SELECT " +
                 " SUM(participation) AS totalParticipation, " +
                 " SUM(community) AS totalCommunity, " +
                 " COUNT(*) AS candidates, " +
-                " (SUM(participation) + SUM(community) + SUM(patience) + SUM(victory) + SUM(refinement) + SUM(performance) + SUM(achievement) + SUM(phantom)) AS promoTotal " +
+                " (SUM(participation) + SUM(community) + SUM(patience) + SUM(victory) + SUM(refinement) + SUM(performance) + SUM(achievement)) AS promoTotal " +
                 " FROM exam_points WHERE participation > 0"
         log(INFO, "examStats [$query]")
         connection
@@ -647,18 +615,6 @@ object DatabaseAccessor {
                 "achievement = 0 "
 
         log(INFO, "clearExamPoints [$query]")
-        connection.createQuery(query).executeUpdate()
-    }
-
-    fun clearPhantomPoints(): Connection = dao.open().use { connection ->
-        val query = "UPDATE exam_points SET phantom = 0 "
-        log(INFO, "clearPhantomPoints [$query]")
-        connection.createQuery(query).executeUpdate()
-    }
-
-    fun clearPhantoms(): Connection = dao.open().use { connection ->
-        val query = "TRUNCATE exam_phantoms"
-        log(INFO, "clearPhantoms [$query]")
         connection.createQuery(query).executeUpdate()
     }
 

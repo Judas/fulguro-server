@@ -12,7 +12,6 @@ data class ExamPlayer(
     val refinement: Int = 0,
     val performance: Int = 0,
     val achievement: Int = 0,
-    val phantom: Int = 0,
 
     val hunter: Boolean,
 
@@ -26,7 +25,7 @@ data class ExamPlayer(
     val head: Int = 0
 ) {
     fun totalPoints(): Int =
-        participation + community + patience + victory + refinement + performance + achievement + phantom
+        participation + community + patience + victory + refinement + performance + achievement
 
     fun totalPointsString(): String = totalPoints().let { "$it ${if (it < 2) "pt" else "pts"}" }
 

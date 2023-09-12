@@ -58,36 +58,17 @@ class ExamPointsService(private val jda: JDA) {
         DatabaseAccessor.examGames(from, to)
             .forEach { game ->
                 log(INFO, "Treating game ${game.id}")
-                addExamPoints(game, game.blackPlayerDiscordId, game.whitePlayerDiscordId, game.blackPlayerWon, true)
-                addExamPoints(game, game.whitePlayerDiscordId, game.blackPlayerDiscordId, game.whitePlayerWon, false)
+                addExamPoints(game, game.blackPlayerDiscordId, true)
+                addExamPoints(game, game.whitePlayerDiscordId, false)
             }
     }
 
     private fun addExamPoints(
         game: Game,
         mainPlayerDiscordId: String?,
-        opponentPlayerDiscordId: String?,
-        mainPlayerWon: Boolean?,
         isBlack: Boolean
     ) {
         DatabaseAccessor.addExamPoints(mainPlayerDiscordId, ExamPoints.fromGame(game, isBlack))
-
-        // No phantom points is one of the players isn't in the community
-        if (mainPlayerDiscordId == null || opponentPlayerDiscordId == null) return
-
-        val opponentPhantom =
-            DatabaseAccessor.examPhantoms().firstOrNull { it.discordId == opponentPlayerDiscordId }
-        if (opponentPhantom != null && !opponentPhantom.revealed && mainPlayerWon == true) {
-            // Phantom revealed !
-            DatabaseAccessor.revealExamPhantom(mainPlayerDiscordId, opponentPlayerDiscordId)
-
-            val revealerName = jda.userName(mainPlayerDiscordId)
-            val phantomName = jda.userName(opponentPlayerDiscordId)
-            jda.publicMessage(
-                Config.Exam.CHANNEL_ID,
-                ":ghost: $revealerName a démasqué un membre de la **Brigade Fantôme** : $phantomName :ghost:"
-            )
-        }
     }
 
     private fun printDailyRanking() {
@@ -186,31 +167,6 @@ class ExamPointsService(private val jda: JDA) {
                 Config.Exam.CHANNEL_ID,
                 "${jda.userName(hunter)} valide son examen et devient **Hunter** !"
             )
-        }
-
-        // Phantom revealers become hunters if half of the phantoms are revealed
-        val phantoms = DatabaseAccessor.examPhantoms()
-        val revealedCount = phantoms.count { it.revealed }
-        if (revealedCount * 2 > phantoms.size) {
-            jda.publicMessage(
-                Config.Exam.CHANNEL_ID,
-                ":ghost: Bravo les Hunters, la moitié de la **Brigade Fantôme** a été démasquée ! :ghost:"
-            )
-
-            phantoms
-                .filter { it.revealed }
-                .forEach { phantom ->
-                    DatabaseAccessor.examPlayer(phantom.revealer)?.let { revealer ->
-                        if (!revealer.hunter) {
-                            newHunters.add(revealer)
-                            DatabaseAccessor.promoteHunter(revealer)
-                            jda.publicMessage(
-                                Config.Exam.CHANNEL_ID,
-                                "${jda.userName(revealer)} devient **Hunter** en ayant démasqué un membre de la **Brigade Fantôme** !"
-                            )
-                        }
-                    }
-                }
         }
 
         val specMessages = mutableListOf<String>()
@@ -312,8 +268,6 @@ class ExamPointsService(private val jda: JDA) {
         log(INFO, "restartExam")
 
         DatabaseAccessor.clearExamPoints()
-        DatabaseAccessor.clearPhantomPoints()
-        DatabaseAccessor.clearPhantoms()
 
         var message = "$EMOJI __Clôture de l'**Examen Hunter**__ $EMOJI\n"
         message += "\nL'**Examen Hunter** $promoName est désormais clos. Une nouvelle session commence.\nQue brûlent vos nens ! :fire:"
