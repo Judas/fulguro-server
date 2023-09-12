@@ -40,6 +40,7 @@ fun main() {
             get("/gold/api/auth/profile", Api::getAuthProfile)
             get("/gold/api/scan", Api::isScanning)
             post("/gold/api/link", Api::link)
+            delete("/gold/api/link", Api::unlink)
         }
 
     // Launching GameScanner

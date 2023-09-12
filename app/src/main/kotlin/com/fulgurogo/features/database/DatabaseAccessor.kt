@@ -243,6 +243,19 @@ object DatabaseAccessor {
                 .executeUpdate()
         }
 
+    fun unlinkUserAccount(discordId: String, account: UserAccount, accountId: String): Connection =
+        dao.open().use { connection ->
+            val query = "UPDATE users " +
+                    " SET ${account.databaseId} = NULL " +
+                    " WHERE ${UserAccount.DISCORD.databaseId} = :discordId"
+            log(INFO, "unlinkUserAccount [$query] $accountId $discordId")
+            connection
+                .createQuery(query)
+                .addParameter("accountId", accountId)
+                .addParameter("discordId", discordId)
+                .executeUpdate()
+        }
+
     fun deleteUser(discordId: String): Connection = dao.open().use { connection ->
         listOf(
             "exam_points",

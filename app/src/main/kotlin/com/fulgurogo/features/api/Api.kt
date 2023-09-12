@@ -259,4 +259,33 @@ object Api {
         log(ERROR, "getAuthProfile", e)
         context.internalError()
     }
+
+    fun unlink(context: Context) = try {
+        context.rateLimit()
+
+        // Param validation
+        val body = gson.fromJson(context.body(), LinkRequestBody::class.java)
+        val account = UserAccount.find(body.account)
+        val accountId = body.accountId
+        val discordId = body.discordId
+
+        if (account == null || accountId.isBlank() || discordId.isBlank()) context.notFoundError()
+        else {
+            // Check that discord id exists
+            val discordUser = DatabaseAccessor.user(UserAccount.DISCORD, discordId)
+            if (discordUser == null) context.notFoundError()
+            else {
+                // Check that this account exists link
+                DatabaseAccessor.user(account, accountId)?.let {
+                    DatabaseAccessor.unlinkUserAccount(discordId, account, accountId)
+                    context.standardResponse()
+                } ?: run {
+                    context.internalError()
+                }
+            }
+        }
+    } catch (e: Exception) {
+        log(ERROR, "getAuthProfile", e)
+        context.internalError()
+    }
 }
