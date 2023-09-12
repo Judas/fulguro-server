@@ -4,6 +4,8 @@ import com.fulgurogo.Config
 import com.fulgurogo.features.bot.FulguroBot
 import com.fulgurogo.features.database.DatabaseAccessor
 import com.fulgurogo.features.games.GameScanner
+import com.fulgurogo.features.user.User
+import com.fulgurogo.features.user.UserAccount
 import com.fulgurogo.utilities.*
 import com.fulgurogo.utilities.Logger.Level.ERROR
 import com.fulgurogo.utilities.Logger.Level.INFO
@@ -103,16 +105,10 @@ object Api {
     fun authenticateUser(context: Context) = try {
         context.rateLimit()
 
-        val authCode = context.queryParam("code")
-        val goldId = context.queryParam("goldId")
-        if (goldId == null || authCode == null) {
-            log(ERROR, "DISCORD AUTH MISSING PARAMS")
-            context.notFoundError()
-        } else {
-            val authRequestResponse = requestAuthToken(authCode)
-            DatabaseAccessor.saveAuthCredentials(goldId, authRequestResponse)
-            context.standardResponse()
-        }
+        val body = gson.fromJson(context.body(), AuthRequestBody::class.java)
+        val authRequestResponse = requestAuthToken(body.code)
+        DatabaseAccessor.saveAuthCredentials(body.goldId, authRequestResponse)
+        context.standardResponse()
     } catch (e: Exception) {
         log(ERROR, "authenticateUser", e)
         context.internalError()
@@ -218,6 +214,47 @@ object Api {
     fun isScanning(context: Context) = try {
         context.rateLimit()
         context.standardResponse(GameScanner.isScanning)
+    } catch (e: Exception) {
+        log(ERROR, "getAuthProfile", e)
+        context.internalError()
+    }
+
+    fun link(context: Context) = try {
+        context.rateLimit()
+
+        // Param validation
+        val body = gson.fromJson(context.body(), LinkRequestBody::class.java)
+        val account = UserAccount.find(body.account)
+        val accountId = body.accountId
+        val discordId = body.discordId
+
+        if (account == null || accountId.isBlank() || discordId.isBlank()) context.notFoundError()
+        else {
+            // Check that discord id exists
+            val discordUser = DatabaseAccessor.user(UserAccount.DISCORD, discordId)
+            if (discordUser == null) context.notFoundError()
+            else {
+                // Check that this account is free to link
+                DatabaseAccessor.user(account, accountId)?.let {
+                    // Already linked
+                    context.internalError()
+                } ?: run {
+                    val user = account.client.user(User.dummyFrom(discordId, account, accountId))
+                    val realId = if (account == UserAccount.FOX) user?.pseudo()!! else user?.id()!!
+                    DatabaseAccessor.linkUserAccount(discordId, account, realId)
+
+                    // Update user info (pseudo / rank)
+                    FulguroBot.jda?.let { jda ->
+                        DatabaseAccessor
+                            .user(account, accountId)
+                            ?.cloneUserWithUpdatedProfile(jda, true)
+                            ?.let { DatabaseAccessor.updateUser(it) }
+                    }
+
+                    context.standardResponse()
+                }
+            }
+        }
     } catch (e: Exception) {
         log(ERROR, "getAuthProfile", e)
         context.internalError()
