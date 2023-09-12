@@ -202,6 +202,20 @@ object DatabaseAccessor {
             .executeUpdate()
     }
 
+    fun updateSimpleUser(user: User): Connection = dao.open().use { connection ->
+        val query = "UPDATE users SET " +
+                " name = :name, " +
+                " avatar = :avatar" +
+                " WHERE ${UserAccount.DISCORD.databaseId} = :discordId "
+        log(INFO, "updateSimpleUser [$query] ${user.discordId}")
+        connection
+            .createQuery(query)
+            .addParameter("discordId", user.discordId)
+            .addParameter("name", user.name)
+            .addParameter("avatar", user.avatar)
+            .executeUpdate()
+    }
+
     fun updateUserScanDate(discordId: String, date: Date): Connection = dao.open().use { connection ->
         val query = "UPDATE users SET " +
                 " last_game_scan = :lastGameScan " +

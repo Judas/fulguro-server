@@ -146,7 +146,7 @@ class LadderApi(private val jda: JDA) {
                         // User is not on the server
                         context.notFoundError()
                     } else {
-                        DatabaseAccessor.updateUser(user)
+                        DatabaseAccessor.updateSimpleUser(user)
                         val profile = ApiProfile(user.discordId, user.name, user.avatar, validCreds.expirationDate)
                         context.standardResponse(profile)
                     }
