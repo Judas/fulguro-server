@@ -38,7 +38,7 @@ fun main() {
             get("/gold/api/tiers", Api::getTiers)
             get("/gold/api/auth", Api::authenticateUser)
             get("/gold/api/auth/profile", Api::getAuthProfile)
-            //get("/gold/api/scan", Api::isScanning)
+            get("/gold/api/scan", Api::isScanning)
         }
 
     // Launching GameScanner

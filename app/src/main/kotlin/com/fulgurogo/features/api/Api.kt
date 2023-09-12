@@ -3,6 +3,7 @@ package com.fulgurogo.features.api
 import com.fulgurogo.Config
 import com.fulgurogo.features.bot.FulguroBot
 import com.fulgurogo.features.database.DatabaseAccessor
+import com.fulgurogo.features.games.GameScanner
 import com.fulgurogo.utilities.*
 import com.fulgurogo.utilities.Logger.Level.ERROR
 import com.fulgurogo.utilities.Logger.Level.INFO
@@ -212,5 +213,13 @@ object Api {
         val responseBody = response.body?.string()
         response.close()
         return gson.fromJson(responseBody, ProfileRequestResponse::class.java).id
+    }
+
+    fun isScanning(context: Context) = try {
+        context.rateLimit()
+        context.standardResponse(GameScanner.isScanning)
+    } catch (e: Exception) {
+        log(ERROR, "getAuthProfile", e)
+        context.internalError()
     }
 }
