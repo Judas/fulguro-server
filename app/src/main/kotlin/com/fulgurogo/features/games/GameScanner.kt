@@ -97,16 +97,17 @@ object GameScanner {
         } ?: log(ERROR, "Can't start scan, JDA is null")
     }
 
-    private fun refreshUserProfile(jda: JDA, rawUser: User): User {
-        log(INFO, "Refreshing user profile")
-        val user = rawUser.cloneUserWithUpdatedProfile(jda, true)
-        DatabaseAccessor.updateUser(user)
-        if (user.name == user.discordId) {
-            DatabaseAccessor.deleteUser(user.discordId)
-            throw InvalidUserException
-        }
-        return user
-    }
+    private fun refreshUserProfile(jda: JDA, rawUser: User): User =
+        if (ZonedDateTime.now(DATE_ZONE).hour in 1..3) {
+            log(INFO, "Refreshing user profile")
+            val user = rawUser.cloneUserWithUpdatedProfile(jda, true)
+            DatabaseAccessor.updateUser(user)
+            if (user.name == user.discordId) {
+                DatabaseAccessor.deleteUser(user.discordId)
+                throw InvalidUserException
+            }
+            user
+        } else rawUser
 
     private fun updateUnfinishedGamesStatus(user: User) {
         log(INFO, "Updating unfinished games status")
