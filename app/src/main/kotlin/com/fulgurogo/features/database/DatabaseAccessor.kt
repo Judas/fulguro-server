@@ -557,6 +557,15 @@ object DatabaseAccessor {
             .executeAndFetchFirst(ExamSessionStats::class.java)
     }
 
+    fun getPromotions(): List<ExamAward> = dao.open().use { connection ->
+        val query = "SELECT * FROM exam_awards ORDER BY id"
+        log(INFO, "getPromotions [$query]")
+        connection
+            .createQuery(query)
+            .throwOnMappingFailure(false)
+            .executeAndFetch(ExamAward::class.java)
+    }
+
     fun hasPromotionScore(promoName: String): Boolean = dao.open().use { connection ->
         val query = "SELECT * FROM exam_awards WHERE promo = :promoName"
         log(INFO, "hasPromotionScore [$query] $promoName")

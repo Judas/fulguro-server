@@ -3,6 +3,7 @@ package com.fulgurogo.features.api
 import com.fulgurogo.Config
 import com.fulgurogo.features.bot.FulguroBot
 import com.fulgurogo.features.database.DatabaseAccessor
+import com.fulgurogo.features.exam.ExamPlayerComparator
 import com.fulgurogo.features.games.GameScanner
 import com.fulgurogo.features.user.User
 import com.fulgurogo.features.user.UserAccount
@@ -215,7 +216,7 @@ object Api {
         context.rateLimit()
         context.standardResponse(GameScanner.isScanning)
     } catch (e: Exception) {
-        log(ERROR, "getAuthProfile", e)
+        log(ERROR, "getUserDiscordId", e)
         context.internalError()
     }
 
@@ -256,7 +257,7 @@ object Api {
             }
         }
     } catch (e: Exception) {
-        log(ERROR, "getAuthProfile", e)
+        log(ERROR, "link", e)
         context.internalError()
     }
 
@@ -285,7 +286,29 @@ object Api {
             }
         }
     } catch (e: Exception) {
-        log(ERROR, "getAuthProfile", e)
+        log(ERROR, "unlink", e)
+        context.internalError()
+    }
+
+    fun examRanking(context: Context) = try {
+        context.rateLimit()
+
+        val playerList = DatabaseAccessor.examPlayers()
+            .filter { it.totalPoints() > 0 }
+            .sortedWith(ExamPlayerComparator())
+            .map { ApiExamPlayer.from(it, DatabaseAccessor.ensureUser(it.discordId)) }
+
+        context.standardResponse(playerList)
+    } catch (e: Exception) {
+        log(ERROR, "examRanking", e)
+        context.internalError()
+    }
+
+    fun examHistory(context: Context) = try {
+        context.rateLimit()
+        context.standardResponse(DatabaseAccessor.getPromotions())
+    } catch (e: Exception) {
+        log(ERROR, "examHistory", e)
         context.internalError()
     }
 }
