@@ -7,6 +7,7 @@ import com.fulgurogo.features.exam.ExamPlayerComparator
 import com.fulgurogo.features.games.GameScanner
 import com.fulgurogo.features.user.User
 import com.fulgurogo.features.user.UserAccount
+import com.fulgurogo.features.user.ogs.OgsClient
 import com.fulgurogo.utilities.*
 import com.fulgurogo.utilities.Logger.Level.ERROR
 import com.fulgurogo.utilities.Logger.Level.INFO
@@ -220,6 +221,14 @@ object Api {
         context.internalError()
     }
 
+    fun getAccounts(context: Context) = try {
+        context.rateLimit()
+        context.standardResponse(UserAccount.values().filter { it != UserAccount.DISCORD })
+    } catch (e: Exception) {
+        log(ERROR, "getAccounts", e)
+        context.internalError()
+    }
+
     fun link(context: Context) = try {
         context.rateLimit()
 
@@ -234,31 +243,39 @@ object Api {
             // Check that discord id exists
             val discordUser = DatabaseAccessor.user(UserAccount.DISCORD, discordId)
             if (discordUser == null) context.notFoundError()
-            else {
-                // Check that this account is free to link
-                DatabaseAccessor.user(account, accountId)?.let {
-                    // Already linked
-                    context.internalError()
-                } ?: run {
-                    val user = account.client.user(User.dummyFrom(discordId, account, accountId))
-                    val realId = if (account == UserAccount.FOX) user?.pseudo()!! else user?.id()!!
-                    DatabaseAccessor.linkUserAccount(discordId, account, realId)
-
-                    // Update user info (pseudo / rank)
-                    FulguroBot.jda?.let { jda ->
-                        DatabaseAccessor
-                            .user(account, accountId)
-                            ?.cloneUserWithUpdatedProfile(jda, true)
-                            ?.let { DatabaseAccessor.updateUser(it) }
-                    }
-
-                    context.standardResponse()
-                }
-            }
+            else if (account == UserAccount.DISCORD) context.internalError()
+            else if (account == UserAccount.OGS) {
+                val ogsId = (UserAccount.OGS.client as OgsClient).userIdFromPseudo(accountId)
+                ogsId?.let { linkAccount(context, account, it, discordId) }
+                    ?: context.notFoundError()
+            } else linkAccount(context, account, accountId, discordId)
+            // TODO Find a way to get id from name for FFG/EGF
         }
     } catch (e: Exception) {
         log(ERROR, "link", e)
         context.internalError()
+    }
+
+    private fun linkAccount(context: Context, account: UserAccount, accountId: String, discordId: String) {
+        // Check that this account is free to link
+        DatabaseAccessor.user(account, accountId)?.let {
+            // Already linked
+            context.internalError()
+        } ?: run {
+            val user = account.client.user(User.dummyFrom(discordId, account, accountId))
+            val realId = if (account == UserAccount.FOX) user?.pseudo()!! else user?.id()!!
+            DatabaseAccessor.linkUserAccount(discordId, account, realId)
+
+            // Update user info (pseudo / rank)
+            FulguroBot.jda?.let { jda ->
+                DatabaseAccessor
+                    .user(account, accountId)
+                    ?.cloneUserWithUpdatedProfile(jda, true)
+                    ?.let { DatabaseAccessor.updateUser(it) }
+            }
+
+            context.standardResponse()
+        }
     }
 
     fun unlink(context: Context) = try {

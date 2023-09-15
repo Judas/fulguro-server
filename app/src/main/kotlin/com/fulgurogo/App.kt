@@ -39,6 +39,7 @@ fun main() {
             post("/gold/api/auth", Api::authenticateUser)
             get("/gold/api/auth/profile", Api::getAuthProfile)
             get("/gold/api/scan", Api::isScanning)
+            get("/gold/api/accounts", Api::getAccounts)
             post("/gold/api/link", Api::link)
             delete("/gold/api/link", Api::unlink)
             get("/gold/api/exam/ranking", Api::examRanking)

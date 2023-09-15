@@ -54,6 +54,12 @@ class OgsClient : UserAccountClient {
         if (id.isNullOrBlank()) null
         else get("${Config.Ogs.TERMINATION_API_URL}/player/$id", OgsUser::class.java)
 
+    fun userIdFromPseudo(pseudo: String): String? {
+        val url = "${Config.Ogs.API_URL}/players?username=$pseudo"
+        val userList = get(url, OgsUserList::class.java)
+        return userList.results.firstOrNull()?.id()
+    }
+
     private fun allGamesSince(user: User, limitDate: Date): List<OgsGame> =
         if (user.ogsId.isNullOrBlank()) throw EmptyUserIdException
         else {
