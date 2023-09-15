@@ -4,7 +4,7 @@ import com.fulgurogo.Config
 import com.fulgurogo.features.exam.ExamPlayer
 import net.dv8tion.jda.api.EmbedBuilder
 import net.dv8tion.jda.api.JDA
-import net.dv8tion.jda.api.events.interaction.SlashCommandEvent
+import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent
 import net.dv8tion.jda.api.interactions.InteractionHook
 
 fun JDA.userName(hunter: ExamPlayer): String = userName(hunter.discordId)
@@ -27,7 +27,7 @@ fun JDA.publicMessage(channelId: String, message: String, title: String = "") =
         )
         ?.queue()
 
-fun acknowledge(event: SlashCommandEvent): InteractionHook = event.let {
+fun acknowledge(event: SlashCommandInteractionEvent): InteractionHook = event.let {
     it.deferReply(true).queue()
     it.hook.setEphemeral(true)
 }

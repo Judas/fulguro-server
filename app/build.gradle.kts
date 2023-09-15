@@ -18,7 +18,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
 
     // Discord
-    implementation("net.dv8tion:JDA:4.4.0_352")
+    implementation("net.dv8tion:JDA:5.0.0-beta.13")
 
     // Javalin
     implementation("io.javalin:javalin:5.6.2")

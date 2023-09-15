@@ -11,11 +11,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import net.dv8tion.jda.api.JDA
-import net.dv8tion.jda.api.events.ReadyEvent
-import net.dv8tion.jda.api.events.ShutdownEvent
-import net.dv8tion.jda.api.events.interaction.SlashCommandEvent
+import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent
+import net.dv8tion.jda.api.events.session.ReadyEvent
+import net.dv8tion.jda.api.events.session.ShutdownEvent
 import net.dv8tion.jda.api.hooks.ListenerAdapter
-import net.dv8tion.jda.api.interactions.commands.build.CommandData
+import net.dv8tion.jda.api.interactions.commands.build.Commands
 import net.dv8tion.jda.api.interactions.commands.build.SubcommandData
 
 object FulguroBot : ListenerAdapter() {
@@ -31,7 +31,7 @@ object FulguroBot : ListenerAdapter() {
         jda = event.jda
 
         // Add bot commands to guild
-        val command = CommandData("fulguro", "Commandes Admin de FulguroBot")
+        val command = Commands.slash("fulguro", "Commandes Admin de FulguroBot")
             .addSubcommands(SubcommandData("scan", "Lance un scan des parties."))
         for (guild in event.jda.guilds) {
             guild.updateCommands().addCommands(command).queue()
@@ -50,9 +50,9 @@ object FulguroBot : ListenerAdapter() {
     /**
      * When receiving a slash command, forward to the appropriate command processor.
      */
-    override fun onSlashCommand(event: SlashCommandEvent) {
-        super.onSlashCommand(event)
-        log(INFO, "onSlashCommand ${event.name} ${event.subcommandName}")
+    override fun onSlashCommandInteraction(event: SlashCommandInteractionEvent) {
+        super.onSlashCommandInteraction(event)
+        log(INFO, "onSlashCommandInteraction ${event.name} ${event.subcommandName}")
 
         if (event.name == "fulguro" && event.subcommandName == "scan")
             scan(event)
@@ -63,7 +63,7 @@ object FulguroBot : ListenerAdapter() {
         )
     }
 
-    private fun scan(event: SlashCommandEvent) {
+    private fun scan(event: SlashCommandInteractionEvent) {
         log(INFO, "scan")
 
         val hook = acknowledge(event)
