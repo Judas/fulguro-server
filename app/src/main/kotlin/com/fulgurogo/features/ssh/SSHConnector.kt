@@ -12,7 +12,7 @@ object SSHConnector {
     fun connect() = try {
         log(INFO, "connect")
 
-        val localPort = 9876 // any free port can be used
+        val localPort = Config.SSH.FORWARDED_PORT // any free port can be used
         val config = Properties().apply {
             this["StrictHostKeyChecking"] = "no"
             this["ConnectionAttempts"] = "3"
