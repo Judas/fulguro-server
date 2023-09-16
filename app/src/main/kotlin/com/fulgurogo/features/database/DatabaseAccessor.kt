@@ -4,10 +4,7 @@ import com.fulgurogo.Config
 import com.fulgurogo.Config.Ladder.INITIAL_DEVIATION
 import com.fulgurogo.Config.Ladder.INITIAL_RATING
 import com.fulgurogo.Config.Ladder.INITIAL_VOLATILITY
-import com.fulgurogo.features.api.ApiPlayer
-import com.fulgurogo.features.api.ApiStability
-import com.fulgurogo.features.api.AuthCredentials
-import com.fulgurogo.features.api.AuthRequestResponse
+import com.fulgurogo.features.api.*
 import com.fulgurogo.features.exam.*
 import com.fulgurogo.features.games.Game
 import com.fulgurogo.features.ladder.LadderPlayer
@@ -638,6 +635,17 @@ object DatabaseAccessor {
 
         log(INFO, "clearExamPoints [$query]")
         connection.createQuery(query).executeUpdate()
+    }
+
+    fun examRanking(): MutableList<ApiExamPlayer> = dao.open().use { connection ->
+        val query = "SELECT * FROM exam_players " +
+                " WHERE total > 0" +
+                " ORDER BY total DESC, victory DESC, performance DESC, achievement DESC, refinement DESC, community DESC, patience DESC, participation DESC, ratio DESC, discord_id ASC "
+        log(INFO, "examRanking [$query]")
+        connection
+            .createQuery(query)
+            .throwOnMappingFailure(false)
+            .executeAndFetch(ApiExamPlayer::class.java)
     }
 
     // endregion

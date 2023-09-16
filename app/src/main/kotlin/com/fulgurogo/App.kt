@@ -43,7 +43,9 @@ fun main() {
             post("/gold/api/link", Api::link)
             delete("/gold/api/link", Api::unlink)
             get("/gold/api/exam/ranking", Api::examRanking)
+            get("/gold/api/exam/titles", Api::examTitles)
             get("/gold/api/exam/history", Api::examHistory)
+            get("/gold/api/exam/stats", Api::examStats)
         }
 
     // Launching GameScanner

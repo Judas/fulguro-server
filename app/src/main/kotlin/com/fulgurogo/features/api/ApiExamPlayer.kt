@@ -30,7 +30,6 @@ data class ApiExamPlayer(
     val head: Int,
     val ratio: Double
 ) {
-
     companion object {
         fun from(player: ExamPlayer, user: User) = ApiExamPlayer(
             user.discordId,

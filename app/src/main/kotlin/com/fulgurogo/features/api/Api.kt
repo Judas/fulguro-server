@@ -3,7 +3,7 @@ package com.fulgurogo.features.api
 import com.fulgurogo.Config
 import com.fulgurogo.features.bot.FulguroBot
 import com.fulgurogo.features.database.DatabaseAccessor
-import com.fulgurogo.features.exam.ExamPlayerComparator
+import com.fulgurogo.features.exam.ExamSpecialization
 import com.fulgurogo.features.games.GameScanner
 import com.fulgurogo.features.user.User
 import com.fulgurogo.features.user.UserAccount
@@ -309,23 +309,39 @@ object Api {
 
     fun examRanking(context: Context) = try {
         context.rateLimit()
-
-        val playerList = DatabaseAccessor.examPlayers()
-            .filter { it.totalPoints() > 0 }
-            .sortedWith(ExamPlayerComparator())
-            .map { ApiExamPlayer.from(it, DatabaseAccessor.ensureUser(it.discordId)) }
-
-        context.standardResponse(playerList)
+        context.standardResponse(DatabaseAccessor.examRanking())
     } catch (e: Exception) {
         log(ERROR, "examRanking", e)
         context.internalError()
     }
 
+    fun examTitles(context: Context) = try {
+        context.rateLimit()
+        val hunters = DatabaseAccessor.examPlayers()
+        val titles = mutableListOf<ApiExamTitle>()
+        ExamSpecialization.values().forEach { spec ->
+            val specHunter = hunters.firstOrNull { spec.titleCountCallback(it) > 0 }
+            titles.add(ApiExamTitle.from(specHunter, spec))
+        }
+        context.standardResponse(titles)
+    } catch (e: Exception) {
+        log(ERROR, "examTitles", e)
+        context.internalError()
+    }
+
     fun examHistory(context: Context) = try {
         context.rateLimit()
-        context.standardResponse(DatabaseAccessor.getPromotions())
+        context.standardResponse(DatabaseAccessor.getPromotions().reversed())
     } catch (e: Exception) {
         log(ERROR, "examHistory", e)
+        context.internalError()
+    }
+
+    fun examStats(context: Context) = try {
+        context.rateLimit()
+        context.standardResponse(ApiExamStats.from(DatabaseAccessor.examStats()))
+    } catch (e: Exception) {
+        log(ERROR, "examStats", e)
         context.internalError()
     }
 }
