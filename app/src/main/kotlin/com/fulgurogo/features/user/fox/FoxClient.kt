@@ -55,15 +55,16 @@ class FoxClient : UserAccountClient {
         if (pseudo.isNullOrBlank()) null
         else {
             val foxUser = get("${Config.Fox.API_URL}/${Config.Fox.USER_INFO}$pseudo", FoxUser::class.java)
-            foxUser.pseudo()?.let {
+            val hasPseudo = foxUser.pseudo().isNullOrBlank().not()
+            if (hasPseudo) {
                 val lastGame = lastHundredGames(foxUser.pseudo()!!).firstOrNull()
-                foxUser.rank = when (it) {
-                    lastGame?.blackPlayerPseudo() -> lastGame.blackPlayerRank()
-                    lastGame?.whitePlayerPseudo() -> lastGame.whitePlayerRank()
+                foxUser.rank = when (foxUser.pseudo()) {
+                    lastGame?.blackPlayerPseudo() -> lastGame?.blackPlayerRank()
+                    lastGame?.whitePlayerPseudo() -> lastGame?.whitePlayerRank()
                     else -> null
                 }
             }
-            foxUser
+            if (hasPseudo) foxUser else null
         }
 
     private fun lastHundredGames(user: User): List<FoxGame> =

@@ -266,18 +266,21 @@ object Api {
             context.internalError()
         } ?: run {
             val user = account.client.user(User.dummyFrom(discordId, account, accountId))
-            val realId = if (account == UserAccount.FOX) user?.pseudo()!! else user?.id()!!
-            DatabaseAccessor.linkUserAccount(discordId, account, realId)
 
-            // Update user info (pseudo / rank)
-            FulguroBot.jda?.let { jda ->
-                DatabaseAccessor
-                    .user(account, accountId)
-                    ?.cloneUserWithUpdatedProfile(jda, true)
-                    ?.let { DatabaseAccessor.updateUser(it) }
-            }
+            user?.let {
+                val realId = if (account == UserAccount.FOX) it.pseudo()!! else it.id()!!
+                DatabaseAccessor.linkUserAccount(discordId, account, realId)
 
-            context.standardResponse()
+                // Update user info (pseudo / rank)
+                FulguroBot.jda?.let { jda ->
+                    DatabaseAccessor
+                        .user(account, accountId)
+                        ?.cloneUserWithUpdatedProfile(jda, true)
+                        ?.let { DatabaseAccessor.updateUser(it) }
+                }
+
+                context.standardResponse()
+            } ?: context.notFoundError()
         }
     }
 
