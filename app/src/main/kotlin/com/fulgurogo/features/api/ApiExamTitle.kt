@@ -28,7 +28,7 @@ data class ApiExamTitle(
         } ?: run {
             ApiExamTitle(
                 null,
-                "Titre vacant",
+                "",
                 Config.Ladder.DEFAULT_AVATAR,
                 spec.fullName,
                 spec.unicodeEmoji,

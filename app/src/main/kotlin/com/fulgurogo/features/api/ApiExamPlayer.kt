@@ -1,9 +1,5 @@
 package com.fulgurogo.features.api
 
-import com.fulgurogo.Config
-import com.fulgurogo.features.exam.ExamPlayer
-import com.fulgurogo.features.user.User
-
 data class ApiExamPlayer(
     val discordId: String,
     val name: String,
@@ -29,30 +25,4 @@ data class ApiExamPlayer(
     val blacklist: Int,
     val head: Int,
     val ratio: Double
-) {
-    companion object {
-        fun from(player: ExamPlayer, user: User) = ApiExamPlayer(
-            user.discordId,
-            user.name ?: "Joueur inconnu",
-            user.avatar ?: Config.Ladder.DEFAULT_AVATAR,
-            player.totalPoints(),
-            player.participation,
-            player.community,
-            player.patience,
-            player.victory,
-            player.refinement,
-            player.performance,
-            player.achievement,
-            player.hunter,
-            player.information,
-            player.lost,
-            player.ruin,
-            player.treasure,
-            player.gourmet,
-            player.beast,
-            player.blacklist,
-            player.head,
-            player.pointsRatio()
-        )
-    }
-}
+)
