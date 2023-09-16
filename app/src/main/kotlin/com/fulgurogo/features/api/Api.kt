@@ -317,7 +317,7 @@ object Api {
 
     fun examTitles(context: Context) = try {
         context.rateLimit()
-        val hunters = DatabaseAccessor.examPlayers()
+        val hunters = DatabaseAccessor.titledHunters()
         val titles = mutableListOf<ApiExamTitle>()
         ExamSpecialization.values().forEach { spec ->
             val specHunter = hunters.firstOrNull { spec.titleCountCallback(it) > 0 }

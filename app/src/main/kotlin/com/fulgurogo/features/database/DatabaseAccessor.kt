@@ -116,7 +116,8 @@ object DatabaseAccessor {
             "access_token" to "accessToken",
             "token_type" to "tokenType",
             "refresh_token" to "refreshToken",
-            "expiration_date" to "expirationDate"
+            "expiration_date" to "expirationDate",
+            "community_games" to "communityGames"
         )
     }
 
@@ -554,6 +555,20 @@ object DatabaseAccessor {
             .executeAndFetchFirst(ExamSessionStats::class.java)
     }
 
+    fun titledHunters(): List<NamedExamPlayer> = dao.open().use { connection ->
+        val query = " SELECT u.name, e.* " +
+                " FROM users AS u " +
+                " INNER JOIN exam_points AS e ON u.discord_id = e.discord_id " +
+                " WHERE e.information > 0 OR e.lost > 0 " +
+                " OR e.ruin > 0 OR e.treasure > 0 OR e.gourmet > 0 " +
+                " OR e.beast > 0 OR e.blacklist > 0 OR e.head > 0 "
+        log(INFO, "titledHunters [$query]")
+        connection
+            .createQuery(query)
+            .throwOnMappingFailure(false)
+            .executeAndFetch(NamedExamPlayer::class.java)
+    }
+
     fun getPromotions(): List<ExamAward> = dao.open().use { connection ->
         val query = "SELECT * FROM exam_awards ORDER BY id"
         log(INFO, "getPromotions [$query]")
@@ -573,13 +588,18 @@ object DatabaseAccessor {
             .executeAndFetchFirst(ExamAward::class.java) != null
     }
 
-    fun savePromotionScore(promoName: String, totalScore: Int): Connection = dao.open().use { connection ->
-        val query = "INSERT INTO exam_awards(promo, score) VALUES (:promoName, :totalScore) "
-        log(INFO, "savePromotionScore [$query] $promoName $totalScore")
+    fun savePromotionScore(promoName: String, stats: ExamSessionStats): Connection = dao.open().use { connection ->
+        val query = "INSERT INTO exam_awards(promo, score, players, games, community_games) " +
+                " VALUES (:promo, :score, :players, :games, :communityGames) "
+
+        log(INFO, "savePromotionScore [$query] $promoName $stats")
         connection
             .createQuery(query)
-            .addParameter("promoName", promoName)
-            .addParameter("totalScore", totalScore)
+            .addParameter("promo", promoName)
+            .addParameter("score", stats.promoTotal)
+            .addParameter("players", stats.candidates)
+            .addParameter("games", stats.gamesPlayed())
+            .addParameter("communityGames", stats.internalGamesPlayed())
             .executeUpdate()
     }
 

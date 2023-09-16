@@ -1,39 +1,22 @@
 package com.fulgurogo.features.api
 
-import com.fulgurogo.Config
-import com.fulgurogo.features.database.DatabaseAccessor
-import com.fulgurogo.features.exam.ExamPlayer
 import com.fulgurogo.features.exam.ExamSpecialization
+import com.fulgurogo.features.exam.NamedExamPlayer
 
 data class ApiExamTitle(
     val discordId: String?,
     val name: String?,
-    val avatar: String?,
-
     val title: String,
     val emoji: String,
     val stars: Int
 ) {
     companion object {
-        fun from(player: ExamPlayer?, spec: ExamSpecialization): ApiExamTitle = player?.let {
-            val user = DatabaseAccessor.ensureUser(it.discordId)
-            ApiExamTitle(
-                it.discordId,
-                user.name,
-                user.avatar,
-                spec.fullName,
-                spec.unicodeEmoji,
-                spec.titleCountCallback(player) - 1
-            )
-        } ?: run {
-            ApiExamTitle(
-                null,
-                "",
-                Config.Ladder.DEFAULT_AVATAR,
-                spec.fullName,
-                spec.unicodeEmoji,
-                0
-            )
-        }
+        fun from(player: NamedExamPlayer?, spec: ExamSpecialization) = ApiExamTitle(
+            player?.discordId,
+            player?.name ?: "",
+            spec.fullName,
+            spec.unicodeEmoji,
+            player?.let { spec.titleCountCallback(it) - 1 } ?: 0
+        )
     }
 }

@@ -2,7 +2,7 @@ package com.fulgurogo.features.exam
 
 import com.fulgurogo.utilities.formatDecimals
 
-data class ExamPlayer(
+open class ExamPlayer(
     val discordId: String,
 
     val participation: Int = 0,

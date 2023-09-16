@@ -101,7 +101,7 @@ class ExamPointsService(private val jda: JDA) {
 
         // Netero Award, save score and check if it is best of all time
         message += "\n\n__Netero Award__\n\n"
-        DatabaseAccessor.savePromotionScore(promoName, stats.promoTotal)
+        DatabaseAccessor.savePromotionScore(promoName, stats)
         val award = DatabaseAccessor.examAward()
         message += if (award?.score == stats.promoTotal)
             "En établissant le nouveau record de points jamais attribué en une session d'examen, la promotion $promoName se voit attribuer le **Netero Award** ! Bravo à tous les participants !"
