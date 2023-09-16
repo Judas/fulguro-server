@@ -1,5 +1,7 @@
 package com.fulgurogo.features.api
 
+import com.fulgurogo.features.exam.ExamPlayer
+
 data class ApiExamPlayer(
     val discordId: String,
     val name: String,
@@ -25,4 +27,30 @@ data class ApiExamPlayer(
     val blacklist: Int,
     val head: Int,
     val ratio: Double
-)
+) {
+    companion object {
+        fun from(examPlayer: ExamPlayer?, apiPlayer: ApiPlayer): ApiExamPlayer = ApiExamPlayer(
+            apiPlayer.discordId,
+            apiPlayer.name ?: "",
+            apiPlayer.avatar ?: "",
+            examPlayer?.totalPoints() ?: 0,
+            examPlayer?.participation ?: 0,
+            examPlayer?.community ?: 0,
+            examPlayer?.patience ?: 0,
+            examPlayer?.victory ?: 0,
+            examPlayer?.refinement ?: 0,
+            examPlayer?.performance ?: 0,
+            examPlayer?.achievement ?: 0,
+            examPlayer?.hunter ?: false,
+            examPlayer?.information ?: 0,
+            examPlayer?.lost ?: 0,
+            examPlayer?.ruin ?: 0,
+            examPlayer?.treasure ?: 0,
+            examPlayer?.gourmet ?: 0,
+            examPlayer?.beast ?: 0,
+            examPlayer?.blacklist ?: 0,
+            examPlayer?.head ?: 0,
+            examPlayer?.pointsRatio() ?: 0.toDouble()
+        )
+    }
+}

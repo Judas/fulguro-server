@@ -14,5 +14,6 @@ data class ApiPlayer(
 
     var stability: ApiStability? = null,
     var games: MutableList<ApiGame>? = null,
-    var accounts: MutableList<ApiAccount>? = null
+    var accounts: MutableList<ApiAccount>? = null,
+    var exam: ApiExamPlayer? = null
 )

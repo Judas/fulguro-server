@@ -53,6 +53,9 @@ object Api {
             // Accounts
             p.accounts = DatabaseAccessor.ensureUser(p.discordId).toApiAccounts()
 
+            // Exam
+            p.exam = ApiExamPlayer.from(DatabaseAccessor.examPlayer(p.discordId), p)
+
             context.standardResponse(p)
         } ?: context.notFoundError()
     } catch (e: Exception) {
