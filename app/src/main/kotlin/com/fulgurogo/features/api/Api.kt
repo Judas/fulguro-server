@@ -39,7 +39,7 @@ object Api {
         context.rateLimit()
 
         val playerId = context.pathParam("id")
-        val player = DatabaseAccessor.apiLadderPlayer(playerId)
+        val player = DatabaseAccessor.apiLadderPlayer(playerId) ?: ApiPlayer.default(playerId)
 
         player?.let { p ->
             // Stability
