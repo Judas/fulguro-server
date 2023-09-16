@@ -85,6 +85,8 @@ class ExamPointsService(private val jda: JDA) {
 
         val title = "$EMOJI __Classement de l'**Examen Hunter**__ $EMOJI"
         if (message.isBlank()) message = "*Aucun participant n'a de points*"
+        else message += "\n\n[Classement complet](${Config.FRONTEND_URL}/hunters)"
+
         jda.publicMessage(Config.Exam.CHANNEL_ID, "$title\n$message")
     }
 

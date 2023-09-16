@@ -2,6 +2,7 @@ package com.fulgurogo
 
 object Config {
     const val DEV = false
+    const val FRONTEND_URL = "https://fulguro-gold.onrender.com"
 
     object SSH {
         const val USER = "useless-only-needed-in-dev"
