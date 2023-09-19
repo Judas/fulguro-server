@@ -13,7 +13,7 @@ data class ApiExamStats(
             stats.candidates,
             stats.gamesPlayed(),
             stats.internalGamesPlayed(),
-            stats.totalParticipation
+            stats.promoTotal
         )
     }
 }
