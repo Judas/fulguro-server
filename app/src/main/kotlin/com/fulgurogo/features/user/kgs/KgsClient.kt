@@ -36,6 +36,7 @@ class KgsClient : UserAccountClient {
             .filter { it.isRanked() || it.isFree() }
             .sortedBy { it.timestamp }
             .toList()
+            .also { log(INFO, "Filtered to ${it.size} games") }
             .filterBotGamesAndTagShortGames(user)
 
     override fun userGame(user: User, gameServerId: String): UserAccountGame? =
@@ -60,6 +61,12 @@ class KgsClient : UserAccountClient {
         forEach { game ->
             log(INFO, "Logging in")
             login()
+
+            log(INFO, "Ensuring bot is in the room")
+            if (!joinRoom()) {
+                log(ERROR, "Can't join room with bot. Exiting")
+                return mutableListOf()
+            }
 
             val opponentId =
                 if (game.blackPlayerServerId() == mainPlayer.kgsId) game.whitePlayerServerId()
@@ -118,6 +125,10 @@ class KgsClient : UserAccountClient {
 
     private fun getArchivesFor(id: String): KgsApi.Message? =
         postGet(gson.toJson(KgsApi.Request.ArchiveJoin(id))).getMessageOfType(KgsApi.ChannelType.ARCHIVE_JOIN)
+
+    private fun joinRoom(): Boolean = with(postGet(gson.toJson(KgsApi.Request.Join()))) {
+        hasMessageOfType(KgsApi.ChannelType.ROOM_JOIN) || hasMessageOfType(KgsApi.ChannelType.CHANNEL_ALREADY_JOINED)
+    }
 
     private fun getDetailsFor(id: String): KgsApi.Message? =
         postGet(gson.toJson(KgsApi.Request.DetailsJoin(id))).getMessageOfType(KgsApi.ChannelType.DETAILS_JOIN)

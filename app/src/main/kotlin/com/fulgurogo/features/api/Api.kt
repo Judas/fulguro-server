@@ -276,7 +276,7 @@ object Api {
                     DatabaseAccessor
                         .user(account, accountId)
                         ?.cloneUserWithUpdatedProfile(jda, true)
-                        ?.let { DatabaseAccessor.updateUser(it) }
+                        ?.let { updatedUser -> DatabaseAccessor.updateUser(updatedUser) }
                 }
 
                 context.standardResponse()

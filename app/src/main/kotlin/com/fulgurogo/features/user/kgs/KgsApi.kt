@@ -17,6 +17,10 @@ sealed class KgsApi {
 
         ROOM_LOAD_GAME,
         GAME_JOIN,
+
+        ROOM_JOIN,
+        CHANNEL_ALREADY_JOINED,
+        JOIN_REQUEST,
         UNJOIN_REQUEST,
         UNJOIN
     }
@@ -46,6 +50,11 @@ sealed class KgsApi {
             val channelId: Int = Config.Kgs.ROOM_CHANNEL_ID,
             val type: ChannelType = ChannelType.ROOM_LOAD_GAME,
             val private: Boolean = true
+        )
+
+        data class Join(
+            val channelId: Int = Config.Kgs.ROOM_CHANNEL_ID,
+            val type: ChannelType = ChannelType.JOIN_REQUEST,
         )
 
         data class Unjoin(
