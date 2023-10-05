@@ -175,7 +175,7 @@ object GameScanner {
                     val response = okHttpClient.newCall(request).execute()
                     if (response.isSuccessful) {
                         log(INFO, "SGF fetch SUCCESS ${response.code}")
-                        val apiResponse = response.body!!.string()
+                        val apiResponse = response.body!!.string().replace("\n", "")
                         response.close()
                         apiResponse
                     } else {
