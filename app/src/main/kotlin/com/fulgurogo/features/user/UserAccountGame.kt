@@ -23,4 +23,6 @@ abstract class UserAccountGame {
     abstract fun komi(): Double
     abstract fun isLongGame(): Boolean
     abstract fun isFinished(): Boolean
+
+    abstract fun sgfLink(blackPlayerDiscordId: String, whitePlayerDiscordId: String): String?
 }

@@ -15,6 +15,11 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import net.dv8tion.jda.api.JDA
+import okhttp3.JavaNetCookieJar
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.net.CookieManager
+import java.net.CookiePolicy
 import java.time.ZonedDateTime
 
 object GameScanner {
@@ -38,6 +43,11 @@ object GameScanner {
         stop()
         start()
     }
+
+    private val okHttpClient: OkHttpClient = OkHttpClient.Builder()
+        .cookieJar(JavaNetCookieJar(CookieManager().apply { setCookiePolicy(CookiePolicy.ACCEPT_ALL) }))
+        .followRedirects(true)
+        .build()
 
     fun start() {
         log(INFO, "start")
@@ -140,9 +150,36 @@ object GameScanner {
         val allGames = clients.map { it.userGames(user, scanStart, scanEnd) }.flatten()
         log(INFO, "Fetched ${allGames.size} valid games !")
 
-        log(INFO, "Saving user games in database")
-        allGames.forEach {
-            if (!DatabaseAccessor.existGame(it)) DatabaseAccessor.saveGame(it)
+        allGames.forEach { game ->
+            if (!DatabaseAccessor.existGame(game)) {
+                // Get players discord ids
+                val blackPlayerDiscordId = DatabaseAccessor.user(game.account(), game.blackPlayerServerId())?.discordId
+                val whitePlayerDiscordId = DatabaseAccessor.user(game.account(), game.whitePlayerServerId())?.discordId
+
+                // Get game SGF
+                val sgf: String? = if (blackPlayerDiscordId == null || whitePlayerDiscordId == null) null
+                else game.sgfLink(blackPlayerDiscordId, whitePlayerDiscordId)?.let { sgfLink ->
+                    log(INFO, "Fetching SGF $sgfLink")
+                    val request: Request = Request.Builder().url(sgfLink).get().build()
+                    val response = okHttpClient.newCall(request).execute()
+                    if (response.isSuccessful) {
+                        log(INFO, "SGF fetch SUCCESS ${response.code}")
+                        val apiResponse = response.body!!.string()
+                        response.close()
+                        apiResponse
+                    } else {
+                        val error = ApiException("SGF fetch FAILURE " + response.code)
+                        log(ERROR, error.message!!, error)
+                        null
+                    }
+                } ?: run {
+                    log(INFO, "No valid SGF link for this game.")
+                    null
+                }
+
+                // Saving game in DB
+                DatabaseAccessor.saveGame(game, blackPlayerDiscordId, whitePlayerDiscordId, sgf)
+            } else log(INFO, "Skipping. Game already exists in database")
         }
         DatabaseAccessor.updateUserScanDate(user.discordId, scanEnd)
     }

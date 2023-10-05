@@ -303,21 +303,23 @@ object DatabaseAccessor {
             .executeAndFetchFirst(Game::class.java) != null
     }
 
-    fun saveGame(game: UserAccountGame): Connection = dao.open().use { connection ->
+    fun saveGame(
+        game: UserAccountGame,
+        blackPlayerDiscordId: String?,
+        whitePlayerDiscordId: String?,
+        sgf: String?
+    ): Connection = dao.open().use { connection ->
         val query = "INSERT INTO games( " +
                 " id, date, server, " +
                 " black_player_discord_id, black_player_server_id, black_player_pseudo, black_player_rank, black_player_won, " +
                 " white_player_discord_id, white_player_server_id, white_player_pseudo, white_player_rank, white_player_won, " +
-                " handicap, komi, long_game, finished) " +
+                " handicap, komi, long_game, finished, sgf) " +
                 " VALUES (:id, :date, :server, " +
                 " :blackPlayerDiscordId, :blackPlayerServerId, :blackPlayerPseudo, :blackPlayerRank, :blackPlayerWon, " +
                 " :whitePlayerDiscordId, :whitePlayerServerId, :whitePlayerPseudo, :whitePlayerRank, :whitePlayerWon, " +
-                " :handicap, :komi, :longGame, :finished) "
+                " :handicap, :komi, :longGame, :finished, :sgf) "
 
         log(INFO, "saveGame [$query] ${game.gameId()}")
-
-        val blackPlayerDiscordId = user(game.account(), game.blackPlayerServerId())?.discordId
-        val whitePlayerDiscordId = user(game.account(), game.whitePlayerServerId())?.discordId
 
         connection
             .createQuery(query)
@@ -338,6 +340,7 @@ object DatabaseAccessor {
             .addParameter("komi", game.komi())
             .addParameter("longGame", game.isLongGame())
             .addParameter("finished", game.isFinished())
+            .addParameter("sgf", sgf)
             .executeUpdate()
     }
 

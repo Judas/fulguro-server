@@ -58,13 +58,10 @@ open class Game(
     val komi: Double? = null,
     val longGame: Boolean? = null,
     val finished: Boolean,
-    val tags: String? = null
+    val sgf: String? = null
 ) {
     // id format is serverName/gameId (OGS/1234567)
     fun gameServerId(): String = id.split("_").last()
-
-    fun hasStandardHandicap(): Boolean = komi != null && handicap != null
-            && handicap <= 9 && ((handicap == 0 && komi >= 6) || komi == 0.5)
 
     fun hasNoHandicap(): Boolean = komi != null && handicap != null
             && handicap == 0 && komi in 6.0..9.0
@@ -94,39 +91,6 @@ open class Game(
         }
 
         else -> ""
-    }
-
-    fun sgfLink(): String = when (server) {
-        UserAccount.OGS.fullName -> "${Config.Ogs.API_URL}/games/${gameServerId()}/sgf"
-        UserAccount.FOX.fullName -> "${Config.Fox.API_URL}/${Config.Fox.GAME_SGF}${gameServerId()}"
-        UserAccount.KGS.fullName -> {
-            if (blackPlayerDiscordId == null || whitePlayerDiscordId == null) gameLink(true)
-            else {
-                val calendar = Calendar.getInstance()
-                calendar.time = date
-                val year = calendar.get(Calendar.YEAR)
-                val month = calendar.get(Calendar.MONTH) + 1 // Java months start at 0...
-                val day = calendar.get(Calendar.DAY_OF_MONTH)
-                val occurrences =
-                    DatabaseAccessor.countDailyGamesBetween(blackPlayerDiscordId, whitePlayerDiscordId, date)
-                        .let { if (it < 2) "" else "-$it" }
-                "${Config.Kgs.GAME_LINK}/$year/$month/$day/$whitePlayerPseudo-$blackPlayerPseudo$occurrences.sgf"
-            }
-        }
-
-        else -> ""
-    }
-
-    fun opponentLink(black: Boolean): String {
-        val opponentPseudo = if (black) whitePlayerPseudo else blackPlayerPseudo
-        val opponentRank = if (black) whitePlayerRank else blackPlayerRank
-        val opponentServerId = if (black) whitePlayerServerId else blackPlayerServerId
-        return when (server) {
-            UserAccount.OGS.fullName -> "[$opponentPseudo ($opponentRank)](${Config.Ogs.WEBSITE_URL}/player/$opponentServerId)"
-            UserAccount.KGS.fullName -> "[$opponentPseudo ($opponentRank)](${Config.Kgs.GRAPH_URL}?user=$opponentPseudo)"
-            UserAccount.FOX.fullName -> "$opponentPseudo ($opponentRank)"
-            else -> ""
-        }
     }
 
     fun toGlickoGame(black: Boolean): Glickotlin.Game? {

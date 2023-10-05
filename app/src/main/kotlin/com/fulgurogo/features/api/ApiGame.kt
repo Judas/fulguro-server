@@ -15,7 +15,6 @@ data class ApiGame(
     val komi: Double? = null,
     val longGame: Boolean? = null,
     val finished: Boolean,
-    val tags: String? = null,
 
     val black: ApiGameParticipant,
     val white: ApiGameParticipant
@@ -27,12 +26,11 @@ data class ApiGame(
                 date = SimpleDateFormat("d MMM").format(game.date),
                 server = game.server,
                 gameLink = game.gameLink(black),
-                sgf = game.sgfLink(),
+                sgf = game.sgf,
                 handicap = game.handicap,
                 komi = game.komi,
                 longGame = game.longGame,
                 finished = game.finished,
-                tags = game.tags,
                 black = ApiGameParticipant.from(game, true),
                 white = ApiGameParticipant.from(game, false)
             )

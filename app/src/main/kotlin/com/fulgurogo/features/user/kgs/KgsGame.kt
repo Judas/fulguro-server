@@ -1,5 +1,7 @@
 package com.fulgurogo.features.user.kgs
 
+import com.fulgurogo.Config
+import com.fulgurogo.features.database.DatabaseAccessor
 import com.fulgurogo.features.user.UserAccount
 import com.fulgurogo.features.user.UserAccountGame
 import java.text.ParsePosition
@@ -42,6 +44,19 @@ data class KgsGame(
     override fun handicap(): Int = handicap
     override fun komi(): Double = komi
     override fun isLongGame(): Boolean = isShortGame == false
+
+    override fun sgfLink(blackPlayerDiscordId: String, whitePlayerDiscordId: String) = with(date()) {
+        val calendar = Calendar.getInstance()
+        calendar.time = this
+        val year = calendar.get(Calendar.YEAR)
+        val month = calendar.get(Calendar.MONTH) + 1 // Java months start at 0...
+        val day = calendar.get(Calendar.DAY_OF_MONTH)
+        val occurrences =
+            DatabaseAccessor.countDailyGamesBetween(blackPlayerDiscordId, whitePlayerDiscordId, this)
+                .let { if (it < 2) "" else "-$it" }
+        "${Config.Kgs.GAME_LINK}/$year/$month/$day/${whitePlayerPseudo()}-${blackPlayerPseudo()}$occurrences.sgf"
+    }
+
     fun isRanked(): Boolean = RANKED == gameType
     fun isFree(): Boolean = FREE == gameType
     fun isNineteen(): Boolean = size == 19

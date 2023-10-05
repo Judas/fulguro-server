@@ -1,5 +1,6 @@
 package com.fulgurogo.features.user.fox
 
+import com.fulgurogo.Config
 import com.fulgurogo.features.user.UserAccount
 import com.fulgurogo.features.user.UserAccountGame
 import com.fulgurogo.utilities.rankToString
@@ -53,6 +54,9 @@ data class FoxGame(
     override fun handicap(): Int = handicap
     override fun komi(): Double = (komi.toDouble() / 50)
     override fun isLongGame(): Boolean = false
+
+    override fun sgfLink(blackPlayerDiscordId: String, whitePlayerDiscordId: String) =
+        "${Config.Fox.API_URL}/${Config.Fox.GAME_SGF}${serverId()}"
 
     fun isNineteen(): Boolean = boardsize == 19
 }
