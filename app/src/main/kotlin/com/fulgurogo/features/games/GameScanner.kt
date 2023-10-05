@@ -8,6 +8,7 @@ import com.fulgurogo.features.ladder.LadderRatingsService
 import com.fulgurogo.features.user.User
 import com.fulgurogo.features.user.UserAccount
 import com.fulgurogo.features.user.UserAccountClient
+import com.fulgurogo.features.user.UserAccountGame
 import com.fulgurogo.utilities.*
 import com.fulgurogo.utilities.Logger.Level.ERROR
 import com.fulgurogo.utilities.Logger.Level.INFO
@@ -21,6 +22,7 @@ import okhttp3.Request
 import java.net.CookieManager
 import java.net.CookiePolicy
 import java.time.ZonedDateTime
+import java.util.*
 
 object GameScanner {
     var isScanning: Boolean = false
@@ -94,9 +96,16 @@ object GameScanner {
 
             handleAllUsers { rawUser ->
                 val user = refreshUserProfile(jda, rawUser)
-                updateUnfinishedGamesStatus(user)
                 createUserExamLadder(user)
-                fetchUserGames(user)
+
+                val scanStart = user.lastGameScan ?: ZonedDateTime.now(DATE_ZONE).toStartOfMonth().toDate()
+                val scanEnd = ZonedDateTime.now(DATE_ZONE).toDate()
+                val userGames = fetchUserGames(user, scanStart, scanEnd)
+                updateUnfinishedGamesStatus(user, userGames)
+                saveUserGames(userGames)
+
+                // Update user last game scan date
+                DatabaseAccessor.updateUserScanDate(user.discordId, scanEnd)
             }
             LadderRatingsService.refresh()
             ExamPointsService(jda).refresh()
@@ -119,16 +128,6 @@ object GameScanner {
             user
         } else rawUser
 
-    private fun updateUnfinishedGamesStatus(user: User) {
-        log(INFO, "Updating unfinished games status")
-        DatabaseAccessor.unfinishedGamesFor(user.discordId)
-            .forEach {
-                // Check if game is now finished and update flag in db
-                val updatedGame = UserAccount.find(it.server)?.client?.userGame(user, it.gameServerId())
-                if (updatedGame?.isFinished() == true) DatabaseAccessor.updateFinishedGame(updatedGame)
-            }
-    }
-
     private fun createUserExamLadder(user: User) {
         log(INFO, "Creating exam player if needed")
         DatabaseAccessor.ensureExamPlayer(user)
@@ -138,9 +137,7 @@ object GameScanner {
         if (ladderPlayer == null) DatabaseAccessor.createLadderPlayer(user.discordId)
     }
 
-    private fun fetchUserGames(user: User) {
-        val scanStart = user.lastGameScan ?: ZonedDateTime.now(DATE_ZONE).toStartOfMonth().toDate()
-        val scanEnd = ZonedDateTime.now(DATE_ZONE).toDate()
+    private fun fetchUserGames(user: User, scanStart: Date, scanEnd: Date): List<UserAccountGame> {
         log(INFO, "Fetching user games between $scanStart | $scanEnd")
 
         val clients = mutableListOf<UserAccountClient>()
@@ -150,7 +147,21 @@ object GameScanner {
         val allGames = clients.map { it.userGames(user, scanStart, scanEnd) }.flatten()
         log(INFO, "Fetched ${allGames.size} valid games !")
 
-        allGames.forEach { game ->
+        return allGames
+    }
+
+    private fun updateUnfinishedGamesStatus(user: User, userGames: List<UserAccountGame>) {
+        log(INFO, "Updating unfinished games status")
+        DatabaseAccessor.unfinishedGamesFor(user.discordId)
+            .forEach { game ->
+                // Check if game is now finished and update flag in db
+                val updatedGame = userGames.find { it.gameId() == game.gameServerId() }
+                if (updatedGame?.isFinished() == true) DatabaseAccessor.updateFinishedGame(updatedGame)
+            }
+    }
+
+    private fun saveUserGames(userGames: List<UserAccountGame>) {
+        userGames.forEach { game ->
             if (!DatabaseAccessor.existGame(game)) {
                 // Get players discord ids
                 val blackPlayerDiscordId = DatabaseAccessor.user(game.account(), game.blackPlayerServerId())?.discordId
@@ -181,7 +192,6 @@ object GameScanner {
                 DatabaseAccessor.saveGame(game, blackPlayerDiscordId, whitePlayerDiscordId, sgf)
             } else log(INFO, "Skipping. Game already exists in database")
         }
-        DatabaseAccessor.updateUserScanDate(user.discordId, scanEnd)
     }
 
     private fun cleanDatabase() {
