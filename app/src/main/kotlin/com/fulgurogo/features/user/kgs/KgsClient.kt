@@ -33,7 +33,7 @@ class KgsClient : UserAccountClient {
             .filter { it.date().after(from) }
             .filter { it.date().before(to) }
             .filter { it.isNineteen() }
-            .filter { it.isRanked() || it.isFree() }
+            .filter { it.isRanked() || it.isFree() || it.isSimu() }
             .sortedBy { it.timestamp }
             .toList()
             .also { log(INFO, "Filtered to ${it.size} games") }
