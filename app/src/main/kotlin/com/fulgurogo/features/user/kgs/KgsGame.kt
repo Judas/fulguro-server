@@ -21,6 +21,7 @@ data class KgsGame(
         private const val DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSX"
         private const val RANKED = "ranked"
         private const val FREE = "free"
+        private const val SIMU = "simul"
     }
 
     var isShortGame: Boolean? = null
@@ -59,5 +60,6 @@ data class KgsGame(
 
     fun isRanked(): Boolean = RANKED == gameType
     fun isFree(): Boolean = FREE == gameType
+    fun isSimu(): Boolean = SIMU == gameType
     fun isNineteen(): Boolean = size == 19
 }
