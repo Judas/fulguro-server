@@ -730,7 +730,8 @@ object DatabaseAccessor {
                 " rating, " +
                 " deviation, " +
                 " volatility) " +
-                " VALUES (:discordId, :ratingDate, :rating, :deviation, :volatility) "
+                " VALUES (:discordId, :ratingDate, :rating, :deviation, :volatility) " +
+                " ON DUPLICATE KEY UPDATE rating=:rating, deviation=:deviation, volatility=:volatility"
 
         log(INFO, "saveLadderRating [$query] $player")
         connection
