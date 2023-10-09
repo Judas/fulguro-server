@@ -155,7 +155,7 @@ object GameScanner {
         DatabaseAccessor.unfinishedGamesFor(user.discordId)
             .forEach { game ->
                 // Check if game is now finished and update flag in db
-                val updatedGame = userGames.find { it.gameId() == game.gameServerId() }
+                val updatedGame = UserAccount.find(game.server)?.client?.userGame(user, game.gameServerId())
                 if (updatedGame?.isFinished() == true) DatabaseAccessor.updateFinishedGame(updatedGame)
             }
     }
