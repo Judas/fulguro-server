@@ -98,10 +98,11 @@ object GameScanner {
                 val user = refreshUserProfile(jda, rawUser)
                 createUserExamLadder(user)
 
+                updateUnfinishedGamesStatus(user)
+
                 val scanStart = user.lastGameScan ?: ZonedDateTime.now(DATE_ZONE).toStartOfMonth().toDate()
                 val scanEnd = ZonedDateTime.now(DATE_ZONE).toDate()
                 val userGames = fetchUserGames(user, scanStart, scanEnd)
-                updateUnfinishedGamesStatus(user, userGames)
                 saveUserGames(userGames)
 
                 // Update user last game scan date
@@ -150,47 +151,76 @@ object GameScanner {
         return allGames
     }
 
-    private fun updateUnfinishedGamesStatus(user: User, userGames: List<UserAccountGame>) {
-        log(INFO, "Updating unfinished games status")
+    private fun updateUnfinishedGamesStatus(user: User) {
+        log(INFO, "Checking unfinished games")
         DatabaseAccessor.unfinishedGamesFor(user.discordId)
             .forEach { game ->
                 // Check if game is now finished and update flag in db
                 val updatedGame = UserAccount.find(game.server)?.client?.userGame(user, game.gameServerId())
-                if (updatedGame?.isFinished() == true) DatabaseAccessor.updateFinishedGame(updatedGame)
+                if (updatedGame?.isFinished() == true) {
+                    log(INFO, "Updating game as it is now finished")
+                    val blackPlayerDiscordId =
+                        DatabaseAccessor.user(updatedGame.account(), updatedGame.blackPlayerServerId())?.discordId
+                    val whitePlayerDiscordId =
+                        DatabaseAccessor.user(updatedGame.account(), updatedGame.whitePlayerServerId())?.discordId
+                    val sgf = fetchGameSgf(updatedGame, blackPlayerDiscordId, whitePlayerDiscordId)
+                    DatabaseAccessor.updateFinishedGame(updatedGame, sgf)
+                }
             }
     }
 
     private fun saveUserGames(userGames: List<UserAccountGame>) {
         userGames.forEach { game ->
             if (!DatabaseAccessor.existGame(game)) {
-                // Get players discord ids
                 val blackPlayerDiscordId = DatabaseAccessor.user(game.account(), game.blackPlayerServerId())?.discordId
                 val whitePlayerDiscordId = DatabaseAccessor.user(game.account(), game.whitePlayerServerId())?.discordId
-
-                // Get game SGF
-                val sgf: String? = if (blackPlayerDiscordId == null || whitePlayerDiscordId == null) null
-                else game.sgfLink(blackPlayerDiscordId, whitePlayerDiscordId)?.let { sgfLink ->
-                    log(INFO, "Fetching SGF $sgfLink")
-                    val request: Request = Request.Builder().url(sgfLink).get().build()
-                    val response = okHttpClient.newCall(request).execute()
-                    if (response.isSuccessful) {
-                        log(INFO, "SGF fetch SUCCESS ${response.code}")
-                        val apiResponse = response.body!!.string().replace("\n", "")
-                        response.close()
-                        apiResponse
-                    } else {
-                        val error = ApiException("SGF fetch FAILURE " + response.code)
-                        log(ERROR, error.message!!, error)
-                        null
-                    }
-                } ?: run {
-                    log(INFO, "No valid SGF link for this game.")
-                    null
-                }
-
-                // Saving game in DB
+                val sgf = fetchGameSgf(game, blackPlayerDiscordId, whitePlayerDiscordId)
                 DatabaseAccessor.saveGame(game, blackPlayerDiscordId, whitePlayerDiscordId, sgf)
             } else log(INFO, "Skipping. Game already exists in database")
+        }
+    }
+
+    private fun fetchGameSgf(
+        game: UserAccountGame,
+        blackPlayerDiscordId: String?,
+        whitePlayerDiscordId: String?,
+        allowRetry: Boolean = true
+    ): String? {
+        if (blackPlayerDiscordId == null || whitePlayerDiscordId == null) {
+            log(INFO, "Fetching SGF: Skipping because player id is null")
+            return null
+        }
+
+        if (!game.isFinished()) {
+            log(INFO, "Fetching SGF: Skipping because game is ongoing")
+            return null
+        }
+
+        val sgfLink = game.sgfLink(blackPlayerDiscordId, whitePlayerDiscordId)
+
+        if (sgfLink == null) {
+            log(INFO, "Fetching SGF: Skipping because no valid link")
+            return null
+        }
+
+        log(INFO, "Fetching SGF $sgfLink")
+        val request: Request = Request.Builder().url(sgfLink).get().build()
+        val response = okHttpClient.newCall(request).execute()
+        return if (response.isSuccessful) {
+            log(INFO, "Fetching SGF SUCCESS ${response.code}")
+            val apiResponse = response.body!!.string().replace("\n", "")
+            response.close()
+            apiResponse
+        } else {
+            if (response.code == 429 && allowRetry) {
+                log(INFO, "Fetching SGF ERROR 429: Waiting then retrying")
+                Thread.sleep(Config.Ogs.API_DELAY_IN_SECONDS * 1000L)
+                fetchGameSgf(game, blackPlayerDiscordId, whitePlayerDiscordId, false)
+            } else {
+                val error = ApiException("Fetching SGF FAILURE " + response.code)
+                log(ERROR, error.message!!, error)
+                null
+            }
         }
     }
 

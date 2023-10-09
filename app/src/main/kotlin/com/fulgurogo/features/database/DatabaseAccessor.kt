@@ -359,11 +359,12 @@ object DatabaseAccessor {
             .executeAndFetch(Game::class.java)
     }
 
-    fun updateFinishedGame(game: UserAccountGame): Connection = dao.open().use { connection ->
+    fun updateFinishedGame(game: UserAccountGame, sgf: String?): Connection = dao.open().use { connection ->
         val query = " UPDATE games SET " +
                 " black_player_won = :blackPlayerWon, " +
                 " white_player_won = :whitePlayerWon, " +
-                " finished = 1 " +
+                " finished = 1, " +
+                " sgf = :sgf " +
                 " WHERE id = :id "
 
         log(INFO, "updateFinishedGame [$query] ${game.gameId()}")
@@ -372,6 +373,7 @@ object DatabaseAccessor {
             .addParameter("id", game.gameId())
             .addParameter("blackPlayerWon", game.blackPlayerWon())
             .addParameter("whitePlayerWon", game.whitePlayerWon())
+            .addParameter("sgf", sgf)
             .executeUpdate()
     }
 
