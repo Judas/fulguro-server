@@ -72,8 +72,12 @@ class OgsClient : UserAccountClient {
                 val gameList = get(url!!, OgsGameList::class.java)
                 games.addAll(gameList.results)
 
-                url = if (gameList.results.lastOrNull()?.date()?.before(limitDate) == true) null
-                else gameList.next
+                val lastGameEndDate = gameList.results.lastOrNull()?.endDate()
+                url = when {
+                    lastGameEndDate == null -> gameList.next // Last game in list is ongoing game
+                    lastGameEndDate.after(limitDate) -> gameList.next // Last game in list is in time interval
+                    else -> null // Last game in list is outside time interval
+                }
             }
 
             log(INFO, "Found ${games.size} games")
