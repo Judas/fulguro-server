@@ -377,21 +377,6 @@ object DatabaseAccessor {
             .executeUpdate()
     }
 
-    fun infoGamesFor(discordId: String): List<Game> = dao.open().use { connection ->
-        val query = " SELECT * " +
-                " FROM games " +
-                " WHERE black_player_discord_id = :playerId OR white_player_discord_id = :playerId " +
-                " AND finished = 1 " +
-                " ORDER BY date "
-
-        log(INFO, "infoGamesFor [$query] $discordId")
-        connection
-            .createQuery(query)
-            .throwOnMappingFailure(false)
-            .addParameter("playerId", discordId)
-            .executeAndFetch(Game::class.java)
-    }
-
     fun examGames(from: Date, to: Date): List<Game> = dao.open().use { connection ->
         val query = " SELECT * " +
                 " FROM games " +
@@ -405,21 +390,6 @@ object DatabaseAccessor {
             .throwOnMappingFailure(false)
             .addParameter("from", from)
             .addParameter("to", to)
-            .executeAndFetch(Game::class.java)
-    }
-
-    fun ladderGames(): List<Game> = dao.open().use { connection ->
-        val query = " SELECT * " +
-                " FROM games " +
-                " WHERE " +
-                " black_player_discord_id IS NOT NULL AND white_player_discord_id IS NOT NULL " +
-                " AND finished = 1 AND handicap = 0 AND 6 < komi AND komi < 9 " +
-                " ORDER BY date "
-
-        log(INFO, "ladderGames [$query]")
-        connection
-            .createQuery(query)
-            .throwOnMappingFailure(false)
             .executeAndFetch(Game::class.java)
     }
 
