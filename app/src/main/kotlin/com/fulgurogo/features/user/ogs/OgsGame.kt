@@ -39,9 +39,9 @@ data class OgsGame(
     }
 
     fun endDate(): Date? = if (ended.isBlank()) null else try {
-        SimpleDateFormat(DATE_FORMAT).parse(started, ParsePosition(0))
+        SimpleDateFormat(DATE_FORMAT).parse(ended, ParsePosition(0))
     } catch (e: Exception) {
-        SimpleDateFormat(DATE_FORMAT_OLD).parse(started, ParsePosition(0))
+        SimpleDateFormat(DATE_FORMAT_OLD).parse(ended, ParsePosition(0))
     }
 
     override fun server(): String = UserAccount.OGS.fullName
