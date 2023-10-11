@@ -25,7 +25,8 @@ data class OgsGame(
     val rengo: Boolean = false,
     @SerializedName("disable_analysis") val analysisDisabled: Boolean = false,
     val outcome: String = "",
-    @SerializedName("time_control_parameters") val timeControlParams: String = ""
+    @SerializedName("time_control_parameters") val timeControlParams: String = "",
+    @SerializedName("time_per_move") val timePerMove: Int? = null
 ) : UserAccountGame() {
     companion object {
         private const val DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSSSSX"
@@ -87,7 +88,11 @@ data class OgsGame(
 
     fun isNotCorrespondence(): Boolean {
         val speed = extractTimeControlParamString("speed")
-        return speed.isNotBlank() && speed != "correspondence"
+        return when {
+            speed.isNotBlank() -> speed != "correspondence"
+            timePerMove != null -> timePerMove < 14400 // Correspondence increment starts at 4h
+            else -> false
+        }
     }
 
     private fun isDraw() = outcome == "0 points"
