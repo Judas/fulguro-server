@@ -15,7 +15,7 @@ data class OgsGame(
     @SerializedName("black_lost") val blackLost: Boolean = false,
     @SerializedName("white_lost") val whiteLost: Boolean = false,
     val started: String = "",
-    val ended: String = "",
+    val ended: String?,
     @SerializedName("annulled") val cancelled: Boolean = false,
     val width: Int = 0,
     val height: Int = 0,
@@ -38,7 +38,7 @@ data class OgsGame(
         SimpleDateFormat(DATE_FORMAT_OLD).parse(started, ParsePosition(0))
     }
 
-    fun endDate(): Date? = if (ended.isBlank()) null else try {
+    fun endDate(): Date? = if (ended.isNullOrBlank()) null else try {
         SimpleDateFormat(DATE_FORMAT).parse(ended, ParsePosition(0))
     } catch (e: Exception) {
         SimpleDateFormat(DATE_FORMAT_OLD).parse(ended, ParsePosition(0))
