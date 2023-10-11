@@ -7,6 +7,7 @@ import com.fulgurogo.features.user.UserAccountGame
 import com.fulgurogo.utilities.ApiException
 import com.fulgurogo.utilities.EmptyUserIdException
 import com.fulgurogo.utilities.Logger.Level.*
+import com.fulgurogo.utilities.filterGame
 import com.fulgurogo.utilities.log
 import com.google.gson.Gson
 import okhttp3.JavaNetCookieJar
@@ -30,10 +31,10 @@ class KgsClient : UserAccountClient {
     override fun userGames(user: User, from: Date, to: Date): List<UserAccountGame> =
         allGames(user)
             .asSequence()
-            .filter { it.date().after(from) }
-            .filter { it.date().before(to) }
-            .filter { it.isNineteen() }
-            .filter { it.isRanked() || it.isFree() || it.isSimu() }
+            .filterGame("is too old") { it.date().after(from) }
+            .filterGame("is too recent") { it.date().before(to) }
+            .filterGame("is not 19x19") { it.isNineteen() }
+            .filterGame("has wrong type") { it.isRanked() || it.isFree() || it.isSimu() }
             .sortedBy { it.timestamp }
             .toList()
             .also { log(INFO, "Filtered to ${it.size} games") }
@@ -81,13 +82,13 @@ class KgsClient : UserAccountClient {
             } ?: false
 
             if (isBot) {
-                log(INFO, "Filtering game ${game.timestamp} because $opponentId is a bot.")
+                log(INFO, "Filtering game ${game.gameId()} because $opponentId is a bot.")
                 nonBotGames.remove(game)
             } else {
-                log(INFO, "Loading game ${game.timestamp}")
+                log(INFO, "Loading game ${game.gameId()}")
                 game.isShortGame = true
                 loadGame(game)?.let {
-                    log(INFO, "Game ${game.timestamp} loaded")
+                    log(INFO, "Game ${game.gameId()} loaded")
                     val channelId = it.channelId
                     game.isShortGame = !it.sgfEvents.isLongGame()
                     log(INFO, "Tagging game ${game.timestamp} => isShort: ${game.isShortGame}.")

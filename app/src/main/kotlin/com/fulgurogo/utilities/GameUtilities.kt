@@ -4,6 +4,8 @@ import com.fulgurogo.Config.Ladder.INITIAL_DEVIATION
 import com.fulgurogo.Config.Ladder.INITIAL_RATING
 import com.fulgurogo.Config.Ladder.INITIAL_VOLATILITY
 import com.fulgurogo.features.ladder.glicko.Glickotlin
+import com.fulgurogo.features.user.UserAccountGame
+import com.fulgurogo.utilities.Logger.Level.INFO
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import kotlin.math.*
@@ -58,3 +60,12 @@ fun Glickotlin.Player?.averageWith(otherPlayer: Glickotlin.Player?): Glickotlin.
         INITIAL_DEVIATION,
         INITIAL_VOLATILITY
     )
+
+fun <T : UserAccountGame> Sequence<T>.filterGame(
+    message: String,
+    predicate: (T) -> Boolean
+): Sequence<T> = filter {
+    val condition = predicate.invoke(it)
+    if (!condition) log(INFO, "Filtering game ${it.gameId()} because game $message.")
+    condition
+}

@@ -4,12 +4,9 @@ import com.fulgurogo.Config
 import com.fulgurogo.features.user.User
 import com.fulgurogo.features.user.UserAccountClient
 import com.fulgurogo.features.user.UserAccountGame
-import com.fulgurogo.utilities.ApiException
-import com.fulgurogo.utilities.DATE_ZONE
-import com.fulgurogo.utilities.EmptyUserIdException
+import com.fulgurogo.utilities.*
 import com.fulgurogo.utilities.Logger.Level.ERROR
 import com.fulgurogo.utilities.Logger.Level.INFO
-import com.fulgurogo.utilities.log
 import com.google.gson.Gson
 import okhttp3.JavaNetCookieJar
 import okhttp3.OkHttpClient
@@ -32,15 +29,16 @@ class OgsClient : UserAccountClient {
     override fun userGames(user: User, from: Date, to: Date): List<UserAccountGame> =
         allGamesSince(user, from)
             .asSequence()
-            .filter { it.date().after(from) }
-            .filter { it.date().before(to) }
-            .filter { it.isNineteen() }
-            .filter { !it.isRengo() }
-            .filter { it.isNotBotGame() }
-            .filter { it.isNotCancelled() }
-            .filter { it.isNotCorrespondence() }
+            .filterGame("is too old") { it.date().after(from) }
+            .filterGame("is too recent") { it.date().before(to) }
+            .filterGame("is not 19x19") { it.isNineteen() }
+            .filterGame("is rengo") { !it.isRengo() }
+            .filterGame("is a bot game") { it.isNotBotGame() }
+            .filterGame("is cancelled") { it.isNotCancelled() }
+            .filterGame("is correspondence") { it.isNotCorrespondence() }
             .sortedBy { it.started }
             .toList()
+            .also { log(INFO, "Filtered to ${it.size} games") }
 
     override fun userGame(user: User, gameServerId: String): UserAccountGame =
         if (user.ogsId.isNullOrBlank()) throw EmptyUserIdException
@@ -80,7 +78,7 @@ class OgsClient : UserAccountClient {
                 }
             }
 
-            log(INFO, "Found ${games.size} games")
+            log(INFO, "Found ${games.size} total games")
             games
         }
 
