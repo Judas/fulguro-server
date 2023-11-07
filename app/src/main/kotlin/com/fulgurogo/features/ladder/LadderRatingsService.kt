@@ -1,13 +1,7 @@
 package com.fulgurogo.features.ladder
 
-import com.fulgurogo.Config.Ladder.INITIAL_DEVIATION
-import com.fulgurogo.Config.Ladder.INITIAL_VOLATILITY
 import com.fulgurogo.features.database.DatabaseAccessor
 import com.fulgurogo.features.ladder.glicko.Glickotlin
-import com.fulgurogo.features.user.UserAccount
-import com.fulgurogo.features.user.kgs.KgsClient
-import com.fulgurogo.features.user.ogs.OgsClient
-import com.fulgurogo.features.user.ogs.OgsUser
 import com.fulgurogo.utilities.*
 import com.fulgurogo.utilities.Logger.Level.INFO
 import java.time.ZonedDateTime
@@ -29,8 +23,6 @@ object LadderRatingsService {
         // Fetch ladder games in interval
         val ladderGames = DatabaseAccessor.ladderGamesFor(ladderPlayer.discordId, from, to)
         if (ladderGames.isNotEmpty()) {
-            if (!ladderPlayer.ranked) refreshInitialRating(ladderPlayer)
-
             // Update player ratings using his/her games
             log(
                 INFO,
@@ -100,36 +92,5 @@ object LadderRatingsService {
             INFO,
             "Skipping algorithm, either the player is unranked or it is not yet the time to applying empty algo."
         )
-    }
-
-
-    private fun refreshInitialRating(ladderPlayer: LadderPlayer) {
-        log(INFO, "Refreshing initial rating")
-
-        DatabaseAccessor.user(UserAccount.DISCORD, ladderPlayer.discordId)?.let { user ->
-            // Player not ranked yet => compute initial ranking
-            var kgsPlayerRating: Glickotlin.Player? = null
-            var ogsPlayerRating: Glickotlin.Player? = null
-
-            (UserAccount.KGS.client as KgsClient).user(user)?.let { kgsUser ->
-                log(INFO, "Fetching KGS rank")
-                // Only count KGS if rank is stable (no ?), and offset by -1 stone
-                if (kgsUser.hasStableRank()) kgsPlayerRating = Glickotlin.Player(
-                    kgsUser.rank.toRating(-1), INITIAL_DEVIATION, INITIAL_VOLATILITY
-                )
-            }
-
-            (UserAccount.OGS.client as OgsClient).user(user)?.let { ogsUser ->
-                log(INFO, "Fetching OGS rank")
-                val rating: OgsUser.Rating = ogsUser.fullRatings.live19
-                ogsPlayerRating = Glickotlin.Player(
-                    rating.rating, INITIAL_DEVIATION, INITIAL_VOLATILITY
-                )
-            }
-
-            val player = kgsPlayerRating.averageWith(ogsPlayerRating)
-            DatabaseAccessor.updateLadderPlayerInitialRating(user.discordId, player)
-        } ?: throw InvalidUserException
-
     }
 }
