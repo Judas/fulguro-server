@@ -71,8 +71,9 @@ data class OgsGame(
 
     override fun isLongGame(): Boolean {
         val speed = extractTimeControlParamString("speed")
-        return if (speed.isNotBlank()) speed == "live"
-        else when (extractTimeControlParamString("system")) {
+        val system = extractTimeControlParamString("system")
+        return if (speed.isNotBlank() && speed != "live") false
+        else when (system) {
             "byoyomi", "canadian" -> extractTimeControlParamInt("main_time") >= 1200
             "absolute" -> extractTimeControlParamInt("total_time") >= 2400
             "simple" -> extractTimeControlParamInt("per_move") >= 30
