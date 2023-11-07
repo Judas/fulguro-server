@@ -669,15 +669,20 @@ object DatabaseAccessor {
     fun createLadderPlayer(discordId: String): Connection = dao.open().use { connection ->
         val query = "INSERT INTO ladder( " +
                 " ${UserAccount.DISCORD.databaseId}, " +
+                " rating_date, " +
                 " rating, " +
                 " deviation, " +
                 " volatility) " +
                 " VALUES (:discordId, :rating, :deviation, :volatility) "
 
+        // 2 hours before creation to ensure games played right away are found
+        val date = ZonedDateTime.now(DATE_ZONE).minusHours(2).toDate()
+
         log(INFO, "createLadderPlayer [$query] $discordId")
         connection
             .createQuery(query)
             .addParameter("discordId", discordId)
+            .addParameter("rating_date", date)
             .addParameter("rating", INITIAL_RATING)
             .addParameter("deviation", INITIAL_DEVIATION)
             .addParameter("volatility", INITIAL_VOLATILITY)
