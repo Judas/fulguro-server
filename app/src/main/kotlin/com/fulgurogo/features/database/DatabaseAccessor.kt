@@ -673,7 +673,7 @@ object DatabaseAccessor {
                 " rating, " +
                 " deviation, " +
                 " volatility) " +
-                " VALUES (:discordId, :rating, :deviation, :volatility) "
+                " VALUES (:discordId, :ratingDate, :rating, :deviation, :volatility) "
 
         // 2 hours before creation to ensure games played right away are found
         val date = ZonedDateTime.now(DATE_ZONE).minusHours(2).toDate()
@@ -682,7 +682,7 @@ object DatabaseAccessor {
         connection
             .createQuery(query)
             .addParameter("discordId", discordId)
-            .addParameter("rating_date", date)
+            .addParameter("ratingDate", date)
             .addParameter("rating", INITIAL_RATING)
             .addParameter("deviation", INITIAL_DEVIATION)
             .addParameter("volatility", INITIAL_VOLATILITY)
