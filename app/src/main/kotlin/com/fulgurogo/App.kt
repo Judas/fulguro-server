@@ -25,8 +25,8 @@ fun main() {
     Javalin
         .create { config ->
             config.http.defaultContentType = "application/json"
-            if (Config.DEV) config.plugins.enableDevLogging()
-            config.plugins.enableCors { cors -> cors.add { it.anyHost() } }
+            if (Config.DEV) config.bundledPlugins.enableDevLogging()
+            config.bundledPlugins.enableCors { cors -> cors.addRule { it.anyHost() } }
         }
         .start(Config.Server.PORT)
         .apply {

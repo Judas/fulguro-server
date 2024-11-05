@@ -1,0 +1,36 @@
+[versions]
+commons-net = "3.11.1"
+gson = "2.11.0"
+hikari = "6.0.0"
+javalin = "6.3.0"
+jda = "5.2.0"
+jsch = "0.2.21"
+kotlin = "2.0.21"
+kotlinx-coroutines = "1.9.0"
+mysql-connector = "9.1.0"
+okhttp = "4.12.0"
+shadow-jar = "8.3.5"
+sl4j = "2.0.16"
+sql2o = "1.8.0"
+
+[libraries]
+commons-net = { group = "commons-net", name = "commons-net", version.ref = "commons-net" }
+gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
+hikari = { group = "com.zaxxer", name = "HikariCP", version.ref = "hikari" }
+javalin = { group = "io.javalin", name = "javalin", version.ref = "javalin" }
+jda = { group = "net.dv8tion", name = "JDA", version.ref = "jda" }
+jsch = { group = "com.github.mwiede", name = "jsch", version.ref = "jsch" }
+kotlin-bom = { group = "org.jetbrains.kotlin", name = "kotlin-bom" }
+kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+kotlin-stdlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib" }
+kotlinx-coroutines = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
+mysql-connector = { group = "com.mysql", name = "mysql-connector-j", version.ref = "mysql-connector" }
+okhttp-bom = { group = "com.squareup.okhttp3", name = "okhttp-bom", version.ref = "okhttp" }
+okhttp = { group = "com.squareup.okhttp3", name = "okhttp" }
+okhttp-urlconnection = { group = "com.squareup.okhttp3", name = "okhttp-urlconnection" }
+sl4j = { group = "org.slf4j", name = "slf4j-simple", version.ref = "sl4j" }
+sql2o = { group = "org.sql2o", name = "sql2o", version.ref = "sql2o" }
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm" }
+shadow-jar = { id = "com.gradleup.shadow", version.ref = "shadow-jar" }

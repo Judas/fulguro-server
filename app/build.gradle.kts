@@ -1,47 +1,41 @@
 plugins {
-    id("org.jetbrains.kotlin.jvm") version "1.8.10"
-    id("com.github.johnrengelman.shadow") version "8.1.0"
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.shadow.jar)
     application
 }
 
 repositories {
     mavenCentral()
-    maven {
-        url = uri("https://m2.dv8tion.net/releases")
-    }
-}
-
-dependencies {
-    // Kotlin
-    implementation(platform("org.jetbrains.kotlin:kotlin-bom"))
-    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
-
-    // Discord
-    implementation("net.dv8tion:JDA:5.0.0-beta.13")
-
-    // Javalin
-    implementation("io.javalin:javalin:5.6.2")
-
-    // Database
-    implementation("mysql:mysql-connector-java:8.0.32")
-    implementation("org.sql2o:sql2o:1.6.0")
-    implementation("com.zaxxer:HikariCP:5.0.1")
-
-    // I/O
-    implementation(platform("com.squareup.okhttp3:okhttp-bom:4.10.0"))
-    implementation("com.squareup.okhttp3:okhttp")
-    implementation("com.squareup.okhttp3:okhttp-urlconnection")
-    implementation("commons-net:commons-net:3.9.0")
-    implementation("com.google.code.gson:gson:2.10.1")
-    implementation("com.jcraft:jsch:0.1.55")
-
-    // Logging
-    implementation("org.slf4j:slf4j-simple:2.0.6")
+    maven(url = uri("https://plugins.gradle.org/m2/"))
+    maven(url = uri("https://jitpack.io"))
+    maven(url = uri("https://m2.dv8tion.net/releases"))
+    gradlePluginPortal()
 }
 
 application {
-    group = "com.fulgurogo"
-    version = "7.8"
-    mainClass.set("com.fulgurogo.AppKt")
+    group = providers.gradleProperty("fulgurogo.group.name").get()
+    version = providers.gradleProperty("fulgurogo.version.name").get()
+    mainClass.set(providers.gradleProperty("fulgurogo.main.class").get())
+}
+
+kotlin {
+    jvmToolchain(providers.gradleProperty("fulgurogo.java.version").get().toInt())
+}
+
+dependencies {
+    implementation(libs.commons.net)
+    implementation(libs.gson)
+    implementation(libs.hikari)
+    implementation(libs.javalin)
+    implementation(libs.jda)
+    implementation(libs.jsch)
+    implementation(platform(libs.kotlin.bom))
+    implementation(libs.kotlin.stdlib)
+    implementation(libs.kotlinx.coroutines)
+    implementation(libs.mysql.connector)
+    implementation(platform(libs.okhttp.bom))
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.urlconnection)
+    implementation(libs.sl4j)
+    implementation(libs.sql2o)
 }

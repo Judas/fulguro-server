@@ -1,2 +1,2 @@
-rootProject.name = "fulguro-server"
+rootProject.name = providers.gradleProperty("fulgurogo.project.name").get()
 include("app")
