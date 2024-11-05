@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.noarg)
     alias(libs.plugins.shadow.jar)
     application
 }
@@ -20,6 +21,10 @@ application {
 
 kotlin {
     jvmToolchain(providers.gradleProperty("fulgurogo.java.version").get().toInt())
+}
+
+noArg {
+    annotation("com.fulgurogo.utilities.NoArg")
 }
 
 dependencies {

@@ -1,5 +1,8 @@
 package com.fulgurogo.features.exam
 
+import com.fulgurogo.utilities.NoArg
+
+@NoArg
 data class ExamSessionStats(
     val totalParticipation: Int = 0,
     val totalCommunity: Int = 0,

@@ -8,9 +8,11 @@ import com.fulgurogo.features.database.DatabaseAccessor
 import com.fulgurogo.features.ladder.glicko.Glickotlin
 import com.fulgurogo.features.user.User
 import com.fulgurogo.features.user.UserAccount
+import com.fulgurogo.utilities.NoArg
 import com.fulgurogo.utilities.toRankInt
 import java.util.*
 
+@NoArg
 open class Game(
     val id: String,
     val date: Date,

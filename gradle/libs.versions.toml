@@ -6,6 +6,7 @@ javalin = "6.3.0"
 jda = "5.2.0"
 jsch = "0.2.21"
 kotlin = "2.0.21"
+kotlin-noarg = "2.0.21"
 kotlinx-coroutines = "1.9.0"
 mysql-connector = "9.1.0"
 okhttp = "4.12.0"
@@ -34,3 +35,4 @@ sql2o = { group = "org.sql2o", name = "sql2o", version.ref = "sql2o" }
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm" }
 shadow-jar = { id = "com.gradleup.shadow", version.ref = "shadow-jar" }
+kotlin-noarg = { id = "org.jetbrains.kotlin.plugin.noarg", version.ref = "kotlin-noarg" }

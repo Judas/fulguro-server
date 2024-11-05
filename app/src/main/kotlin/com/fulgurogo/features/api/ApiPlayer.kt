@@ -4,7 +4,9 @@ import com.fulgurogo.Config.Ladder.INITIAL_DEVIATION
 import com.fulgurogo.Config.Ladder.INITIAL_RATING
 import com.fulgurogo.features.database.DatabaseAccessor
 import com.fulgurogo.features.user.UserAccount
+import com.fulgurogo.utilities.NoArg
 
+@NoArg
 data class ApiPlayer(
     val discordId: String,
     val name: String? = null,

@@ -1,7 +1,9 @@
 package com.fulgurogo.features.api
 
 import com.fulgurogo.features.exam.ExamPlayer
+import com.fulgurogo.utilities.NoArg
 
+@NoArg
 data class ApiExamPlayer(
     val discordId: String,
     val name: String,

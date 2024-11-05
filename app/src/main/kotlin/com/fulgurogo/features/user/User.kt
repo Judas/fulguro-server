@@ -8,10 +8,12 @@ import com.fulgurogo.features.user.fox.FoxClient
 import com.fulgurogo.features.user.igs.IgsClient
 import com.fulgurogo.features.user.kgs.KgsClient
 import com.fulgurogo.features.user.ogs.OgsClient
+import com.fulgurogo.utilities.NoArg
 import com.fulgurogo.utilities.userName
 import net.dv8tion.jda.api.JDA
 import java.util.*
 
+@NoArg
 data class User(
     val discordId: String,
     val name: String? = null,

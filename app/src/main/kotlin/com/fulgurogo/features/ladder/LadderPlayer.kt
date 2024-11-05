@@ -1,7 +1,9 @@
 package com.fulgurogo.features.ladder
 
+import com.fulgurogo.utilities.NoArg
 import java.util.*
 
+@NoArg
 data class LadderPlayer(
     val discordId: String,
     val ratingDate: Date? = null,
