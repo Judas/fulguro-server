@@ -46,6 +46,7 @@ fun main() {
             get("/gold/api/exam/titles", Api::examTitles)
             get("/gold/api/exam/history", Api::examHistory)
             get("/gold/api/exam/stats", Api::examStats)
+            get("/gold/api/fgc/players", Api::fgcPlayers)
         }
 
     // Launching GameScanner

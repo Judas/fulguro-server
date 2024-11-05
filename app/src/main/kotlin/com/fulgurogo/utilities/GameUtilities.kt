@@ -43,7 +43,7 @@ fun String.toRankInt(): Int = if (contains("k"))
 else
     substring(0, indexOf("d")).trim().toInt().minus(1).unaryMinus()
 
-fun String.toRating(offset: Int): Double = when {
+fun String.toRating(offset: Int = 0): Double = when {
     contains("k") -> (30 - substring(0, indexOf("k")).trim().toInt() + offset).toDouble().toRating()
     contains("d") -> (substring(0, indexOf("d")).trim().toInt() + 29 + offset).toDouble().toRating()
     else -> INITIAL_RATING

@@ -6,6 +6,7 @@ import com.fulgurogo.Config.Ladder.INITIAL_RATING
 import com.fulgurogo.Config.Ladder.INITIAL_VOLATILITY
 import com.fulgurogo.features.api.*
 import com.fulgurogo.features.exam.*
+import com.fulgurogo.features.fgc.FgcPlayer
 import com.fulgurogo.features.games.Game
 import com.fulgurogo.features.ladder.LadderPlayer
 import com.fulgurogo.features.ladder.LadderRating
@@ -920,6 +921,23 @@ object DatabaseAccessor {
             .addParameter("goldId", goldId)
             .throwOnMappingFailure(false)
             .executeAndFetchFirst(AuthCredentials::class.java)
+    }
+
+    // endregion
+
+    // region FGC
+
+    fun fgcPlayers(): List<FgcPlayer> = dao.open().use { connection ->
+        val query = "SELECT lp.discord_id, lp.name, lp.avatar, lp.rating, u.kgs_rank, u.ogs_rank " +
+                " FROM ladder_players AS lp " +
+                " INNER JOIN users AS u ON lp.discord_id = u.discord_id " +
+                " WHERE lp.stable = 1 " +
+                " ORDER BY lp.rating DESC"
+        log(INFO, "fgcPlayers [$query]")
+        connection
+            .createQuery(query)
+            .throwOnMappingFailure(false)
+            .executeAndFetch(FgcPlayer::class.java)
     }
 
     // endregion

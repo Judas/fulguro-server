@@ -350,4 +350,13 @@ object Api {
         log(ERROR, "examStats", e)
         context.internalError()
     }
+
+    fun fgcPlayers(context: Context) = try {
+        context.rateLimit()
+        val players = DatabaseAccessor.fgcPlayers().map { ApiFgcPlayer.from(it) }
+        context.standardResponse(players)
+    } catch (e: Exception) {
+        log(ERROR, "fgcPlayers", e)
+        context.internalError()
+    }
 }
