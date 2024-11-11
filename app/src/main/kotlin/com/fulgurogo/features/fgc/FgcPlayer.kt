@@ -10,7 +10,8 @@ data class FgcPlayer(
     val avatar: String? = null,
     val rating: Double,
     val kgsRank: String? = null,
-    val ogsRank: String? = null
+    val ogsRank: String? = null,
+    val ffgRank: String? = null
 ) {
     fun kgsRating(): Double? = when {
         kgsRank.isNullOrBlank() -> null
@@ -19,4 +20,6 @@ data class FgcPlayer(
     }
 
     fun ogsRating(): Double? = if (ogsRank.isNullOrBlank()) null else ogsRank.toRating()
+
+    fun ffgRating(): Double? = if (ffgRank.isNullOrBlank()) null else ffgRank.toRating()
 }

@@ -928,7 +928,7 @@ object DatabaseAccessor {
     // region FGC
 
     fun fgcPlayers(): List<FgcPlayer> = dao.open().use { connection ->
-        val query = "SELECT lp.discord_id, lp.name, lp.avatar, lp.rating, u.kgs_rank, u.ogs_rank " +
+        val query = "SELECT lp.discord_id, lp.name, lp.avatar, lp.rating, u.kgs_rank, u.ogs_rank, u.ffg_rank" +
                 " FROM ladder_players AS lp " +
                 " INNER JOIN users AS u ON lp.discord_id = u.discord_id " +
                 " WHERE lp.stable = 1 " +

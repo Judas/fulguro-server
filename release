@@ -4,17 +4,10 @@
 ./setup-config prod
 
 # Fetching build number
-while IFS= read -r line
-do
-    if [[ ${line} == "    version ="* ]]; then
-        prefix=${line%%$*version*}
-        index=${#prefix}
-        version="${line:index+11}"
-        version="${version::${#version}-1}"
-    fi
-done < "app/build.gradle.kts"
+version=$(grep 'fulgurogo.version.name' gradle.properties | sed 's/fulgurogo.version.name=\(.*\)/\1/')
 
 ./gradlew clean :app:shadowJar
+
 mv app/build/libs/app-${version}-all.jar export/fulgurobot-${version}.jar
 
 # Rolling back to git config

@@ -9,38 +9,37 @@ data class ApiFgcPlayer(
     val name: String? = null,
     val avatar: String? = null,
     val goldRating: Int,
-    val kgsRating: String?,
-    val kgsDiff: String,
-    val kgsDiffStatus: Int?,
-    val ogsRating: String?,
-    val ogsDiff: String,
-    val ogsDiffStatus: Int?
+    val kgs: RatingComparison?,
+    val ogs: RatingComparison?,
+    val ffg: RatingComparison?
 ) {
     companion object {
         fun from(fgcPlayer: FgcPlayer): ApiFgcPlayer {
             val goldRating = fgcPlayer.rating.roundToInt()
-
-            val kgsRating = fgcPlayer.kgsRating()?.roundToInt()
-            val kgsRatingString = kgsRating?.let { "$it (${fgcPlayer.kgsRank})" }
-            val kgsDiff = kgsRating?.let { goldRating - it }
-
-            val ogsRating = fgcPlayer.ogsRating()?.roundToInt()
-            val ogsRatingString = ogsRating?.let { "$it (${fgcPlayer.ogsRank})" }
-            val ogsDiff = ogsRating?.let { goldRating - it }
-
             return ApiFgcPlayer(
                 fgcPlayer.discordId,
                 fgcPlayer.name ?: "",
                 fgcPlayer.avatar ?: "",
                 goldRating,
-                kgsRatingString,
-                kgsDiff.toDiffString(),
-                kgsDiff.toDiffStatus(),
-                ogsRatingString,
-                ogsDiff.toDiffString(),
-                ogsDiff.toDiffStatus()
+                fgcPlayer.kgsRating()?.roundToInt()?.let { RatingComparison.from(goldRating, it, fgcPlayer.kgsRank) },
+                fgcPlayer.ogsRating()?.roundToInt()?.let { RatingComparison.from(goldRating, it, fgcPlayer.ogsRank) },
+                fgcPlayer.ffgRating()?.roundToInt()?.let { RatingComparison.from(goldRating, it, fgcPlayer.ffgRank) },
             )
         }
+    }
+}
+
+data class RatingComparison(
+    val rating: String?,
+    val diff: String,
+    val diffStatus: Int?
+) {
+    companion object {
+        fun from(goldRating: Int, serverRating: Int?, serverRank: String?): RatingComparison = RatingComparison(
+            serverRating?.let { "$it ($serverRank)" },
+            serverRating?.let { it - goldRating }.toDiffString(),
+            serverRating?.let { it - goldRating }.toDiffStatus()
+        )
     }
 }
 

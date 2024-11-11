@@ -51,16 +51,6 @@ fun String.toRating(offset: Int = 0): Double = when {
 
 fun Double.toRating(): Double = exp(this / C) * A
 
-fun Glickotlin.Player?.averageWith(otherPlayer: Glickotlin.Player?): Glickotlin.Player =
-    Glickotlin.Player(
-        if (this == null && otherPlayer == null) INITIAL_RATING
-        else if (this == null) otherPlayer!!.rating()
-        else if (otherPlayer == null) rating()
-        else arrayOf(rating(), otherPlayer.rating()).average(),
-        INITIAL_DEVIATION,
-        INITIAL_VOLATILITY
-    )
-
 fun <T : UserAccountGame> Sequence<T>.filterGame(
     message: String,
     predicate: (T) -> Boolean
