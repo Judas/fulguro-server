@@ -9,14 +9,15 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 data class KgsGame(
-    val gameType: String = "", // demonstration, review, rengo_review, teaching, simul, rengo, free, ranked, tournament
+    val gameType: String = "", // demonstration, review, rengo_review, teaching, simul, rengo, free, ranked, tournament, challenge
     val score: String = "", // score (float) or UNKNOWN, UNFINISHED, NO_RESULT, B+RESIGN, W+RESIGN, B+FORFEIT, W+FORFEIT, B+TIME, or W+TIME.
     val komi: Double = 0.0,
     val size: Int = 0,
     val players: KgsGamePlayers,
     val timestamp: String = "",
     val handicap: Int = 0,
-    val roomId: Int = 0
+    val roomId: Int = 0,
+    val adjourned: Boolean
 ) : UserAccountGame() {
     companion object {
         private const val DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSX"

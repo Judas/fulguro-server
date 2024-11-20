@@ -1,10 +1,9 @@
 package com.fulgurogo.features.user.kgs
 
 import com.fulgurogo.Config
-import com.fulgurogo.features.user.User
-import com.fulgurogo.features.user.UserAccountClient
-import com.fulgurogo.features.user.UserAccountGame
-import com.fulgurogo.features.user.UserAccountLiveGame
+import com.fulgurogo.features.database.DatabaseAccessor
+import com.fulgurogo.features.user.*
+import com.fulgurogo.features.user.kgs.KgsApi.Message
 import com.fulgurogo.utilities.ApiException
 import com.fulgurogo.utilities.EmptyUserIdException
 import com.fulgurogo.utilities.Logger.Level.*
@@ -45,23 +44,38 @@ class KgsClient : UserAccountClient {
         allGames(user).firstOrNull { it.timestamp == gameServerId }
 
     override fun liveGames(): List<UserAccountLiveGame> {
-        val games = mutableListOf<UserAccountLiveGame>()
+        val roomNames = mutableListOf<Message>()
+        val roomJoins = mutableListOf<Message>()
 
-        with(postGet(gson.toJson(KgsApi.Request.Login()))) {
-            if (hasMessageOfType(KgsApi.ChannelType.LOGIN_SUCCESS)) {
-                // Login response contains ROOM_NAMES messages for all bot joined rooms
-                val rooms: MutableMap<Int, String> = mutableMapOf()
-                getAllMessagesOfType(KgsApi.ChannelType.ROOM_NAMES)
-                    .flatMap { it.rooms }
-                    .forEach { rooms[it.channelId] = it.name }
-
-                // Login response contains ROOM_JOIN messages for all bot joined rooms
-                getAllMessagesOfType(KgsApi.ChannelType.ROOM_JOIN)
-                    .flatMap { it.games }
-                    .forEach { games.add(UserAccountLiveGame.from(it, rooms)) }
-            }
+        val login = postGet(gson.toJson(KgsApi.Request.Login()))
+        if (login.hasMessageOfType(KgsApi.ChannelType.LOGIN_SUCCESS)) {
+            roomNames.addAll(login.getAllMessagesOfType(KgsApi.ChannelType.ROOM_NAMES))
+            roomJoins.addAll(login.getAllMessagesOfType(KgsApi.ChannelType.ROOM_JOIN))
             logout()
         }
+
+        val rooms: MutableMap<Int, String> = mutableMapOf()
+        roomNames
+            .flatMap { it.rooms }
+            .forEach { rooms[it.channelId] = it.name }
+
+        // Login response contains ROOM_JOIN messages for all bot joined rooms
+        roomJoins
+            .flatMap { it.games ?: listOf() }
+            .asSequence()
+            .filterGame("is not 19x19") { it.isNineteen() }
+            .filterGame("has wrong type") { it.isRanked() || it.isFree() || it.isSimu() }
+            .filterGame("is adjourned") { !it.adjourned }
+            .forEach {
+                val black = DatabaseAccessor.user(UserAccount.KGS, it.blackPlayerServerId())
+                val white = DatabaseAccessor.user(UserAccount.KGS, it.whitePlayerServerId())
+                if (black != null && white != null) {
+                    
+                }
+
+                games.add(UserAccountLiveGame.from(it, rooms))
+            }
+
         return games
     }
 

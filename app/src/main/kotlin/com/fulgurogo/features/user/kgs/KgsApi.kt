@@ -75,7 +75,7 @@ sealed class KgsApi {
     data class Message(
         val type: ChannelType, // for all messages
         val user: KgsUser, // For ARCHIVE_JOIN & DETAILS_JOIN messages
-        val games: MutableList<KgsGame> = mutableListOf(), // For ARCHIVE_JOIN & ROOM_JOIN messages
+        val games: MutableList<KgsGame>? = mutableListOf(), // For ARCHIVE_JOIN & ROOM_JOIN messages
         val regStartDate: Date, // For DETAILS_JOIN messages
         val channelId: Int, // for GAME_JOIN messages
         val sgfEvents: MutableList<SgfEvent> = mutableListOf(), // for GAME_JOIN messages

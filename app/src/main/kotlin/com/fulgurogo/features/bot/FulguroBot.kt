@@ -2,6 +2,8 @@ package com.fulgurogo.features.bot
 
 import com.fulgurogo.features.database.DatabaseAccessor
 import com.fulgurogo.features.games.GameScanner
+import com.fulgurogo.features.user.UserAccount
+import com.fulgurogo.features.user.kgs.KgsClient
 import com.fulgurogo.utilities.Logger.Level.INFO
 import com.fulgurogo.utilities.acknowledge
 import com.fulgurogo.utilities.log
@@ -33,6 +35,7 @@ object FulguroBot : ListenerAdapter() {
         // Add bot commands to guild
         val command = Commands.slash("fulguro", "Commandes Admin de FulguroBot")
             .addSubcommands(SubcommandData("scan", "Lance un scan des parties."))
+            .addSubcommands(SubcommandData("test", "test"))
         for (guild in event.jda.guilds) {
             guild.updateCommands().addCommands(command).queue()
         }
@@ -56,6 +59,8 @@ object FulguroBot : ListenerAdapter() {
 
         if (event.name == "fulguro" && event.subcommandName == "scan")
             scan(event)
+        else if (event.name == "fulguro" && event.subcommandName == "test")
+            test(event)
         else simpleError(
             acknowledge(event),
             ":robot:",
@@ -76,6 +81,26 @@ object FulguroBot : ListenerAdapter() {
                 GameScanner.scan()
             }
             simpleMessage(hook, ":robot:", "Scan manuel", "Scan démarré")
+        } else simpleError(hook, ":robot:", ":robot: *Commande réservée aux admins*")
+    }
+
+    private fun test(event: SlashCommandInteractionEvent) {
+        log(INFO, "test")
+
+        val hook = acknowledge(event)
+
+        val asimov = event.guild?.getMember(event.user)?.roles?.any { it.name == "Asimov" } ?: false
+        if (asimov) {
+            CoroutineScope(Dispatchers.IO).launch {
+                log(INFO, "Starting manual scan.")
+
+                val liveGames = (UserAccount.KGS.client as KgsClient).liveGames()
+                log(INFO, "Found ${liveGames.size} live games")
+                liveGames.forEach {
+                    log(INFO, "${it.blackPlayerServerId} VS ${it.whitePlayerServerId} in \"${it.roomName}\"")
+                }
+            }
+            simpleMessage(hook, ":robot:", "Done", "izoké")
         } else simpleError(hook, ":robot:", ":robot: *Commande réservée aux admins*")
     }
 }
