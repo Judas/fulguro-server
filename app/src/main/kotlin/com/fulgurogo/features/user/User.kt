@@ -1,19 +1,21 @@
 package com.fulgurogo.features.user
 
+import com.fulgurogo.Config
 import com.fulgurogo.Config.Ladder.DEFAULT_AVATAR
 import com.fulgurogo.features.api.ApiAccount
+import com.fulgurogo.features.ladder.RatingCalculator
 import com.fulgurogo.features.user.egf.EgfClient
 import com.fulgurogo.features.user.ffg.FfgClient
 import com.fulgurogo.features.user.fox.FoxClient
 import com.fulgurogo.features.user.igs.IgsClient
 import com.fulgurogo.features.user.kgs.KgsClient
 import com.fulgurogo.features.user.ogs.OgsClient
-import com.fulgurogo.utilities.NoArg
+import com.fulgurogo.utilities.GenerateNoArgConstructor
 import com.fulgurogo.utilities.userName
 import net.dv8tion.jda.api.JDA
 import java.util.*
 
-@NoArg
+@GenerateNoArgConstructor
 data class User(
     val discordId: String,
     val name: String? = null,
@@ -37,7 +39,10 @@ data class User(
     val ffgRank: String? = null,
     val egfId: String? = null,
     val egfPseudo: String? = null,
-    val egfRank: String? = null
+    val egfRank: String? = null,
+    val rating: Double? = null,
+    val tierRank: Int? = null,
+    val tierName: String? = null
 ) {
     companion object {
         fun dummyFrom(discordId: String, account: UserAccount, accountId: String): User = when (account) {
@@ -53,37 +58,46 @@ data class User(
 
     fun cloneUserWithUpdatedProfile(jda: JDA, full: Boolean): User =
         if (full) {
-            val kgs = fetchUser(UserAccount.KGS)
-            val ogs = fetchUser(UserAccount.OGS)
-            val fox = fetchUser(UserAccount.FOX)
-            val igs = fetchUser(UserAccount.IGS)
-            val ffg = fetchUser(UserAccount.FFG)
-            val egf = fetchUser(UserAccount.EGF)
-            User(
+            val accountMap: MutableMap<UserAccount, ServerUser?> = mutableMapOf()
+            accountMap[UserAccount.KGS] = (UserAccount.KGS.client as KgsClient).user(kgsId)
+            accountMap[UserAccount.OGS] = (UserAccount.OGS.client as OgsClient).user(ogsId)
+            accountMap[UserAccount.FOX] = (UserAccount.FOX.client as FoxClient).user(foxPseudo)
+            accountMap[UserAccount.IGS] = (UserAccount.IGS.client as IgsClient).user(igsId)
+            accountMap[UserAccount.FFG] = (UserAccount.FFG.client as FfgClient).user(ffgId)
+            accountMap[UserAccount.EGF] = (UserAccount.EGF.client as EgfClient).user(egfId)
+
+            val rating = RatingCalculator.rate(accountMap)
+
+            val user = User(
                 discordId = discordId,
-                name = jda.userName(discordId),
+                name = if (Config.DEV) name else jda.userName(discordId),
                 avatar = jda.getUserById(discordId)?.effectiveAvatarUrl ?: DEFAULT_AVATAR,
                 titles = titles,
                 lastGameScan = lastGameScan,
                 kgsId = kgsId,
-                kgsPseudo = kgs?.pseudo(),
-                kgsRank = kgs?.rank(),
+                kgsPseudo = accountMap[UserAccount.KGS]?.pseudo(),
+                kgsRank = accountMap[UserAccount.KGS]?.rank(),
                 ogsId = ogsId,
-                ogsPseudo = ogs?.pseudo(),
-                ogsRank = ogs?.rank(),
-                foxId = fox?.id(),
+                ogsPseudo = accountMap[UserAccount.OGS]?.pseudo(),
+                ogsRank = accountMap[UserAccount.OGS]?.rank(),
+                foxId = accountMap[UserAccount.FOX]?.id(),
                 foxPseudo = foxPseudo,
-                foxRank = fox?.rank(),
+                foxRank = accountMap[UserAccount.FOX]?.rank(),
                 igsId = igsId,
-                igsPseudo = igs?.pseudo(),
-                igsRank = igs?.rank(),
+                igsPseudo = accountMap[UserAccount.IGS]?.pseudo(),
+                igsRank = accountMap[UserAccount.IGS]?.rank(),
                 ffgId = ffgId,
-                ffgPseudo = ffg?.pseudo(),
-                ffgRank = ffg?.rank(),
+                ffgPseudo = accountMap[UserAccount.FFG]?.pseudo(),
+                ffgRank = accountMap[UserAccount.FFG]?.rank(),
                 egfId = egfId,
-                egfPseudo = egf?.pseudo(),
-                egfRank = egf?.rank()
+                egfPseudo = accountMap[UserAccount.EGF]?.pseudo(),
+                egfRank = accountMap[UserAccount.EGF]?.rank(),
+                rating = rating?.rating,
+                tierRank = rating?.tier?.rank,
+                tierName = rating?.tier?.name
             )
+
+            user
         } else {
             User(
                 discordId = discordId,
@@ -91,16 +105,6 @@ data class User(
                 avatar = jda.getUserById(discordId)?.effectiveAvatarUrl ?: DEFAULT_AVATAR
             )
         }
-
-    private fun fetchUser(account: UserAccount): ServerUser? = when (account) {
-        UserAccount.KGS -> (UserAccount.KGS.client as KgsClient).user(kgsId)
-        UserAccount.OGS -> (UserAccount.OGS.client as OgsClient).user(ogsId)
-        UserAccount.FOX -> (UserAccount.FOX.client as FoxClient).user(foxPseudo)
-        UserAccount.IGS -> (UserAccount.IGS.client as IgsClient).user(igsId)
-        UserAccount.FFG -> (UserAccount.FFG.client as FfgClient).user(ffgId)
-        UserAccount.EGF -> (UserAccount.EGF.client as EgfClient).user(egfId)
-        else -> null
-    }
 
     fun toApiAccounts(): MutableList<ApiAccount> {
         val accounts = mutableListOf<ApiAccount>()

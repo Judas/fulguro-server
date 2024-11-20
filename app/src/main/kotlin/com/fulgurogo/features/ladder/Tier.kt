@@ -1,8 +1,8 @@
 package com.fulgurogo.features.ladder
 
-import com.fulgurogo.utilities.NoArg
+import com.fulgurogo.utilities.GenerateNoArgConstructor
 
-@NoArg
+@GenerateNoArgConstructor
 data class Tier(
     val rank: Int,
     val name: String,

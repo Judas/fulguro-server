@@ -10,42 +10,50 @@ import com.fulgurogo.features.user.ogs.OgsClient
 enum class UserAccount(
     val fullName: String,
     val databaseId: String,
-    val client: UserAccountClient
+    val client: UserAccountClient,
+    val ratingWeight: Double
 ) {
     DISCORD(
         "Discord",
         "discord_id",
-        NoOpUserAccountClient()
+        NoOpUserAccountClient(),
+        0.0
     ),
     KGS(
         "KGS",
         "kgs_id",
-        KgsClient()
+        KgsClient(),
+        0.8
     ),
     OGS(
         "OGS",
         "ogs_id",
-        OgsClient()
+        OgsClient(),
+        1.0
     ),
     FOX(
         "FOX",
         "fox_pseudo",
-        FoxClient()
+        FoxClient(),
+        0.6
     ),
     IGS(
         "IGS",
         "igs_id",
-        IgsClient()
+        IgsClient(),
+        0.6
     ),
     FFG(
         "FFG",
         "ffg_id",
-        FfgClient()
+        FfgClient(),
+        0.6
     ),
     EGF(
         "EGF",
         "egf_id",
-        EgfClient()
+        EgfClient(),
+        0.6
     );
 
     companion object {

@@ -4,7 +4,6 @@ import com.fulgurogo.Config
 import com.fulgurogo.features.bot.FulguroBot
 import com.fulgurogo.features.database.DatabaseAccessor
 import com.fulgurogo.features.exam.ExamPointsService
-import com.fulgurogo.features.ladder.LadderRatingsService
 import com.fulgurogo.features.user.User
 import com.fulgurogo.features.user.UserAccount
 import com.fulgurogo.features.user.UserAccountClient
@@ -94,10 +93,9 @@ object GameScanner {
             log(INFO, "Scan started !")
             isScanning = true
 
-            handleAllUsers { rawUser ->
+            forAllUsers { rawUser ->
                 val user = refreshUserProfile(jda, rawUser)
-                createUserExamLadder(user)
-
+                createExamPlayer(user)
                 updateUnfinishedGamesStatus(user)
 
                 val scanStart = user.lastGameScan ?: ZonedDateTime.now(DATE_ZONE).toStartOfMonth().toDate()
@@ -108,7 +106,6 @@ object GameScanner {
                 // Update user last game scan date
                 DatabaseAccessor.updateUserScanDate(user.discordId, scanEnd)
             }
-            LadderRatingsService.refresh()
             ExamPointsService(jda).refresh()
             cleanDatabase()
 
@@ -117,25 +114,23 @@ object GameScanner {
         } ?: log(ERROR, "Can't start scan, JDA is null")
     }
 
-    private fun refreshUserProfile(jda: JDA, rawUser: User): User =
-        if (ZonedDateTime.now(DATE_ZONE).hour in 1..3) {
-            log(INFO, "Refreshing user profile")
-            val user = rawUser.cloneUserWithUpdatedProfile(jda, true)
-            DatabaseAccessor.updateUser(user)
-            if (user.name == user.discordId) {
-                DatabaseAccessor.deleteUser(user.discordId)
-                throw InvalidUserException
-            }
-            user
-        } else rawUser
+    private fun refreshUserProfile(jda: JDA, rawUser: User): User {
+        log(INFO, "Refreshing user profile")
 
-    private fun createUserExamLadder(user: User) {
+        // Refresh server pseudos and ranks
+        val user = rawUser.cloneUserWithUpdatedProfile(jda, true)
+        DatabaseAccessor.updateUser(user)
+
+        if (user.name == user.discordId) {
+            DatabaseAccessor.deleteUser(user.discordId)
+            throw InvalidUserException
+        }
+        return user
+    }
+
+    private fun createExamPlayer(user: User) {
         log(INFO, "Creating exam player if needed")
         DatabaseAccessor.ensureExamPlayer(user)
-
-        log(INFO, "Creating ladder player if needed")
-        val ladderPlayer = DatabaseAccessor.ladderPlayer(user)
-        if (ladderPlayer == null) DatabaseAccessor.createLadderPlayer(user.discordId)
     }
 
     private fun fetchUserGames(user: User, scanStart: Date, scanEnd: Date): List<UserAccountGame> {

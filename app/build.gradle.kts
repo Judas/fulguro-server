@@ -24,7 +24,7 @@ kotlin {
 }
 
 noArg {
-    annotation("com.fulgurogo.utilities.NoArg")
+    annotation("com.fulgurogo.utilities.GenerateNoArgConstructor")
 }
 
 dependencies {
