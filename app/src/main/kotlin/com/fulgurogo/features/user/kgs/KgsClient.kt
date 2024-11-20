@@ -4,6 +4,7 @@ import com.fulgurogo.Config
 import com.fulgurogo.features.user.User
 import com.fulgurogo.features.user.UserAccountClient
 import com.fulgurogo.features.user.UserAccountGame
+import com.fulgurogo.features.user.UserAccountLiveGame
 import com.fulgurogo.utilities.ApiException
 import com.fulgurogo.utilities.EmptyUserIdException
 import com.fulgurogo.utilities.Logger.Level.*
@@ -42,6 +43,27 @@ class KgsClient : UserAccountClient {
 
     override fun userGame(user: User, gameServerId: String): UserAccountGame? =
         allGames(user).firstOrNull { it.timestamp == gameServerId }
+
+    override fun liveGames(): List<UserAccountLiveGame> {
+        val games = mutableListOf<UserAccountLiveGame>()
+
+        with(postGet(gson.toJson(KgsApi.Request.Login()))) {
+            if (hasMessageOfType(KgsApi.ChannelType.LOGIN_SUCCESS)) {
+                // Login response contains ROOM_NAMES messages for all bot joined rooms
+                val rooms: MutableMap<Int, String> = mutableMapOf()
+                getAllMessagesOfType(KgsApi.ChannelType.ROOM_NAMES)
+                    .flatMap { it.rooms }
+                    .forEach { rooms[it.channelId] = it.name }
+
+                // Login response contains ROOM_JOIN messages for all bot joined rooms
+                getAllMessagesOfType(KgsApi.ChannelType.ROOM_JOIN)
+                    .flatMap { it.games }
+                    .forEach { games.add(UserAccountLiveGame.from(it, rooms)) }
+            }
+            logout()
+        }
+        return games
+    }
 
     private fun allGames(user: User): List<KgsGame> = if (user.kgsId.isNullOrBlank()) throw EmptyUserIdException
     else {
@@ -125,17 +147,17 @@ class KgsClient : UserAccountClient {
     private fun logout() = postGet(gson.toJson(KgsApi.Request.Logout()))
 
     private fun getArchivesFor(id: String): KgsApi.Message? =
-        postGet(gson.toJson(KgsApi.Request.ArchiveJoin(id))).getMessageOfType(KgsApi.ChannelType.ARCHIVE_JOIN)
+        postGet(gson.toJson(KgsApi.Request.ArchiveJoin(id))).getFirstMessageOfType(KgsApi.ChannelType.ARCHIVE_JOIN)
 
     private fun joinRoom(): Boolean = with(postGet(gson.toJson(KgsApi.Request.Join()))) {
         hasMessageOfType(KgsApi.ChannelType.ROOM_JOIN) || hasMessageOfType(KgsApi.ChannelType.CHANNEL_ALREADY_JOINED)
     }
 
     private fun getDetailsFor(id: String): KgsApi.Message? =
-        postGet(gson.toJson(KgsApi.Request.DetailsJoin(id))).getMessageOfType(KgsApi.ChannelType.DETAILS_JOIN)
+        postGet(gson.toJson(KgsApi.Request.DetailsJoin(id))).getFirstMessageOfType(KgsApi.ChannelType.DETAILS_JOIN)
 
     private fun loadGame(game: KgsGame): KgsApi.Message? =
-        postGet(gson.toJson(KgsApi.Request.LoadGame(game.timestamp))).getMessageOfType(KgsApi.ChannelType.GAME_JOIN)
+        postGet(gson.toJson(KgsApi.Request.LoadGame(game.timestamp))).getFirstMessageOfType(KgsApi.ChannelType.GAME_JOIN)
 
     private fun exitGame(channelId: Int) = postGet(gson.toJson(KgsApi.Request.Unjoin(channelId)))
 

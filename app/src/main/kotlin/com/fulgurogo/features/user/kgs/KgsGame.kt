@@ -15,7 +15,8 @@ data class KgsGame(
     val size: Int = 0,
     val players: KgsGamePlayers,
     val timestamp: String = "",
-    val handicap: Int = 0
+    val handicap: Int = 0,
+    val roomId: Int = 0
 ) : UserAccountGame() {
     companion object {
         private const val DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSX"

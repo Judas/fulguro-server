@@ -53,7 +53,7 @@ object Config {
         const val USERNAME = "<ENTER_KGS_USERNAME>"
         const val PASSWORD = "<ENTER_KGS_PASSWORD>"
         const val API_DELAY_IN_SECONDS = 1
-        const val ROOM_CHANNEL_ID = -1 // <ENTER_KGS_ROOM_CHANNEL_ID>
+        const val FGO_ROOM_CHANNEL_ID = -1 // <ENTER_KGS_ROOM_CHANNEL_ID>
         const val ARCHIVES_URL = "https://www.gokgs.com/gameArchives.jsp"
         const val GAME_LINK = "http://files.gokgs.com/games"
         const val GRAPH_URL = "https://www.gokgs.com/graphPage.jsp"

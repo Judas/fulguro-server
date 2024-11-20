@@ -19,6 +19,7 @@ sealed class KgsApi {
         GAME_JOIN,
 
         ROOM_JOIN,
+        ROOM_NAMES,
         CHANNEL_ALREADY_JOINED,
         JOIN_REQUEST,
         UNJOIN_REQUEST,
@@ -47,13 +48,13 @@ sealed class KgsApi {
 
         data class LoadGame(
             val timestamp: String,
-            val channelId: Int = Config.Kgs.ROOM_CHANNEL_ID,
+            val channelId: Int = Config.Kgs.FGO_ROOM_CHANNEL_ID,
             val type: ChannelType = ChannelType.ROOM_LOAD_GAME,
             val private: Boolean = true
         )
 
         data class Join(
-            val channelId: Int = Config.Kgs.ROOM_CHANNEL_ID,
+            val channelId: Int = Config.Kgs.FGO_ROOM_CHANNEL_ID,
             val type: ChannelType = ChannelType.JOIN_REQUEST,
         )
 
@@ -67,15 +68,17 @@ sealed class KgsApi {
 
     data class Response(val messages: List<Message> = mutableListOf()) {
         fun hasMessageOfType(type: ChannelType): Boolean = messages.any { type == it.type }
-        fun getMessageOfType(type: ChannelType): Message? = messages.firstOrNull { type == it.type }
+        fun getFirstMessageOfType(type: ChannelType): Message? = messages.firstOrNull { type == it.type }
+        fun getAllMessagesOfType(type: ChannelType): List<Message> = messages.filter { type == it.type }
     }
 
     data class Message(
         val type: ChannelType, // for all messages
         val user: KgsUser, // For ARCHIVE_JOIN & DETAILS_JOIN messages
-        val games: MutableList<KgsGame> = mutableListOf(), // For ARCHIVE_JOIN messages
+        val games: MutableList<KgsGame> = mutableListOf(), // For ARCHIVE_JOIN & ROOM_JOIN messages
         val regStartDate: Date, // For DETAILS_JOIN messages
         val channelId: Int, // for GAME_JOIN messages
-        val sgfEvents: MutableList<SgfEvent> = mutableListOf() // for GAME_JOIN messages
+        val sgfEvents: MutableList<SgfEvent> = mutableListOf(), // for GAME_JOIN messages
+        val rooms: MutableList<KgsRoom> = mutableListOf() // for ROOM_NAMES message
     )
 }

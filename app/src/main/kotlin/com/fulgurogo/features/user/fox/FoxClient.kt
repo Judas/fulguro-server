@@ -4,6 +4,7 @@ import com.fulgurogo.Config
 import com.fulgurogo.features.user.User
 import com.fulgurogo.features.user.UserAccountClient
 import com.fulgurogo.features.user.UserAccountGame
+import com.fulgurogo.features.user.UserAccountLiveGame
 import com.fulgurogo.utilities.ApiException
 import com.fulgurogo.utilities.EmptyUserIdException
 import com.fulgurogo.utilities.Logger.Level.ERROR
@@ -50,6 +51,8 @@ class FoxClient : UserAccountClient {
 
     override fun userGame(user: User, gameServerId: String): UserAccountGame? =
         lastHundredGames(user).find { it.serverId() == gameServerId }
+
+    override fun liveGames(): List<UserAccountLiveGame> = listOf()
 
     fun user(pseudo: String?): FoxUser? =
         if (pseudo.isNullOrBlank()) null

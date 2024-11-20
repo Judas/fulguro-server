@@ -4,6 +4,7 @@ import com.fulgurogo.Config
 import com.fulgurogo.features.user.User
 import com.fulgurogo.features.user.UserAccountClient
 import com.fulgurogo.features.user.UserAccountGame
+import com.fulgurogo.features.user.UserAccountLiveGame
 import com.fulgurogo.utilities.ApiException
 import com.fulgurogo.utilities.EmptyUserIdException
 import com.fulgurogo.utilities.InvalidUserException
@@ -25,6 +26,7 @@ class EgfClient : UserAccountClient {
     override fun user(user: User): EgfUser? = user(user.egfId)
     override fun userGames(user: User, from: Date, to: Date): List<UserAccountGame> = listOf()
     override fun userGame(user: User, gameServerId: String): UserAccountGame? = null
+    override fun liveGames(): List<UserAccountLiveGame> = listOf()
 
     fun user(id: String?): EgfUser? = try {
         if (id.isNullOrBlank())

@@ -4,6 +4,7 @@ import com.fulgurogo.Config
 import com.fulgurogo.features.user.User
 import com.fulgurogo.features.user.UserAccountClient
 import com.fulgurogo.features.user.UserAccountGame
+import com.fulgurogo.features.user.UserAccountLiveGame
 import com.fulgurogo.utilities.*
 import com.fulgurogo.utilities.Logger.Level.ERROR
 import com.fulgurogo.utilities.Logger.Level.INFO
@@ -47,6 +48,8 @@ class OgsClient : UserAccountClient {
             log(INFO, url)
             get(url, OgsGame::class.java)
         }
+
+    override fun liveGames(): List<UserAccountLiveGame> = TODO()
 
     fun user(id: String?): OgsUser? =
         if (id.isNullOrBlank()) null
