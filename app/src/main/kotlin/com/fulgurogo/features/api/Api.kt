@@ -43,7 +43,7 @@ object Api {
 
         player?.let { p ->
             // Stability
-            p.stability = DatabaseAccessor.stability(p.discordId)
+            p.fgcValidation = DatabaseAccessor.fgcValidation(p.discordId)
 
             // Games
             p.games = DatabaseAccessor.apiLadderGamesFor(p.discordId)
@@ -89,13 +89,13 @@ object Api {
         context.internalError()
     }
 
-    fun getStabilityOptions(context: Context) = try {
+    fun getFgcValidation(context: Context) = try {
         context.rateLimit()
-        DatabaseAccessor.stability()
+        DatabaseAccessor.fgcValidation()
             ?.let { context.standardResponse(it) }
             ?: context.notFoundError()
     } catch (e: Exception) {
-        log(ERROR, "getStabilityOptions", e)
+        log(ERROR, "getFgcValidation", e)
         context.internalError()
     }
 
@@ -348,15 +348,6 @@ object Api {
         context.standardResponse(ApiExamStats.from(DatabaseAccessor.examStats()))
     } catch (e: Exception) {
         log(ERROR, "examStats", e)
-        context.internalError()
-    }
-
-    fun fgcPlayers(context: Context) = try {
-        context.rateLimit()
-        val players = DatabaseAccessor.fgcPlayers().map { ApiFgcPlayer.from(it) }
-        context.standardResponse(players)
-    } catch (e: Exception) {
-        log(ERROR, "fgcPlayers", e)
         context.internalError()
     }
 }

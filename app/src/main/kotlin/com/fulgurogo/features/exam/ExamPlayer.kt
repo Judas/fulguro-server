@@ -1,9 +1,9 @@
 package com.fulgurogo.features.exam
 
-import com.fulgurogo.utilities.NoArg
+import com.fulgurogo.utilities.GenerateNoArgConstructor
 import com.fulgurogo.utilities.formatDecimals
 
-@NoArg
+@GenerateNoArgConstructor
 open class ExamPlayer(
     val discordId: String,
 

@@ -1,9 +1,5 @@
 package com.fulgurogo.utilities
 
-import com.fulgurogo.Config.Ladder.INITIAL_DEVIATION
-import com.fulgurogo.Config.Ladder.INITIAL_RATING
-import com.fulgurogo.Config.Ladder.INITIAL_VOLATILITY
-import com.fulgurogo.features.ladder.glicko.Glickotlin
 import com.fulgurogo.features.user.UserAccountGame
 import com.fulgurogo.utilities.Logger.Level.INFO
 import java.text.DecimalFormat
@@ -43,10 +39,10 @@ fun String.toRankInt(): Int = if (contains("k"))
 else
     substring(0, indexOf("d")).trim().toInt().minus(1).unaryMinus()
 
-fun String.toRating(offset: Int = 0): Double = when {
+fun String.toRating(offset: Int = 0): Double? = when {
     contains("k") -> (30 - substring(0, indexOf("k")).trim().toInt() + offset).toDouble().toRating()
     contains("d") -> (substring(0, indexOf("d")).trim().toInt() + 29 + offset).toDouble().toRating()
-    else -> INITIAL_RATING
+    else -> null
 }
 
 fun Double.toRating(): Double = exp(this / C) * A
