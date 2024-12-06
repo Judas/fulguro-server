@@ -1,6 +1,8 @@
 package com.fulgurogo.features.api
 
-import com.fulgurogo.common.Config
+import com.fulgurogo.common.config.Config
+import com.fulgurogo.common.utilities.DATE_ZONE
+import com.fulgurogo.common.utilities.toDate
 import com.fulgurogo.features.bot.FulguroBot
 import com.fulgurogo.features.database.DatabaseAccessor
 import com.fulgurogo.features.exam.ExamSpecialization
@@ -9,8 +11,9 @@ import com.fulgurogo.features.user.User
 import com.fulgurogo.features.user.UserAccount
 import com.fulgurogo.features.user.ogs.OgsClient
 import com.fulgurogo.utilities.*
-import com.fulgurogo.utilities.Logger.Level.ERROR
-import com.fulgurogo.utilities.Logger.Level.INFO
+import com.fulgurogo.common.logger.Logger.Level.ERROR
+import com.fulgurogo.common.logger.Logger.Level.INFO
+import com.fulgurogo.common.logger.log
 import com.google.gson.Gson
 import io.javalin.http.Context
 import okhttp3.JavaNetCookieJar

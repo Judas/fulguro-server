@@ -1,6 +1,6 @@
 package com.fulgurogo.features.api
 
-import com.fulgurogo.common.Config
+import com.fulgurogo.common.config.Config
 import com.fulgurogo.features.database.DatabaseAccessor
 import com.fulgurogo.features.games.Game
 import com.fulgurogo.features.ladder.Rating

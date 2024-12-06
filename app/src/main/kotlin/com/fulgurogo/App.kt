@@ -1,10 +1,11 @@
 package com.fulgurogo
 
-import com.fulgurogo.common.Config
+import com.fulgurogo.common.config.Config
 import com.fulgurogo.features.api.Api
 import com.fulgurogo.features.bot.FulguroBot
 import com.fulgurogo.features.games.GameScanner
 import com.fulgurogo.features.ssh.SSHConnector
+import com.fulgurogo.kgs.KgsUserInfoFetcher
 import io.javalin.Javalin
 import net.dv8tion.jda.api.JDABuilder
 import net.dv8tion.jda.api.requests.GatewayIntent
@@ -16,6 +17,17 @@ fun main() {
 
     // In dev we need to connect via SSH to the server for the MySQL access (only local connection allowed)
     if (isDebug) SSHConnector.connect()
+
+    KgsUserInfoFetcher().start()
+
+
+
+
+
+
+
+
+
 
     JDABuilder.createDefault(Config.get("bot.token"))
         .setChunkingFilter(ChunkingFilter.ALL)

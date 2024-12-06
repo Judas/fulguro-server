@@ -1,6 +1,6 @@
 package com.fulgurogo.features.api
 
-import com.fulgurogo.common.Config
+import com.fulgurogo.common.config.Config
 import okhttp3.FormBody
 
 data class AuthRequestPayload(

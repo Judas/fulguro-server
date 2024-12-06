@@ -1,6 +1,6 @@
 package com.fulgurogo.features.user
 
-import com.fulgurogo.common.Config
+import com.fulgurogo.common.config.Config
 import com.fulgurogo.features.api.ApiAccount
 import com.fulgurogo.features.ladder.RatingCalculator
 import com.fulgurogo.features.user.egf.EgfClient
@@ -9,7 +9,7 @@ import com.fulgurogo.features.user.fox.FoxClient
 import com.fulgurogo.features.user.igs.IgsClient
 import com.fulgurogo.features.user.kgs.KgsClient
 import com.fulgurogo.features.user.ogs.OgsClient
-import com.fulgurogo.utilities.GenerateNoArgConstructor
+import com.fulgurogo.common.utilities.GenerateNoArgConstructor
 import com.fulgurogo.utilities.userName
 import net.dv8tion.jda.api.JDA
 import java.util.*

@@ -1,4 +1,4 @@
-package com.fulgurogo.utilities
+package com.fulgurogo.common.logger
 
 import org.slf4j.LoggerFactory
 
@@ -17,3 +17,6 @@ object Logger {
         }
     }
 }
+
+fun Any.log(level: Logger.Level, message: String, error: Throwable? = null) =
+    Logger.log(level, this::class.java.simpleName, message, error)

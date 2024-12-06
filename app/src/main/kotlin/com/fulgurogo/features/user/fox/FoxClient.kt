@@ -1,14 +1,14 @@
 package com.fulgurogo.features.user.fox
 
-import com.fulgurogo.common.Config
+import com.fulgurogo.common.config.Config
 import com.fulgurogo.features.user.User
 import com.fulgurogo.features.user.UserAccountClient
 import com.fulgurogo.features.user.UserAccountGame
 import com.fulgurogo.utilities.ApiException
 import com.fulgurogo.utilities.EmptyUserIdException
-import com.fulgurogo.utilities.Logger.Level.ERROR
-import com.fulgurogo.utilities.Logger.Level.INFO
-import com.fulgurogo.utilities.log
+import com.fulgurogo.common.logger.Logger.Level.ERROR
+import com.fulgurogo.common.logger.Logger.Level.INFO
+import com.fulgurogo.common.logger.log
 import com.google.gson.Gson
 import okhttp3.JavaNetCookieJar
 import okhttp3.MediaType.Companion.toMediaTypeOrNull

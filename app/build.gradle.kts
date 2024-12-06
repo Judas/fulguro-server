@@ -24,11 +24,12 @@ kotlin {
 }
 
 noArg {
-    annotation("com.fulgurogo.utilities.GenerateNoArgConstructor")
+    annotation("com.fulgurogo.common.utilities.GenerateNoArgConstructor")
 }
 
 dependencies {
     implementation(project(":common"))
+    implementation(project(":kgs"))
 
     implementation(libs.commons.net)
     implementation(libs.gson)

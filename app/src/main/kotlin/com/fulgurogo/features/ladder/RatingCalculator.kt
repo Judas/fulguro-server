@@ -5,8 +5,8 @@ import com.fulgurogo.features.user.ServerUser
 import com.fulgurogo.features.user.UserAccount
 import com.fulgurogo.features.user.kgs.KgsUser
 import com.fulgurogo.features.user.ogs.OgsUser
-import com.fulgurogo.utilities.Logger.Level.INFO
-import com.fulgurogo.utilities.log
+import com.fulgurogo.common.logger.Logger.Level.INFO
+import com.fulgurogo.common.logger.log
 import com.fulgurogo.utilities.toRating
 
 object RatingCalculator {

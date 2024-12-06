@@ -2,9 +2,9 @@ package com.fulgurogo.features.bot
 
 import com.fulgurogo.features.database.DatabaseAccessor
 import com.fulgurogo.features.games.GameScanner
-import com.fulgurogo.utilities.Logger.Level.INFO
+import com.fulgurogo.common.logger.Logger.Level.INFO
 import com.fulgurogo.utilities.acknowledge
-import com.fulgurogo.utilities.log
+import com.fulgurogo.common.logger.log
 import com.fulgurogo.utilities.simpleError
 import com.fulgurogo.utilities.simpleMessage
 import kotlinx.coroutines.CoroutineScope

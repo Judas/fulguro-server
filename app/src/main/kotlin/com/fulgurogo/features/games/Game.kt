@@ -1,8 +1,8 @@
 package com.fulgurogo.features.games
 
-import com.fulgurogo.common.Config
+import com.fulgurogo.common.config.Config
 import com.fulgurogo.features.user.UserAccount
-import com.fulgurogo.utilities.GenerateNoArgConstructor
+import com.fulgurogo.common.utilities.GenerateNoArgConstructor
 import com.fulgurogo.utilities.toRankInt
 import java.util.*
 

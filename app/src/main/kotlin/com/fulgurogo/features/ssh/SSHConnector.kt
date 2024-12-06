@@ -1,9 +1,9 @@
 package com.fulgurogo.features.ssh
 
-import com.fulgurogo.common.Config
-import com.fulgurogo.utilities.Logger.Level.ERROR
-import com.fulgurogo.utilities.Logger.Level.INFO
-import com.fulgurogo.utilities.log
+import com.fulgurogo.common.config.Config
+import com.fulgurogo.common.logger.Logger.Level.ERROR
+import com.fulgurogo.common.logger.Logger.Level.INFO
+import com.fulgurogo.common.logger.log
 import com.jcraft.jsch.JSch
 import java.util.*
 

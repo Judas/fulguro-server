@@ -1,14 +1,14 @@
 package com.fulgurogo.features.user.kgs
 
-import com.fulgurogo.common.Config
+import com.fulgurogo.common.config.Config
+import com.fulgurogo.common.logger.Logger.Level.*
+import com.fulgurogo.common.logger.log
 import com.fulgurogo.features.user.User
 import com.fulgurogo.features.user.UserAccountClient
 import com.fulgurogo.features.user.UserAccountGame
 import com.fulgurogo.utilities.ApiException
 import com.fulgurogo.utilities.EmptyUserIdException
-import com.fulgurogo.utilities.Logger.Level.*
 import com.fulgurogo.utilities.filterGame
-import com.fulgurogo.utilities.log
 import com.google.gson.Gson
 import okhttp3.JavaNetCookieJar
 import okhttp3.MediaType.Companion.toMediaType

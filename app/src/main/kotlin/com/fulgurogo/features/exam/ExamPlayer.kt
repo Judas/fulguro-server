@@ -1,6 +1,6 @@
 package com.fulgurogo.features.exam
 
-import com.fulgurogo.utilities.GenerateNoArgConstructor
+import com.fulgurogo.common.utilities.GenerateNoArgConstructor
 import com.fulgurogo.utilities.formatDecimals
 
 @GenerateNoArgConstructor

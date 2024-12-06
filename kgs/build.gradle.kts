@@ -24,9 +24,14 @@ noArg {
 }
 
 dependencies {
-    implementation(libs.hikari)
+    implementation(project(":common"))
+
+    implementation(libs.gson)
     implementation(platform(libs.kotlin.bom))
-    implementation(libs.kotlinx.coroutines)
     implementation(libs.kotlin.stdlib)
+    implementation(libs.kotlinx.coroutines)
     implementation(libs.sql2o)
+    implementation(platform(libs.okhttp.bom))
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.urlconnection)
 }

@@ -1,6 +1,6 @@
 package com.fulgurogo.features.api
 
-import com.fulgurogo.utilities.GenerateNoArgConstructor
+import com.fulgurogo.common.utilities.GenerateNoArgConstructor
 
 @GenerateNoArgConstructor
 data class ApiFgcValidation(

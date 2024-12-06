@@ -1,6 +1,6 @@
 package com.fulgurogo.utilities
 
-import com.fulgurogo.common.Config
+import com.fulgurogo.common.config.Config
 import com.fulgurogo.features.exam.ExamPlayer
 import net.dv8tion.jda.api.EmbedBuilder
 import net.dv8tion.jda.api.JDA

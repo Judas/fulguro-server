@@ -1,15 +1,15 @@
 package com.fulgurogo.features.user.ffg
 
-import com.fulgurogo.common.Config
+import com.fulgurogo.common.config.Config
 import com.fulgurogo.features.user.User
 import com.fulgurogo.features.user.UserAccountClient
 import com.fulgurogo.features.user.UserAccountGame
 import com.fulgurogo.utilities.ApiException
 import com.fulgurogo.utilities.EmptyUserIdException
 import com.fulgurogo.utilities.InvalidUserException
-import com.fulgurogo.utilities.Logger.Level.ERROR
-import com.fulgurogo.utilities.Logger.Level.INFO
-import com.fulgurogo.utilities.log
+import com.fulgurogo.common.logger.Logger.Level.ERROR
+import com.fulgurogo.common.logger.Logger.Level.INFO
+import com.fulgurogo.common.logger.log
 import okhttp3.JavaNetCookieJar
 import okhttp3.OkHttpClient
 import okhttp3.Request

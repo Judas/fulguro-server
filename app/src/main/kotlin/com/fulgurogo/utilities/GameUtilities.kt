@@ -1,7 +1,8 @@
 package com.fulgurogo.utilities
 
+import com.fulgurogo.common.logger.Logger.Level.INFO
+import com.fulgurogo.common.logger.log
 import com.fulgurogo.features.user.UserAccountGame
-import com.fulgurogo.utilities.Logger.Level.INFO
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import kotlin.math.*

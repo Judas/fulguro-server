@@ -1,9 +1,10 @@
 package com.fulgurogo.utilities
 
+import com.fulgurogo.common.logger.Logger.Level.ERROR
+import com.fulgurogo.common.logger.Logger.Level.INFO
+import com.fulgurogo.common.logger.log
 import com.fulgurogo.features.database.DatabaseAccessor
 import com.fulgurogo.features.user.User
-import com.fulgurogo.utilities.Logger.Level.ERROR
-import com.fulgurogo.utilities.Logger.Level.INFO
 
 fun Any.forAllUsers(process: (User) -> Unit) {
     val users = DatabaseAccessor.usersWithLinkedPlayableAccount()

@@ -1,4 +1,4 @@
-package com.fulgurogo.common
+package com.fulgurogo.common.config
 
 import java.util.*
 

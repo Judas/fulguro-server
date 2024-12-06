@@ -1,6 +1,6 @@
 package com.fulgurogo.features.user.ogs
 
-import com.fulgurogo.common.Config
+import com.fulgurogo.common.config.Config
 import com.fulgurogo.features.user.UserAccount
 import com.fulgurogo.features.user.UserAccountGame
 import com.google.gson.annotations.SerializedName

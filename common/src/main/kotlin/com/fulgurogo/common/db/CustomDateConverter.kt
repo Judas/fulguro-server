@@ -1,12 +1,11 @@
-package com.fulgurogo.features.database
+package com.fulgurogo.common.db
 
-import com.fulgurogo.utilities.DATE_ZONE
+import com.fulgurogo.common.utilities.DATE_ZONE
 import org.sql2o.converters.Converter
 import java.time.LocalDateTime
-import java.time.ZoneId
 import java.util.*
 
-class CustomDateConverter : Converter<Date> {
+class CustomDateConverter : org.sql2o.converters.Converter<Date> {
     override fun convert(value: Any?): Date? = when (value) {
         is LocalDateTime -> Date.from(value.atZone(DATE_ZONE).toInstant())
         is Date -> value

@@ -1,7 +1,7 @@
 package com.fulgurogo.features.api
 
 import com.fulgurogo.features.exam.ExamPlayer
-import com.fulgurogo.utilities.GenerateNoArgConstructor
+import com.fulgurogo.common.utilities.GenerateNoArgConstructor
 
 @GenerateNoArgConstructor
 data class ApiExamPlayer(

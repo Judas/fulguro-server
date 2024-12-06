@@ -2,7 +2,7 @@ package com.fulgurogo.features.api
 
 import com.fulgurogo.features.database.DatabaseAccessor
 import com.fulgurogo.features.user.UserAccount
-import com.fulgurogo.utilities.GenerateNoArgConstructor
+import com.fulgurogo.common.utilities.GenerateNoArgConstructor
 
 @GenerateNoArgConstructor
 data class ApiPlayer(

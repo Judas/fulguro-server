@@ -1,7 +1,7 @@
 package com.fulgurogo.features.user.igs
 
-import com.fulgurogo.utilities.Logger.Level.INFO
-import com.fulgurogo.utilities.log
+import com.fulgurogo.common.logger.Logger.Level.INFO
+import com.fulgurogo.common.logger.log
 import org.apache.commons.net.telnet.TelnetClient
 import java.io.IOException
 import java.io.InputStream

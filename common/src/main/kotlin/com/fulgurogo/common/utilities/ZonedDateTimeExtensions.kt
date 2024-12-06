@@ -1,4 +1,4 @@
-package com.fulgurogo.utilities
+package com.fulgurogo.common.utilities
 
 import java.time.ZoneId
 import java.time.ZonedDateTime
