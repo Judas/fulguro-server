@@ -1,7 +1,6 @@
 package com.fulgurogo.features.user
 
-import com.fulgurogo.Config
-import com.fulgurogo.Config.Ladder.DEFAULT_AVATAR
+import com.fulgurogo.common.Config
 import com.fulgurogo.features.api.ApiAccount
 import com.fulgurogo.features.ladder.RatingCalculator
 import com.fulgurogo.features.user.egf.EgfClient
@@ -70,8 +69,8 @@ data class User(
 
             val user = User(
                 discordId = discordId,
-                name = if (Config.DEV) name else jda.userName(discordId),
-                avatar = jda.getUserById(discordId)?.effectiveAvatarUrl ?: DEFAULT_AVATAR,
+                name = if (Config.get("debug").toBoolean()) name else jda.userName(discordId),
+                avatar = jda.getUserById(discordId)?.effectiveAvatarUrl ?: Config.get("ladder.default.avatar"),
                 titles = titles,
                 lastGameScan = lastGameScan,
                 kgsId = kgsId,
@@ -102,7 +101,7 @@ data class User(
             User(
                 discordId = discordId,
                 name = jda.userName(discordId),
-                avatar = jda.getUserById(discordId)?.effectiveAvatarUrl ?: DEFAULT_AVATAR
+                avatar = jda.getUserById(discordId)?.effectiveAvatarUrl ?: Config.get("ladder.default.avatar")
             )
         }
 

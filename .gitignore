@@ -38,3 +38,4 @@ out.map
 export
 assets
 app/src/main/resources/id_rsa
+config.properties*

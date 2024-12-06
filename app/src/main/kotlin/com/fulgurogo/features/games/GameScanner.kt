@@ -1,6 +1,6 @@
 package com.fulgurogo.features.games
 
-import com.fulgurogo.Config
+import com.fulgurogo.common.Config
 import com.fulgurogo.features.bot.FulguroBot
 import com.fulgurogo.features.database.DatabaseAccessor
 import com.fulgurogo.features.exam.ExamPointsService
@@ -59,7 +59,7 @@ object GameScanner {
                 log(INFO, "scanFlow tick")
                 when {
                     isScanning -> log(INFO, "Skip scan, previous scan is still ongoing")
-                    Config.DEV -> log(INFO, "Skip scan in developer mode")
+                    Config.get("debug").toBoolean() -> log(INFO, "Skip scan in developer mode")
                     else -> scan()
                 }
             }
@@ -209,7 +209,7 @@ object GameScanner {
         } else {
             if (response.code == 429 && allowRetry) {
                 log(INFO, "Fetching SGF ERROR 429: Waiting then retrying")
-                Thread.sleep(Config.Ogs.API_DELAY_IN_SECONDS * 1000L)
+                Thread.sleep(Config.get("ogs.api.delay.seconds").toInt() * 1000L)
                 fetchGameSgf(game, blackPlayerDiscordId, whitePlayerDiscordId, false)
             } else {
                 val error = ApiException("Fetching SGF FAILURE " + response.code)

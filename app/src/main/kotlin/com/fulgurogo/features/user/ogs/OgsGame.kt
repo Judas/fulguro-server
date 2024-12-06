@@ -1,6 +1,6 @@
 package com.fulgurogo.features.user.ogs
 
-import com.fulgurogo.Config
+import com.fulgurogo.common.Config
 import com.fulgurogo.features.user.UserAccount
 import com.fulgurogo.features.user.UserAccountGame
 import com.google.gson.annotations.SerializedName
@@ -85,7 +85,7 @@ data class OgsGame(
     }
 
     override fun sgfLink(blackPlayerDiscordId: String, whitePlayerDiscordId: String) =
-        "${Config.Ogs.API_URL}/games/$id/sgf"
+        "${Config.get("ogs.api.url")}/games/$id/sgf"
 
     fun isNotCorrespondence(): Boolean {
         val speed = extractTimeControlParamString("speed")

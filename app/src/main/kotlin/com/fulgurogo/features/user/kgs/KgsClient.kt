@@ -1,6 +1,6 @@
 package com.fulgurogo.features.user.kgs
 
-import com.fulgurogo.Config
+import com.fulgurogo.common.Config
 import com.fulgurogo.features.user.User
 import com.fulgurogo.features.user.UserAccountClient
 import com.fulgurogo.features.user.UserAccountGame
@@ -143,7 +143,7 @@ class KgsClient : UserAccountClient {
         post(jsonPayload)
 
         // Delay ensuring response from KGS API which is quite slow to update
-        Thread.sleep(Config.Kgs.API_DELAY_IN_SECONDS * 1000L)
+        Thread.sleep(Config.get("kgs.api.delay.seconds").toInt() * 1000L)
 
         return try {
             get()
@@ -162,7 +162,7 @@ class KgsClient : UserAccountClient {
         log(INFO, "POST $jsonPayload")
 
         val postRequestBody: RequestBody = jsonPayload.toRequestBody("application/json".toMediaType())
-        val postRequest: Request = Request.Builder().url(Config.Kgs.API_URL).post(postRequestBody).build()
+        val postRequest: Request = Request.Builder().url(Config.get("kgs.api.url")).post(postRequestBody).build()
         val postResponse = okHttpClient.newCall(postRequest).execute()
 
         if (!postResponse.isSuccessful) {
@@ -181,7 +181,7 @@ class KgsClient : UserAccountClient {
     private fun get(): KgsApi.Response {
         log(INFO, "GET")
 
-        val getRequest: Request = Request.Builder().url(Config.Kgs.API_URL).get().build()
+        val getRequest: Request = Request.Builder().url(Config.get("kgs.api.url")).get().build()
         val getResponse = okHttpClient.newCall(getRequest).execute()
 
         if (!getResponse.isSuccessful) {

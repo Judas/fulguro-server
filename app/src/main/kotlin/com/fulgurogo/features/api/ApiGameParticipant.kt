@@ -1,6 +1,6 @@
 package com.fulgurogo.features.api
 
-import com.fulgurogo.Config
+import com.fulgurogo.common.Config
 import com.fulgurogo.features.database.DatabaseAccessor
 import com.fulgurogo.features.games.Game
 import com.fulgurogo.features.ladder.Rating
@@ -21,7 +21,7 @@ data class ApiGameParticipant(
             val discordId = if (black) game.blackPlayerDiscordId else game.whitePlayerDiscordId
             val userName = (if (black) game.blackPlayerName else game.whitePlayerName) ?: "Joueur désinscrit"
             val userAvatar = (if (black) game.blackPlayerAvatar else game.whitePlayerAvatar)
-                ?: Config.Ladder.DEFAULT_AVATAR
+                ?: Config.get("ladder.default.avatar")
             val serverId = if (black) game.blackPlayerServerId else game.whitePlayerServerId
             val serverPseudo = if (black) game.blackPlayerPseudo else game.whitePlayerPseudo
             val winner = (black && game.blackPlayerWon == true) || (!black && game.whitePlayerWon == true)

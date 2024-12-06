@@ -1,6 +1,6 @@
 package com.fulgurogo.features.api
 
-import com.fulgurogo.Config
+import com.fulgurogo.common.Config
 import com.fulgurogo.features.bot.FulguroBot
 import com.fulgurogo.features.database.DatabaseAccessor
 import com.fulgurogo.features.exam.ExamSpecialization
@@ -164,7 +164,8 @@ object Api {
 
     private fun requestAuthToken(authCode: String): AuthRequestResponse {
         val body: RequestBody = AuthRequestPayload(code = authCode).toFormBody()
-        val request: Request = Request.Builder().url(Config.Ladder.DISCORD_AUTH_TOKEN_URL).post(body).build()
+
+        val request: Request = Request.Builder().url(Config.get("ladder.discord.auth.token.uri")).post(body).build()
         val response = okHttpClient.newCall(request).execute()
 
         if (!response.isSuccessful) {
@@ -181,7 +182,7 @@ object Api {
 
     private fun refreshAuthToken(refreshToken: String): AuthRequestResponse {
         val body: RequestBody = AuthRefreshPayload(refreshToken = refreshToken).toFormBody()
-        val request: Request = Request.Builder().url(Config.Ladder.DISCORD_AUTH_TOKEN_URL).post(body).build()
+        val request: Request = Request.Builder().url(Config.get("ladder.discord.auth.token.uri")).post(body).build()
         val response = okHttpClient.newCall(request).execute()
 
         if (!response.isSuccessful) {
@@ -197,7 +198,7 @@ object Api {
     }
 
     private fun getUserDiscordId(authCredentials: AuthCredentials): String {
-        val url = "${Config.Ladder.DISCORD_API_URL}/users/@me"
+        val url = "${Config.get("ladder.discord.api.url")}/users/@me"
         val request: Request = Request.Builder()
             .url(url)
             .header("Authorization", "${authCredentials.tokenType} ${authCredentials.accessToken}")

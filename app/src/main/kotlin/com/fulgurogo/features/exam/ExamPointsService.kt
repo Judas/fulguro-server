@@ -1,6 +1,6 @@
 package com.fulgurogo.features.exam
 
-import com.fulgurogo.Config
+import com.fulgurogo.common.Config
 import com.fulgurogo.features.database.DatabaseAccessor
 import com.fulgurogo.features.games.Game
 import com.fulgurogo.utilities.*
@@ -14,6 +14,8 @@ import kotlin.math.min
 class ExamPointsService(private val jda: JDA) {
     companion object {
         private const val EMOJI = ":crossed_swords:"
+        private val CHANNEL_ID = Config.get("bot.exam.channel.id")
+        private val HOF_CHANNEL_ID = Config.get("bot.exam.hof.channel.id")
     }
 
     fun refresh() {
@@ -90,9 +92,9 @@ class ExamPointsService(private val jda: JDA) {
 
         val title = "$EMOJI __Classement de l'**Examen Hunter**__ $EMOJI"
         if (message.isBlank()) message = "*Aucun participant n'a de points*"
-        else message += "\n\n[Classement complet](${Config.FRONTEND_URL}/hunters)"
+        else message += "\n\n[Classement complet](${Config.get("frontend.url")}/hunters)"
 
-        jda.publicMessage(Config.Exam.CHANNEL_ID, "$title\n$message")
+        jda.publicMessage(CHANNEL_ID, "$title\n$message")
     }
 
     private fun printSessionStats(promoName: String) {
@@ -114,7 +116,7 @@ class ExamPointsService(private val jda: JDA) {
             "La promotion $promoName n'arrive pas à détrôner celle de ${award?.promo ?: "????"}, qui conserve donc le **Netero Award** pour un mois supplémentaire !"
 
         jda.publicMessage(
-            Config.Exam.HOF_CHANNEL_ID,
+            HOF_CHANNEL_ID,
             message,
             "$EMOJI __**Examen Hunter** ${promoName}__ $EMOJI"
         )
@@ -127,7 +129,7 @@ class ExamPointsService(private val jda: JDA) {
             "$EMOJI __Classement final de l'**Examen Hunter** ${promoName}__ $EMOJI"
 
         // Print all in normal chanel
-        jda.publicMessage(Config.Exam.CHANNEL_ID, title)
+        jda.publicMessage(CHANNEL_ID, title)
 
         var message = ""
         DatabaseAccessor.examPlayers()
@@ -136,12 +138,12 @@ class ExamPointsService(private val jda: JDA) {
             .forEachIndexed { index, hunter ->
                 message += "**${index + 1}.** ${jda.userName(hunter)} *(${hunter.totalPointsString()})*${hunter.title()}\n"
                 if (index % 10 == 9) {
-                    jda.publicMessage(Config.Exam.CHANNEL_ID, message)
+                    jda.publicMessage(CHANNEL_ID, message)
                     message = ""
                 }
             }
 
-        if (message.isNotBlank()) jda.publicMessage(Config.Exam.CHANNEL_ID, message)
+        if (message.isNotBlank()) jda.publicMessage(CHANNEL_ID, message)
 
         // Print top 20 in HOF channel
         var hofMessage = ""
@@ -154,7 +156,7 @@ class ExamPointsService(private val jda: JDA) {
             }
 
         if (hofMessage.isBlank()) hofMessage = "*Aucun participant n'a de points*"
-        jda.publicMessage(Config.Exam.HOF_CHANNEL_ID, "$title\n$hofMessage")
+        jda.publicMessage(HOF_CHANNEL_ID, "$title\n$hofMessage")
     }
 
     private fun promoteHunters(promoName: String) {
@@ -171,7 +173,7 @@ class ExamPointsService(private val jda: JDA) {
         newHunters.forEach { hunter ->
             DatabaseAccessor.promoteHunter(hunter)
             jda.publicMessage(
-                Config.Exam.CHANNEL_ID,
+                CHANNEL_ID,
                 "${jda.userName(hunter)} valide son examen et devient **Hunter** !"
             )
         }
@@ -188,7 +190,7 @@ class ExamPointsService(private val jda: JDA) {
         var hunterMessage = ""
         newHunters.forEach { hunterMessage += "${jda.userName(it)}\n" }
         jda.publicMessage(
-            Config.Exam.HOF_CHANNEL_ID,
+            HOF_CHANNEL_ID,
             hunterMessage,
             "$EMOJI __**Hunters** de la promotion ${promoName}__ $EMOJI"
         )
@@ -196,7 +198,7 @@ class ExamPointsService(private val jda: JDA) {
         var specMessage = ""
         specMessages.forEach { specMessage += "$it\n" }
         jda.publicMessage(
-            Config.Exam.HOF_CHANNEL_ID,
+            HOF_CHANNEL_ID,
             specMessage,
             "$EMOJI __Spécialisations **Hunter** attribuées__ $EMOJI"
         )
@@ -219,7 +221,7 @@ class ExamPointsService(private val jda: JDA) {
             DatabaseAccessor.resetSpec(specialization)
 
             jda.publicMessage(
-                Config.Exam.CHANNEL_ID,
+                CHANNEL_ID,
                 "\nPersonne n'est éligible pour devenir **${specialization.fullName}** ce mois ci !"
             )
 
@@ -232,7 +234,7 @@ class ExamPointsService(private val jda: JDA) {
         if (hunters.size > 1 && specialization.pointsCallback(hunter) == specialization.pointsCallback(hunters[1])) {
             DatabaseAccessor.resetSpec(specialization)
             jda.publicMessage(
-                Config.Exam.CHANNEL_ID,
+                CHANNEL_ID,
                 "\nPlusieurs joueurs sont à égalité pour le titre de **${specialization.fullName}**, il n'est donc pas attribué ce mois ci !"
             )
             return Triple(null, false, "")
@@ -242,7 +244,7 @@ class ExamPointsService(private val jda: JDA) {
             // First is not hunter => make hunter
             DatabaseAccessor.promoteHunter(hunter)
             jda.publicMessage(
-                Config.Exam.CHANNEL_ID,
+                CHANNEL_ID,
                 "\n${jda.userName(hunter)} est promu **Hunter** grâce à son haut-fait de **${specialization.type}** !"
             )
             false
@@ -267,7 +269,7 @@ class ExamPointsService(private val jda: JDA) {
         val message = "${specialization.emoji} $name obtient le titre de **$title** avec ${
             specialization.pointsStringCallback(hunter)
         } de **${specialization.type}**!"
-        jda.publicMessage(Config.Exam.CHANNEL_ID, message)
+        jda.publicMessage(CHANNEL_ID, message)
         return Triple(hunter, wasHunter, message)
     }
 
@@ -278,6 +280,6 @@ class ExamPointsService(private val jda: JDA) {
 
         var message = "$EMOJI __Clôture de l'**Examen Hunter**__ $EMOJI\n"
         message += "\nL'**Examen Hunter** $promoName est désormais clos. Une nouvelle session commence.\nQue brûlent vos nens ! :fire:"
-        jda.publicMessage(Config.Exam.CHANNEL_ID, message)
+        jda.publicMessage(CHANNEL_ID, message)
     }
 }

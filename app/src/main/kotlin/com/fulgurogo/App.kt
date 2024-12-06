@@ -1,5 +1,6 @@
 package com.fulgurogo
 
+import com.fulgurogo.common.Config
 import com.fulgurogo.features.api.Api
 import com.fulgurogo.features.bot.FulguroBot
 import com.fulgurogo.features.games.GameScanner
@@ -11,10 +12,12 @@ import net.dv8tion.jda.api.utils.ChunkingFilter
 import net.dv8tion.jda.api.utils.MemberCachePolicy
 
 fun main() {
-    // In dev we need to connect via SSH to the server for the MySQL access (only local connection allowed)
-    if (Config.DEV) SSHConnector.connect()
+    val isDebug = Config.get("debug").toBoolean()
 
-    JDABuilder.createDefault(Config.Bot.TOKEN)
+    // In dev we need to connect via SSH to the server for the MySQL access (only local connection allowed)
+    if (isDebug) SSHConnector.connect()
+
+    JDABuilder.createDefault(Config.get("bot.token"))
         .setChunkingFilter(ChunkingFilter.ALL)
         .setMemberCachePolicy(MemberCachePolicy.ALL)
         .enableIntents(GatewayIntent.GUILD_MEMBERS)
@@ -25,10 +28,10 @@ fun main() {
     Javalin
         .create { config ->
             config.http.defaultContentType = "application/json"
-            if (Config.DEV) config.bundledPlugins.enableDevLogging()
+            if (isDebug) config.bundledPlugins.enableDevLogging()
             config.bundledPlugins.enableCors { cors -> cors.addRule { it.anyHost() } }
         }
-        .start(Config.Server.PORT)
+        .start(Config.get("ladder.api.port").toInt())
         .apply {
             get("/gold/api/players", Api::getPlayers)
             get("/gold/api/player/{id}", Api::getPlayerProfile)

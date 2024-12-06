@@ -1,6 +1,6 @@
 package com.fulgurogo.features.user.fox
 
-import com.fulgurogo.Config
+import com.fulgurogo.common.Config
 import com.fulgurogo.features.user.User
 import com.fulgurogo.features.user.UserAccountClient
 import com.fulgurogo.features.user.UserAccountGame
@@ -54,7 +54,8 @@ class FoxClient : UserAccountClient {
     fun user(pseudo: String?): FoxUser? =
         if (pseudo.isNullOrBlank()) null
         else {
-            val foxUser = get("${Config.Fox.API_URL}/${Config.Fox.USER_INFO}$pseudo", FoxUser::class.java)
+            val foxUser =
+                get("${Config.get("fox.api.url")}/${Config.get("fox.user.info.key")}$pseudo", FoxUser::class.java)
             val hasPseudo = foxUser.pseudo().isNullOrBlank().not()
             if (hasPseudo) {
                 val lastGame = lastHundredGames(foxUser.pseudo()!!).firstOrNull()
@@ -73,7 +74,7 @@ class FoxClient : UserAccountClient {
 
     private fun lastHundredGames(pseudo: String): List<FoxGame> {
         val gameRequest = get(
-            "${Config.Fox.API_URL}/${Config.Fox.USER_GAMES}$pseudo",
+            "${Config.get("fox.api.url")}/${Config.get("fox.user.games.key")}$pseudo",
             FoxGameList::class.java
         )
 

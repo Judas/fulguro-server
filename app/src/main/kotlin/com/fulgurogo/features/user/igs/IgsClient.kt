@@ -1,6 +1,6 @@
 package com.fulgurogo.features.user.igs
 
-import com.fulgurogo.Config
+import com.fulgurogo.common.Config
 import com.fulgurogo.features.user.User
 import com.fulgurogo.features.user.UserAccountClient
 import com.fulgurogo.features.user.UserAccountGame
@@ -29,11 +29,11 @@ class IgsClient : UserAccountClient {
         if (id.isNullOrBlank())
             throw EmptyUserIdException
         else {
-            igsTelnetClient.connect(Config.Igs.SERVER_ADDRESS, Config.Igs.SERVER_PORT)
+            igsTelnetClient.connect(Config.get("igs.server.host"), Config.get("igs.server.port").toInt())
             igsTelnetClient.readUntil(LOGIN_PROMPT)
-            igsTelnetClient.write(Config.Igs.USERNAME)
+            igsTelnetClient.write(Config.get("igs.user.name"))
             igsTelnetClient.readUntil(PASSWORD_PROMPT)
-            igsTelnetClient.write(Config.Igs.PASSWORD)
+            igsTelnetClient.write(Config.get("igs.user.password"))
             igsTelnetClient.readUntil(DEFAULT_PROMPT)
             igsTelnetClient.write("stats $id")
             val playerInfo = igsTelnetClient.readUntil(DEFAULT_PROMPT)

@@ -1,6 +1,6 @@
 package com.fulgurogo.features.games
 
-import com.fulgurogo.Config
+import com.fulgurogo.common.Config
 import com.fulgurogo.features.user.UserAccount
 import com.fulgurogo.utilities.GenerateNoArgConstructor
 import com.fulgurogo.utilities.toRankInt
@@ -53,15 +53,15 @@ open class Game(
     }
 
     fun gameLink(black: Boolean): String = when (server) {
-        UserAccount.OGS.fullName -> "${Config.Ogs.WEBSITE_URL}/game/${gameServerId()}"
-        UserAccount.FOX.fullName -> "${Config.Fox.GAME_LINK}${gameServerId()}"
+        UserAccount.OGS.fullName -> "${Config.get("ogs.website.url")}/game/${gameServerId()}"
+        UserAccount.FOX.fullName -> "${Config.get("fox.game.link")}${gameServerId()}"
         UserAccount.KGS.fullName -> {
             val pseudo = if (black) blackPlayerPseudo else whitePlayerPseudo
             val calendar = Calendar.getInstance()
             calendar.time = date
             val year = calendar.get(Calendar.YEAR)
             val month = calendar.get(Calendar.MONTH) + 1 // Java months start at 0...
-            "${Config.Kgs.ARCHIVES_URL}?user=$pseudo&year=$year&month=$month"
+            "${Config.get("kgs.archives.url")}?user=$pseudo&year=$year&month=$month"
         }
 
         else -> ""

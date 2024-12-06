@@ -1,6 +1,6 @@
 package com.fulgurogo.features.user.kgs
 
-import com.fulgurogo.Config
+import com.fulgurogo.common.Config
 import com.fulgurogo.features.database.DatabaseAccessor
 import com.fulgurogo.features.user.UserAccount
 import com.fulgurogo.features.user.UserAccountGame
@@ -55,7 +55,7 @@ data class KgsGame(
         val occurrences =
             DatabaseAccessor.countDailyGamesBetween(blackPlayerDiscordId, whitePlayerDiscordId, this)
                 .let { if (it < 2) "" else "-$it" }
-        "${Config.Kgs.GAME_LINK}/$year/$month/$day/${whitePlayerPseudo()}-${blackPlayerPseudo()}$occurrences.sgf"
+        "${Config.get("kgs.game.link")}/$year/$month/$day/${whitePlayerPseudo()}-${blackPlayerPseudo()}$occurrences.sgf"
     }
 
     fun isRanked(): Boolean = RANKED == gameType

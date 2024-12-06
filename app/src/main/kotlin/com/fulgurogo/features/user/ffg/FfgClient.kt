@@ -1,6 +1,6 @@
 package com.fulgurogo.features.user.ffg
 
-import com.fulgurogo.Config
+import com.fulgurogo.common.Config
 import com.fulgurogo.features.user.User
 import com.fulgurogo.features.user.UserAccountClient
 import com.fulgurogo.features.user.UserAccountGame
@@ -30,7 +30,7 @@ class FfgClient : UserAccountClient {
         if (id.isNullOrBlank())
             throw EmptyUserIdException
         else {
-            val route = "${Config.Ffg.WEBSITE_URL}/php/affichePersonne.php?id=$id"
+            val route = "${Config.get("ffg.website.url")}/php/affichePersonne.php?id=$id"
             val request: Request = Request.Builder().url(route).get().build()
             val response = okHttpClient.newCall(request).execute()
             if (response.isSuccessful) {

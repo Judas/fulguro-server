@@ -1,6 +1,6 @@
 package com.fulgurogo.features.user.ogs
 
-import com.fulgurogo.Config
+import com.fulgurogo.common.Config
 import com.fulgurogo.features.user.User
 import com.fulgurogo.features.user.UserAccountClient
 import com.fulgurogo.features.user.UserAccountGame
@@ -43,17 +43,17 @@ class OgsClient : UserAccountClient {
     override fun userGame(user: User, gameServerId: String): UserAccountGame =
         if (user.ogsId.isNullOrBlank()) throw EmptyUserIdException
         else {
-            val url = "${Config.Ogs.API_URL}/games/$gameServerId"
+            val url = "${Config.get("ogs.api.url")}/games/$gameServerId"
             log(INFO, url)
             get(url, OgsGame::class.java)
         }
 
     fun user(id: String?): OgsUser? =
         if (id.isNullOrBlank()) null
-        else get("${Config.Ogs.TERMINATION_API_URL}/player/$id", OgsUser::class.java)
+        else get("${Config.get("ogs.termination.api.url")}/player/$id", OgsUser::class.java)
 
     fun userIdFromPseudo(pseudo: String): String? {
-        val url = "${Config.Ogs.API_URL}/players?username=$pseudo"
+        val url = "${Config.get("ogs.api.url")}/players?username=$pseudo"
         val userList = get(url, OgsUserList::class.java)
         return userList.results.firstOrNull()?.id()
     }
@@ -62,7 +62,7 @@ class OgsClient : UserAccountClient {
         if (user.ogsId.isNullOrBlank()) throw EmptyUserIdException
         else {
             val games: MutableList<OgsGame> = ArrayList()
-            var url: String? = "${Config.Ogs.API_URL}/players/${user.ogsId}/games?ordering=-ended"
+            var url: String? = "${Config.get("ogs.api.url")}/players/${user.ogsId}/games?ordering=-ended"
 
             while (url.isNullOrBlank().not()) {
                 log(INFO, "$url")
@@ -86,7 +86,7 @@ class OgsClient : UserAccountClient {
         if (lastCallTime.plusSeconds(1).isAfter(ZonedDateTime.now(DATE_ZONE))) {
             // Delay to avoid spamming OGS API
             log(INFO, "Waiting to avoid OGS spam")
-            Thread.sleep(Config.Ogs.API_DELAY_IN_SECONDS * 1000L)
+            Thread.sleep(Config.get("ogs.api.delay.seconds").toInt() * 1000L)
         }
         lastCallTime = ZonedDateTime.now(DATE_ZONE)
 

@@ -1,6 +1,6 @@
 package com.fulgurogo.features.database
 
-import com.fulgurogo.Config
+import com.fulgurogo.common.Config
 import com.fulgurogo.features.api.*
 import com.fulgurogo.features.exam.*
 import com.fulgurogo.features.games.Game
@@ -24,11 +24,13 @@ import javax.sql.DataSource
 
 object DatabaseAccessor {
     private val dataSource: DataSource = HikariDataSource(HikariConfig().apply {
-        val port = if (Config.DEV) Config.SSH.FORWARDED_PORT else Config.Database.PORT
+        val port =
+            if (Config.get("debug").toBoolean()) Config.get("ssh.forwarded.port").toInt()
+            else Config.get("db.port").toInt()
         jdbcUrl =
-            "jdbc:mysql://${Config.Database.HOST}:$port/${Config.Database.NAME}?useUnicode=true&characterEncoding=utf8"
-        username = Config.Database.USER
-        password = Config.Database.PASSWORD
+            "jdbc:mysql://${Config.get("db.host")}:$port/${Config.get("db.name")}?useUnicode=true&characterEncoding=utf8"
+        username = Config.get("db.user")
+        password = Config.get("db.password")
         addDataSourceProperty("cachePrepStmts", "true")
         addDataSourceProperty("prepStmtCacheSize", "250")
         addDataSourceProperty("prepStmtCacheSqlLimit", "2048")

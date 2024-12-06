@@ -1,6 +1,6 @@
 package com.fulgurogo.features.user.kgs
 
-import com.fulgurogo.Config
+import com.fulgurogo.common.Config
 import java.util.*
 
 sealed class KgsApi {
@@ -28,8 +28,8 @@ sealed class KgsApi {
     sealed class Request {
         data class Login(
             val type: ChannelType = ChannelType.LOGIN,
-            val name: String = Config.Kgs.USERNAME,
-            val password: String = Config.Kgs.PASSWORD,
+            val name: String = Config.get("kgs.user.name"),
+            val password: String = Config.get("kgs.user.password"),
             val locale: String = "fr_FR"
         )
 
@@ -47,13 +47,13 @@ sealed class KgsApi {
 
         data class LoadGame(
             val timestamp: String,
-            val channelId: Int = Config.Kgs.ROOM_CHANNEL_ID,
+            val channelId: Int = Config.get("kgs.fgo.room.channel.id").toInt(),
             val type: ChannelType = ChannelType.ROOM_LOAD_GAME,
             val private: Boolean = true
         )
 
         data class Join(
-            val channelId: Int = Config.Kgs.ROOM_CHANNEL_ID,
+            val channelId: Int = Config.get("kgs.fgo.room.channel.id").toInt(),
             val type: ChannelType = ChannelType.JOIN_REQUEST,
         )
 

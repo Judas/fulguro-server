@@ -28,6 +28,8 @@ noArg {
 }
 
 dependencies {
+    implementation(project(":common"))
+
     implementation(libs.commons.net)
     implementation(libs.gson)
     implementation(libs.hikari)

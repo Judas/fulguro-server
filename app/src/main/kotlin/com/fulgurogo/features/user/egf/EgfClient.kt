@@ -1,6 +1,6 @@
 package com.fulgurogo.features.user.egf
 
-import com.fulgurogo.Config
+import com.fulgurogo.common.Config
 import com.fulgurogo.features.user.User
 import com.fulgurogo.features.user.UserAccountClient
 import com.fulgurogo.features.user.UserAccountGame
@@ -30,7 +30,7 @@ class EgfClient : UserAccountClient {
         if (id.isNullOrBlank())
             throw EmptyUserIdException
         else {
-            val route = "${Config.Egf.WEBSITE_URL}?key=$id"
+            val route = "${Config.get("egf.website.url")}?key=$id"
             val request: Request = Request.Builder().url(route).get().build()
             val response = okHttpClient.newCall(request).execute()
             if (response.isSuccessful) {
