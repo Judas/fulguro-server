@@ -23,11 +23,7 @@ class ExamPointsService(private val jda: JDA) {
         DatabaseAccessor.clearExamPoints()
 
         val now = ZonedDateTime.now(DATE_ZONE)
-        val promoName = DateTimeFormatter
-            .ofPattern("MMMM YYYY", Locale.FRANCE)
-            .withLocale(Locale.FRANCE)
-            .format(now.minusMonths(1))
-            .replaceFirstChar { it.titlecase() }
+        val promoName = getLastMonthPromoName(now)
 
         val shouldCloseSession = !DatabaseAccessor.hasPromotionScore(promoName)
         if (shouldCloseSession) {
@@ -50,6 +46,15 @@ class ExamPointsService(private val jda: JDA) {
         }
 
         if (now.hour in 7..9) printDailyRanking()
+    }
+
+    private fun getLastMonthPromoName(now: ZonedDateTime): String {
+        val monthFormatter = DateTimeFormatter.ofPattern("MMMM", Locale.FRANCE).withLocale(Locale.FRANCE)
+        val lastMonth = now.minusMonths(1)
+        val lastMonthName = monthFormatter.format(lastMonth)
+        val year = if (lastMonthName == "décembre") now.year - 1 else now.year
+
+        return "${lastMonthName.replaceFirstChar { it.titlecase() }} $year"
     }
 
     private fun processGames(from: Date, to: Date) {
