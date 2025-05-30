@@ -1,4 +1,4 @@
-package com.fulgurogo.features.ssh
+package com.fulgurogo.common.db.ssh
 
 import com.fulgurogo.common.config.Config
 import com.fulgurogo.common.logger.Logger.Level.ERROR

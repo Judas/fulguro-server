@@ -25,6 +25,7 @@ noArg {
 
 dependencies {
     implementation(libs.hikari)
+    implementation(libs.jsch)
     implementation(platform(libs.kotlin.bom))
     implementation(libs.kotlinx.coroutines)
     implementation(libs.kotlin.stdlib)

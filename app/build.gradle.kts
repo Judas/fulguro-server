@@ -36,7 +36,6 @@ dependencies {
     implementation(libs.hikari)
     implementation(libs.javalin)
     implementation(libs.jda)
-    implementation(libs.jsch)
     implementation(platform(libs.kotlin.bom))
     implementation(libs.kotlin.stdlib)
     implementation(libs.kotlinx.coroutines)

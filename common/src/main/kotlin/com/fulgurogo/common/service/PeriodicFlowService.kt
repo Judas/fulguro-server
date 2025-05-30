@@ -22,7 +22,6 @@ abstract class PeriodicFlowService(
     private val flowExceptionHandler = CoroutineExceptionHandler { _, e ->
         log(ERROR, "Error during periodic service", e)
         stop()
-        start()
     }
 
     fun start() {
@@ -30,7 +29,7 @@ abstract class PeriodicFlowService(
 
         job = CoroutineScope(Dispatchers.IO + flowExceptionHandler).launch {
             log(INFO, "starting periodic job")
-            flow.collect { tick() }
+            flow.collect { onTick() }
         }
     }
 
@@ -42,5 +41,5 @@ abstract class PeriodicFlowService(
         }
     }
 
-    abstract fun tick()
+    abstract fun onTick()
 }

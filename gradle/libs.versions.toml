@@ -5,6 +5,7 @@ hikari = "6.0.0"
 javalin = "6.3.0"
 jda = "5.2.0"
 jsch = "0.2.21"
+jsoup = "1.20.1"
 kotlin = "2.0.21"
 kotlin-noarg = "2.0.21"
 kotlinx-coroutines = "1.9.0"
@@ -21,6 +22,7 @@ hikari = { group = "com.zaxxer", name = "HikariCP", version.ref = "hikari" }
 javalin = { group = "io.javalin", name = "javalin", version.ref = "javalin" }
 jda = { group = "net.dv8tion", name = "JDA", version.ref = "jda" }
 jsch = { group = "com.github.mwiede", name = "jsch", version.ref = "jsch" }
+jsoup = { group = "org.jsoup", name = "jsoup", version.ref = "jsoup" }
 kotlin-bom = { group = "org.jetbrains.kotlin", name = "kotlin-bom" }
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 kotlin-stdlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib" }

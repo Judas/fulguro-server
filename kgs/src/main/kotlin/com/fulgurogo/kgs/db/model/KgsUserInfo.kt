@@ -8,6 +8,6 @@ data class KgsUserInfo(
     val discordId: String,
     val kgsId: String? = null,
     val kgsRank: String? = null,
-    val stable: Boolean? = null,
-    val updated: Date? = null
+    val updated: Date? = null,
+    val error: Date? = null
 )

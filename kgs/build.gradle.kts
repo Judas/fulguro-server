@@ -27,6 +27,7 @@ dependencies {
     implementation(project(":common"))
 
     implementation(libs.gson)
+    implementation(libs.jsoup)
     implementation(platform(libs.kotlin.bom))
     implementation(libs.kotlin.stdlib)
     implementation(libs.kotlinx.coroutines)
