@@ -61,10 +61,9 @@ object KgsDatabaseAccessor {
 
     fun existGame(game: KgsGame): Boolean = dao.open().use { connection ->
         val query = " SELECT * FROM kgs_games " +
-                " WHERE " +
-                " date = :date " +
-                " black_name = :blackName " +
-                " white_name = :whiteName " +
+                " WHERE  date = :date " +
+                " AND black_name = :blackName " +
+                " AND white_name = :whiteName " +
                 " LIMIT 1 "
         connection
             .createQuery(query)

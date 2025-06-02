@@ -39,6 +39,7 @@ class KgsService : PeriodicFlowService(0, 5) {
             try {
                 // Scrap archives pages
                 val games = scrapGames(stale)
+                if (!games.isEmpty()) log(INFO, "Found ${games.size} total games")
 
                 // Update user rank
                 val updatedRank = games.maxByOrNull { it.date }?.let {
@@ -96,6 +97,7 @@ class KgsService : PeriodicFlowService(0, 5) {
         gameRows.removeFirst() // First row is header
         return gameRows.mapNotNull { row ->
             val columns = row.select("td").asList()
+            if (columns.size != 7) return@mapNotNull null
 
             // Game result => skip unfinished games
             // W+score, W+RESIGN, W+FORFEIT, W+TIME
@@ -119,9 +121,7 @@ class KgsService : PeriodicFlowService(0, 5) {
             if (sgf.isBlank()) return@mapNotNull null
 
             // Goban size => Skip wrong size games
-            val gobanSize = columns[3].text().trim()
             if (!sgf.contains("SZ[19]")) return@mapNotNull null
-            if (!gobanSize.contains("19x19")) return@mapNotNull null
 
             // Get handicap from SGF
             val handicap = if (sgf.contains("]HA[")) getSgfProperty(sgf, "HA").toInt() else 0

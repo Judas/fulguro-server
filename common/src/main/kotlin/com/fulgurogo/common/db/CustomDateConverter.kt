@@ -5,7 +5,7 @@ import org.sql2o.converters.Converter
 import java.time.LocalDateTime
 import java.util.*
 
-class CustomDateConverter : org.sql2o.converters.Converter<Date> {
+class CustomDateConverter : Converter<Date> {
     override fun convert(value: Any?): Date? = when (value) {
         is LocalDateTime -> Date.from(value.atZone(DATE_ZONE).toInstant())
         is Date -> value

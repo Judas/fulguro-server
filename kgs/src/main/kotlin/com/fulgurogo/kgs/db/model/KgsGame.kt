@@ -1,7 +1,9 @@
 package com.fulgurogo.kgs.db.model
 
+import com.fulgurogo.common.utilities.GenerateNoArgConstructor
 import java.util.*
 
+@GenerateNoArgConstructor
 data class KgsGame(
     val date: Date,
     val blackName: String,
