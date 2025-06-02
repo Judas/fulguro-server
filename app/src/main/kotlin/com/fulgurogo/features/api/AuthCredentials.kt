@@ -1,9 +1,9 @@
 package com.fulgurogo.features.api
 
-import com.fulgurogo.utilities.GenerateNoArgConstructor
+import com.fulgurogo.utilities.NoArg
 import java.util.*
 
-@GenerateNoArgConstructor
+@NoArg
 data class AuthCredentials(
     val goldId: String,
     val accessToken: String,

@@ -1,10 +1,17 @@
 package com.fulgurogo.features.database
 
 import com.fulgurogo.Config
+import com.fulgurogo.Config.Ladder.INITIAL_DEVIATION
+import com.fulgurogo.Config.Ladder.INITIAL_RATING
+import com.fulgurogo.Config.Ladder.INITIAL_VOLATILITY
 import com.fulgurogo.features.api.*
 import com.fulgurogo.features.exam.*
+import com.fulgurogo.features.fgc.FgcPlayer
 import com.fulgurogo.features.games.Game
+import com.fulgurogo.features.ladder.LadderPlayer
+import com.fulgurogo.features.ladder.LadderRating
 import com.fulgurogo.features.ladder.Tier
+import com.fulgurogo.features.ladder.glicko.Glickotlin
 import com.fulgurogo.features.user.User
 import com.fulgurogo.features.user.UserAccount
 import com.fulgurogo.features.user.UserAccount.Companion.SUPPORTED_PLAYABLE_ACCOUNTS
@@ -21,6 +28,7 @@ import org.sql2o.quirks.NoQuirks
 import java.time.ZonedDateTime
 import java.util.*
 import javax.sql.DataSource
+import kotlin.math.roundToInt
 
 object DatabaseAccessor {
     private val dataSource: DataSource = HikariDataSource(HikariConfig().apply {
@@ -68,9 +76,17 @@ object DatabaseAccessor {
             "black_player_pseudo" to "blackPlayerPseudo",
             "black_player_rank" to "blackPlayerRank",
             "black_player_won" to "blackPlayerWon",
-            "black_rating" to "blackRating",
-            "black_tier_rank" to "blackTierRank",
-            "black_tier_name" to "blackTierName",
+            "black_player_rating_gain" to "blackPlayerRatingGain",
+            "black_current_rating" to "blackCurrentRating",
+            "black_current_deviation" to "blackCurrentDeviation",
+            "black_current_volatility" to "blackCurrentVolatility",
+            "black_current_tier_rank" to "blackCurrentTierRank",
+            "black_current_tier_name" to "blackCurrentTierName",
+            "black_historical_rating" to "blackHistoricalRating",
+            "black_historical_deviation" to "blackHistoricalDeviation",
+            "black_historical_volatility" to "blackHistoricalVolatility",
+            "black_historical_tier_rank" to "blackHistoricalTierRank",
+            "black_historical_tier_name" to "blackHistoricalTierName",
             "white_player_discord_id" to "whitePlayerDiscordId",
             "white_name" to "whitePlayerName",
             "white_avatar" to "whitePlayerAvatar",
@@ -78,10 +94,21 @@ object DatabaseAccessor {
             "white_player_pseudo" to "whitePlayerPseudo",
             "white_player_rank" to "whitePlayerRank",
             "white_player_won" to "whitePlayerWon",
-            "white_rating" to "whiteRating",
-            "white_tier_rank" to "whiteTierRank",
-            "white_tier_name" to "whiteTierName",
+            "white_player_rating_gain" to "whitePlayerRatingGain",
+            "white_current_rating" to "whiteCurrentRating",
+            "white_current_deviation" to "whiteCurrentDeviation",
+            "white_current_volatility" to "whiteCurrentVolatility",
+            "white_current_tier_rank" to "whiteCurrentTierRank",
+            "white_current_tier_name" to "whiteCurrentTierName",
+            "white_historical_rating" to "whiteHistoricalRating",
+            "white_historical_deviation" to "whiteHistoricalDeviation",
+            "white_historical_volatility" to "whiteHistoricalVolatility",
+            "white_historical_tier_rank" to "whiteHistoricalTierRank",
+            "white_historical_tier_name" to "whiteHistoricalTierName",
             "long_game" to "longGame",
+            "rating_date" to "ratingDate",
+            "bg_color" to "bgColor",
+            "fg_color" to "fgColor",
             "tier_rank" to "tierRank",
             "tier_name" to "tierName",
             "game_count" to "gameCount",
@@ -145,10 +172,7 @@ object DatabaseAccessor {
                 " ffg_rank = :ffgRank, " +
                 " egf_id = :egfId, " +
                 " egf_pseudo = :egfPseudo, " +
-                " egf_rank = :egfRank, " +
-                " rating = :rating, " +
-                " tier_rank = :tierRank, " +
-                " tier_name = :tierName " +
+                " egf_rank = :egfRank " +
                 " WHERE ${UserAccount.DISCORD.databaseId} = :discordId "
         log(INFO, "updateUser [$query] ${user.discordId}")
         connection
@@ -176,9 +200,6 @@ object DatabaseAccessor {
             .addParameter("egfId", user.egfId)
             .addParameter("egfPseudo", user.egfPseudo)
             .addParameter("egfRank", user.egfRank)
-            .addParameter("rating", user.rating)
-            .addParameter("tierRank", user.tierRank)
-            .addParameter("tierName", user.tierName)
             .executeUpdate()
     }
 
@@ -235,7 +256,12 @@ object DatabaseAccessor {
         }
 
     fun deleteUser(discordId: String): Connection = dao.open().use { connection ->
-        listOf("exam_points", "users").forEach { table ->
+        listOf(
+            "exam_points",
+            "ladder",
+            "ladder_ratings",
+            "users",
+        ).forEach { table ->
             val query = "DELETE FROM $table WHERE ${UserAccount.DISCORD.databaseId} = :discordId"
             log(INFO, "deleteUser [$query] $discordId")
             connection.createQuery(query).addParameter("discordId", discordId).executeUpdate()
@@ -404,6 +430,18 @@ object DatabaseAccessor {
                 .addParameter("date", date)
                 .executeScalar(Int::class.java) ?: 0
         }
+
+    fun saveGameRatingGain(gameId: String, black: Boolean, offset: Double): Connection = dao.open().use { connection ->
+        val query = " UPDATE games " +
+                " SET ${if (black) "black_player_rating_gain" else "white_player_rating_gain"} = :ratingGain " +
+                " WHERE id = :id "
+        log(INFO, "saveGameRatingGain [$query] $gameId ${if (black) "black" else "white"} $offset")
+        connection
+            .createQuery(query)
+            .addParameter("id", gameId)
+            .addParameter("ratingGain", offset)
+            .executeUpdate()
+    }
 
     fun cleanGames(): Connection = dao.open().use { connection ->
         val query = "DELETE FROM games WHERE DATEDIFF(NOW(), date) > 32"
@@ -608,13 +646,143 @@ object DatabaseAccessor {
 
     // endregion
 
+    // region ladder
+
+    fun ladderPlayers(): List<LadderPlayer> = dao.open().use { connection ->
+        val query = "SELECT * FROM ladder"
+        log(INFO, "ladderPlayers [$query]")
+        connection
+            .createQuery(query)
+            .throwOnMappingFailure(false)
+            .executeAndFetch(LadderPlayer::class.java)
+    }
+
+    fun ladderPlayer(user: User): LadderPlayer? = dao.open().use { connection ->
+        val query = "SELECT * FROM ladder WHERE ${UserAccount.DISCORD.databaseId} = :discordId"
+        log(INFO, "ladderPlayer [$query] ${user.discordId}")
+        connection
+            .createQuery(query)
+            .throwOnMappingFailure(false)
+            .addParameter("discordId", user.discordId)
+            .executeAndFetchFirst(LadderPlayer::class.java)
+    }
+
+    fun createLadderPlayer(discordId: String): Connection = dao.open().use { connection ->
+        val query = "INSERT INTO ladder( " +
+                " ${UserAccount.DISCORD.databaseId}, " +
+                " rating_date, " +
+                " rating, " +
+                " deviation, " +
+                " volatility) " +
+                " VALUES (:discordId, :ratingDate, :rating, :deviation, :volatility) "
+
+        // 2 hours before creation to ensure games played right away are found
+        val date = ZonedDateTime.now(DATE_ZONE).minusHours(2).toDate()
+
+        log(INFO, "createLadderPlayer [$query] $discordId")
+        connection
+            .createQuery(query)
+            .addParameter("discordId", discordId)
+            .addParameter("ratingDate", date)
+            .addParameter("rating", INITIAL_RATING)
+            .addParameter("deviation", INITIAL_DEVIATION)
+            .addParameter("volatility", INITIAL_VOLATILITY)
+            .executeUpdate()
+    }
+
+    fun updateLadderPlayer(player: LadderPlayer): Connection = dao.open().use { connection ->
+        val query = "UPDATE ladder SET " +
+                " rating_date = :ratingDate, " +
+                " rating = :rating, " +
+                " deviation = :deviation, " +
+                " volatility = :volatility, " +
+                " ranked = :ranked " +
+                " WHERE ${UserAccount.DISCORD.databaseId} = :discordId"
+
+        log(INFO, "updateLadderPlayer [$query] $player")
+        connection
+            .createQuery(query)
+            .addParameter("discordId", player.discordId)
+            .addParameter("ratingDate", player.ratingDate)
+            .addParameter("rating", player.rating)
+            .addParameter("deviation", player.deviation)
+            .addParameter("volatility", player.volatility)
+            .addParameter("ranked", player.ranked)
+            .executeUpdate()
+    }
+
+    fun updateLadderPlayerInitialRating(discordId: String, rating: Glickotlin.Player): Connection =
+        dao.open().use { connection ->
+            val query = "UPDATE ladder SET " +
+                    " rating = :rating, " +
+                    " deviation = :deviation, " +
+                    " volatility = :volatility " +
+                    " WHERE ${UserAccount.DISCORD.databaseId} = :discordId"
+
+            log(INFO, "updateLadderPlayerInitialRating [$query] $discordId")
+            connection
+                .createQuery(query)
+                .addParameter("discordId", discordId)
+                .addParameter("rating", rating.rating())
+                .addParameter("deviation", rating.deviation())
+                .addParameter("volatility", rating.volatility())
+                .executeUpdate()
+        }
+
+    fun saveLadderRating(player: LadderPlayer): Connection = dao.open().use { connection ->
+        val query = "INSERT INTO ladder_ratings( " +
+                " ${UserAccount.DISCORD.databaseId}, " +
+                " rating_date, " +
+                " rating, " +
+                " deviation, " +
+                " volatility) " +
+                " VALUES (:discordId, :ratingDate, :rating, :deviation, :volatility) " +
+                " ON DUPLICATE KEY UPDATE rating=:rating, deviation=:deviation, volatility=:volatility"
+
+        log(INFO, "saveLadderRating [$query] $player")
+        connection
+            .createQuery(query)
+            .addParameter("discordId", player.discordId)
+            .addParameter("ratingDate", player.ratingDate)
+            .addParameter("rating", player.rating)
+            .addParameter("deviation", player.deviation)
+            .addParameter("volatility", player.volatility)
+            .executeUpdate()
+    }
+
+    fun ladderRatingAt(playerId: String, date: Date): LadderRating? = dao.open().use { connection ->
+        val query = "SELECT " +
+                " lr.rating AS rating, " +
+                " lr.deviation AS deviation, " +
+                " lr.volatility AS volatility, " +
+                " t.rank AS tierRank, " +
+                " t.name AS tierName " +
+                " FROM ladder_ratings AS lr " +
+                " INNER JOIN ladder_tiers AS t ON (t.min <= lr.rating AND lr.rating < t.max) " +
+                " WHERE lr.${UserAccount.DISCORD.databaseId} = :discordId AND DATEDIFF(lr.rating_date, :ratingDate) < 0 " +
+                " ORDER BY lr.rating_date DESC LIMIT 1 "
+
+        log(INFO, "ladderRatingAt [$query] $playerId $date")
+        connection
+            .createQuery(query)
+            .throwOnMappingFailure(false)
+            .addParameter("discordId", playerId)
+            .addParameter("ratingDate", date)
+            .executeAndFetchFirst(LadderRating::class.java)
+    }
+
+    fun cleanLadderRatings(): Connection = dao.open().use { connection ->
+        val query = "DELETE FROM ladder_ratings WHERE DATEDIFF(NOW(), rating_date) > 40"
+        log(INFO, "cleanLadderRatings [$query]")
+        connection.createQuery(query).executeUpdate()
+    }
+
+    // endregion
+
     // region ladder API
 
     fun apiLadderPlayers(): List<ApiPlayer> = dao.open().use { connection ->
-        val query = "SELECT u.*, is_player_stable(u.discord_id) AS stable " +
-                " FROM users AS u " +
-                " WHERE u.rating IS NOT NULL " +
-                " ORDER BY u.rating DESC "
+        val query = "SELECT * FROM ladder_players"
         log(INFO, "apiLadderPlayers [$query]")
         connection
             .createQuery(query)
@@ -623,9 +791,7 @@ object DatabaseAccessor {
     }
 
     fun apiLadderPlayer(discordId: String): ApiPlayer? = dao.open().use { connection ->
-        val query = "SELECT u.*, is_player_stable(u.discord_id) AS stable " +
-                " FROM users AS u " +
-                " WHERE ${UserAccount.DISCORD.databaseId} = :discordId"
+        val query = "SELECT * FROM ladder_players WHERE ${UserAccount.DISCORD.databaseId} = :discordId "
         log(INFO, "apiLadderPlayer [$query] $discordId")
         connection
             .createQuery(query)
@@ -666,10 +832,10 @@ object DatabaseAccessor {
             .executeAndFetch(Game::class.java)
     }
 
-    fun fgcValidation(discordId: String): ApiFgcValidation = dao.open().use { connection ->
+    fun stability(discordId: String): ApiStability = dao.open().use { connection ->
         log(INFO, "stability $discordId")
 
-        val periodQuery = " SELECT period FROM fgc_validation "
+        val periodQuery = " SELECT period FROM ladder_stability_options "
         val period = connection
             .createQuery(periodQuery)
             .throwOnMappingFailure(false)
@@ -699,16 +865,19 @@ object DatabaseAccessor {
             .addParameter("period", period)
             .executeScalar(Int::class.java) ?: 0
 
-        ApiFgcValidation(total, ladderTotal, period)
+        val deviation = apiLadderPlayer(discordId)?.deviation ?: INITIAL_DEVIATION
+
+        ApiStability(total, ladderTotal, deviation.roundToInt(), period)
     }
 
-    fun fgcValidation(): ApiFgcValidation? = dao.open().use { connection ->
-        val query = " SELECT game_count, ladder_game_count, period FROM fgc_validation "
-        log(INFO, "fgcValidation [$query]")
+    fun stability(): ApiStability? = dao.open().use { connection ->
+        val query = " SELECT game_count, ladder_game_count, deviation, period " +
+                " FROM ladder_stability_options "
+        log(INFO, "stability [$query]")
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)
-            .executeAndFetchFirst(ApiFgcValidation::class.java)
+            .executeAndFetchFirst(ApiStability::class.java)
     }
 
     fun tiers(): List<Tier> = dao.open().use { connection ->
@@ -719,17 +888,6 @@ object DatabaseAccessor {
             .throwOnMappingFailure(false)
             .executeAndFetch(Tier::class.java)
     }
-
-    fun tierForRating(rating: Double): Tier? = dao.open().use { connection ->
-        val query = " SELECT * FROM ladder_tiers WHERE rank = tierRankFor(:rating) "
-        log(INFO, "tierForRating [$query] $rating")
-        connection
-            .createQuery(query)
-            .throwOnMappingFailure(false)
-            .addParameter("rating", rating)
-            .executeAndFetchFirst(Tier::class.java)
-    }
-
 
     fun saveAuthCredentials(goldId: String, authCredentials: AuthRequestResponse): Connection =
         dao.open().use { connection ->
@@ -763,6 +921,23 @@ object DatabaseAccessor {
             .addParameter("goldId", goldId)
             .throwOnMappingFailure(false)
             .executeAndFetchFirst(AuthCredentials::class.java)
+    }
+
+    // endregion
+
+    // region FGC
+
+    fun fgcPlayers(): List<FgcPlayer> = dao.open().use { connection ->
+        val query = "SELECT lp.discord_id, lp.name, lp.avatar, lp.rating, u.kgs_rank, u.ogs_rank, u.ffg_rank" +
+                " FROM ladder_players AS lp " +
+                " INNER JOIN users AS u ON lp.discord_id = u.discord_id " +
+                " WHERE lp.stable = 1 " +
+                " ORDER BY lp.rating DESC"
+        log(INFO, "fgcPlayers [$query]")
+        connection
+            .createQuery(query)
+            .throwOnMappingFailure(false)
+            .executeAndFetch(FgcPlayer::class.java)
     }
 
     // endregion

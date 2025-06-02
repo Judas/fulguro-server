@@ -1,8 +1,8 @@
 package com.fulgurogo.features.exam
 
-import com.fulgurogo.utilities.GenerateNoArgConstructor
+import com.fulgurogo.utilities.NoArg
 
-@GenerateNoArgConstructor
+@NoArg
 data class ExamAward(
     val id: Int,
     val promo: String = "",

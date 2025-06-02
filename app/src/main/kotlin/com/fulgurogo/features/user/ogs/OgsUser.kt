@@ -1,5 +1,8 @@
 package com.fulgurogo.features.user.ogs
 
+import com.fulgurogo.Config.Ladder.INITIAL_DEVIATION
+import com.fulgurogo.Config.Ladder.INITIAL_RATING
+import com.fulgurogo.Config.Ladder.INITIAL_VOLATILITY
 import com.fulgurogo.features.user.ServerUser
 import com.fulgurogo.utilities.rankToString
 import com.fulgurogo.utilities.toRank
@@ -18,14 +21,18 @@ data class OgsUser(
     )
 
     data class Rating(
-        val rating: Double? = null,
-        val deviation: Double? = null,
-        val volatility: Double? = null
+        val rating: Double = INITIAL_RATING,
+        val deviation: Double = INITIAL_DEVIATION,
+        val volatility: Double = INITIAL_VOLATILITY
     )
 
     fun isBot(): Boolean = uiClass == "bot"
-    fun rankString(): String = fullRatings.overall.rating?.toRank()?.rankToString(false) ?: ""
-    fun hasStableRank(): Boolean = uiClass != "provisional"
+    fun rankString(): String = fullRatings.overall.rating.toRank().rankToString(false)
+
+    fun hasStableRank(): Boolean = fullRatings.overall.let {
+        val deviation = (it.rating + it.deviation).toRank() - it.rating.toRank()
+        return@let deviation <= 2
+    }
 
     override fun id(): String = id.toString()
     override fun pseudo(): String? = username

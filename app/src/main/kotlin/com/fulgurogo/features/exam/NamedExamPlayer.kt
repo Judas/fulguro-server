@@ -1,8 +1,8 @@
 package com.fulgurogo.features.exam
 
-import com.fulgurogo.utilities.GenerateNoArgConstructor
+import com.fulgurogo.utilities.NoArg
 
-@GenerateNoArgConstructor
+@NoArg
 class NamedExamPlayer(
     val name: String,
     discordId: String,

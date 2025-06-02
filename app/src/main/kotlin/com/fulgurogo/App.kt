@@ -34,7 +34,7 @@ fun main() {
             get("/gold/api/player/{id}", Api::getPlayerProfile)
             get("/gold/api/games", Api::getRecentGames)
             get("/gold/api/game/{id}", Api::getGame)
-            get("/gold/api/fgc/validation", Api::getFgcValidation)
+            get("/gold/api/stability", Api::getStabilityOptions)
             get("/gold/api/tiers", Api::getTiers)
             post("/gold/api/auth", Api::authenticateUser)
             get("/gold/api/auth/profile", Api::getAuthProfile)
@@ -46,6 +46,7 @@ fun main() {
             get("/gold/api/exam/titles", Api::examTitles)
             get("/gold/api/exam/history", Api::examHistory)
             get("/gold/api/exam/stats", Api::examStats)
+            get("/gold/api/fgc/players", Api::fgcPlayers)
         }
 
     // Launching GameScanner
