@@ -1,14 +1,15 @@
 package com.fulgurogo.features.exam
 
+import com.fulgurogo.TAG
 import com.fulgurogo.common.config.Config
+import com.fulgurogo.common.logger.log
 import com.fulgurogo.common.utilities.DATE_ZONE
 import com.fulgurogo.common.utilities.toDate
 import com.fulgurogo.common.utilities.toStartOfMonth
 import com.fulgurogo.features.database.DatabaseAccessor
 import com.fulgurogo.features.games.Game
-import com.fulgurogo.utilities.*
-import com.fulgurogo.common.logger.Logger.Level.INFO
-import com.fulgurogo.common.logger.log
+import com.fulgurogo.utilities.publicMessage
+import com.fulgurogo.utilities.userName
 import net.dv8tion.jda.api.JDA
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
@@ -23,9 +24,9 @@ class ExamPointsService(private val jda: JDA) {
     }
 
     fun refresh() {
-        log(INFO, "refresh")
+        log(TAG, "refresh")
 
-        log(INFO, "Clearing all exam points")
+        log(TAG, "Clearing all exam points")
         DatabaseAccessor.clearExamPoints()
 
         val now = ZonedDateTime.now(DATE_ZONE)
@@ -33,7 +34,7 @@ class ExamPointsService(private val jda: JDA) {
 
         val shouldCloseSession = !DatabaseAccessor.hasPromotionScore(promoName)
         if (shouldCloseSession) {
-            log(INFO, "Closing Promotion $promoName.")
+            log(TAG, "Closing Promotion $promoName.")
             val start = now.minusMonths(1).toStartOfMonth().toDate()
             val end = now.toStartOfMonth().toDate()
             processGames(from = start, to = end)
@@ -64,11 +65,11 @@ class ExamPointsService(private val jda: JDA) {
     }
 
     private fun processGames(from: Date, to: Date) {
-        log(INFO, "Processing exam games from $from to $to")
+        log(TAG, "Processing exam games from $from to $to")
 
         DatabaseAccessor.examGames(from, to)
             .forEach { game ->
-                log(INFO, "Treating game ${game.id}")
+                log(TAG, "Treating game ${game.id}")
                 addExamPoints(game, game.blackPlayerDiscordId, true)
                 addExamPoints(game, game.whitePlayerDiscordId, false)
             }
@@ -83,7 +84,7 @@ class ExamPointsService(private val jda: JDA) {
     }
 
     private fun printDailyRanking() {
-        log(INFO, "printDailyRanking")
+        log(TAG, "printDailyRanking")
 
         var message = ""
         DatabaseAccessor.examPlayers()
@@ -102,7 +103,7 @@ class ExamPointsService(private val jda: JDA) {
     }
 
     private fun printSessionStats(promoName: String) {
-        log(INFO, "printSessionStats")
+        log(TAG, "printSessionStats")
 
         val stats = DatabaseAccessor.examStats()
 
@@ -127,7 +128,7 @@ class ExamPointsService(private val jda: JDA) {
     }
 
     private fun printFinalRanking(promoName: String) {
-        log(INFO, "printFinalRanking")
+        log(TAG, "printFinalRanking")
 
         val title =
             "$EMOJI __Classement final de l'**Examen Hunter** ${promoName}__ $EMOJI"
@@ -164,7 +165,7 @@ class ExamPointsService(private val jda: JDA) {
     }
 
     private fun promoteHunters(promoName: String) {
-        log(INFO, "promoteHunters")
+        log(TAG, "promoteHunters")
 
         val newHunters = DatabaseAccessor.examPlayers()
             .asSequence()
@@ -209,7 +210,7 @@ class ExamPointsService(private val jda: JDA) {
     }
 
     private fun awardSpecialization(specialization: ExamSpecialization): Triple<ExamPlayer?, Boolean, String> {
-        log(INFO, "awardSpecialization")
+        log(TAG, "awardSpecialization")
 
         val hunters = DatabaseAccessor.examPlayers()
             .sortedBy { specialization.pointsCallback(it) }
@@ -278,7 +279,7 @@ class ExamPointsService(private val jda: JDA) {
     }
 
     private fun restartExam(promoName: String) {
-        log(INFO, "restartExam")
+        log(TAG, "restartExam")
 
         DatabaseAccessor.clearExamPoints()
 

@@ -1,8 +1,8 @@
 package com.fulgurogo.kgs.db
 
 import com.fulgurogo.common.db.DatabaseAccessor
-import com.fulgurogo.common.logger.Logger.Level.INFO
 import com.fulgurogo.common.logger.log
+import com.fulgurogo.kgs.KgsModule.TAG
 import com.fulgurogo.kgs.db.model.KgsGame
 import com.fulgurogo.kgs.db.model.KgsUserInfo
 import org.sql2o.Connection
@@ -27,7 +27,7 @@ object KgsDatabaseAccessor {
 
     fun stalestUser(): KgsUserInfo? = dao.open().use { connection ->
         val query = "SELECT * FROM kgs_user_info WHERE error IS NULL ORDER BY updated"
-        log(INFO, "stalestUser [$query]")
+        log(TAG, "stalestUser [$query]")
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)
@@ -37,7 +37,7 @@ object KgsDatabaseAccessor {
     fun markAsError(kgsUserInfo: KgsUserInfo): Connection = dao.open().use { connection ->
         val query = "UPDATE kgs_user_info SET error = NOW() WHERE discord_id = :discordId "
 
-        log(INFO, "markAsError [$query] $kgsUserInfo")
+        log(TAG, "markAsError [$query] $kgsUserInfo")
         connection
             .createQuery(query)
             .addParameter("discordId", kgsUserInfo.discordId)
@@ -50,7 +50,7 @@ object KgsDatabaseAccessor {
                 " updated = :updated " +
                 " WHERE discord_id = :discordId "
 
-        log(INFO, "updateUser [$query] $kgsUserInfo")
+        log(TAG, "updateUser [$query] $kgsUserInfo")
         connection
             .createQuery(query)
             .addParameter("kgsRank", kgsUserInfo.kgsRank)
@@ -84,7 +84,7 @@ object KgsDatabaseAccessor {
                 " :whiteName, :whiteRank, :whiteWon, " +
                 " :komi, :handicap, :longGame, :sgf) "
 
-        log(INFO, "addGame [$query] ${game.date} ${game.blackName} ${game.whiteName}")
+        log(TAG, "addGame [$query] ${game.date} ${game.blackName} ${game.whiteName}")
 
         connection
             .createQuery(query)

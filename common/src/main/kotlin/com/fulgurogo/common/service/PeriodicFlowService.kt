@@ -1,7 +1,6 @@
 package com.fulgurogo.common.service
 
-import com.fulgurogo.common.logger.Logger.Level.ERROR
-import com.fulgurogo.common.logger.Logger.Level.INFO
+import com.fulgurogo.common.CommonModule.TAG
 import com.fulgurogo.common.logger.log
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
@@ -20,23 +19,23 @@ abstract class PeriodicFlowService(
     }
     private var job: Job? = null
     private val flowExceptionHandler = CoroutineExceptionHandler { _, e ->
-        log(ERROR, "Error during periodic service", e)
+        log(TAG, "Error during periodic service", e)
         stop()
     }
 
     fun start() {
-        log(INFO, "start")
+        log(TAG, "start")
 
         job = CoroutineScope(Dispatchers.IO + flowExceptionHandler).launch {
-            log(INFO, "starting periodic job")
+            log(TAG, "starting periodic job")
             flow.collect { onTick() }
         }
     }
 
     fun stop() {
-        log(INFO, "stop")
+        log(TAG, "stop")
         job?.let {
-            log(INFO, "stopping periodic job")
+            log(TAG, "stopping periodic job")
             it.cancel()
         }
     }

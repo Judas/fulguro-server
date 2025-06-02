@@ -1,7 +1,7 @@
 package com.fulgurogo.features.user.kgs
 
+import com.fulgurogo.TAG
 import com.fulgurogo.common.config.Config
-import com.fulgurogo.common.logger.Logger.Level.*
 import com.fulgurogo.common.logger.log
 import com.fulgurogo.features.user.User
 import com.fulgurogo.features.user.UserAccountClient
@@ -37,7 +37,7 @@ class KgsClient : UserAccountClient {
             .filterGame("has wrong type") { it.isRanked() || it.isFree() || it.isSimu() }
             .sortedBy { it.timestamp }
             .toList()
-            .also { log(INFO, "Filtered to ${it.size} games") }
+            .also { log(TAG, "Filtered to ${it.size} games") }
             .filterBotGamesAndTagShortGames(user)
 
     override fun userGame(user: User, gameServerId: String): UserAccountGame? =
@@ -48,7 +48,7 @@ class KgsClient : UserAccountClient {
         login()
         val archives = getArchivesFor(user.kgsId)
         val games = archives?.games ?: mutableListOf()
-        log(INFO, "Found ${games.size} total games")
+        log(TAG, "Found ${games.size} total games")
         logout()
         games
     }
@@ -56,23 +56,23 @@ class KgsClient : UserAccountClient {
     private fun List<KgsGame>.filterBotGamesAndTagShortGames(mainPlayer: User): List<KgsGame> {
         if (isEmpty()) return this
 
-        log(INFO, "Inspecting $size games for bots & time settings")
+        log(TAG, "Inspecting $size games for bots & time settings")
         val nonBotGames = toMutableList()
 
         forEach { game ->
-            log(INFO, "Logging in")
+            log(TAG, "Logging in")
             login()
 
-            log(INFO, "Ensuring bot is in the room")
+            log(TAG, "Ensuring bot is in the room")
             if (!joinRoom()) {
-                log(ERROR, "Can't join room with bot. Exiting")
+                log(TAG, "Can't join room with bot. Exiting")
                 return mutableListOf()
             }
 
             val opponentId =
                 if (game.blackPlayerServerId() == mainPlayer.kgsId) game.whitePlayerServerId()
                 else game.blackPlayerServerId()
-            log(INFO, "Checking user $opponentId")
+            log(TAG, "Checking user $opponentId")
 
             // Cache management to avoid multiple requests for the same opponent
             val isBot: Boolean = userCache[opponentId]?.user?.isBot() ?: getDetailsFor(opponentId)?.let {
@@ -82,26 +82,26 @@ class KgsClient : UserAccountClient {
             } ?: false
 
             if (isBot) {
-                log(INFO, "Filtering game ${game.gameId()} because $opponentId is a bot.")
+                log(TAG, "Filtering game ${game.gameId()} because $opponentId is a bot.")
                 nonBotGames.remove(game)
             } else {
-                log(INFO, "Loading game ${game.gameId()}")
+                log(TAG, "Loading game ${game.gameId()}")
                 game.isShortGame = true
                 loadGame(game)?.let {
-                    log(INFO, "Game ${game.gameId()} loaded")
+                    log(TAG, "Game ${game.gameId()} loaded")
                     val channelId = it.channelId
                     game.isShortGame = !it.sgfEvents.isLongGame()
-                    log(INFO, "Tagging game ${game.timestamp} => isShort: ${game.isShortGame}.")
-                    log(INFO, "Exiting game ${game.timestamp}")
+                    log(TAG, "Tagging game ${game.timestamp} => isShort: ${game.isShortGame}.")
+                    log(TAG, "Exiting game ${game.timestamp}")
                     exitGame(channelId)
                 }
             }
 
-            log(INFO, "Logging out")
+            log(TAG, "Logging out")
             logout()
         }
 
-        log(INFO, "Purged to ${nonBotGames.size} non-bot games")
+        log(TAG, "Purged to ${nonBotGames.size} non-bot games")
         return nonBotGames
     }
 
@@ -148,18 +148,18 @@ class KgsClient : UserAccountClient {
         return try {
             get()
         } catch (e: Exception) {
-            log(WARNING, "GET ERROR - Retrying")
+            log(TAG, "GET ERROR - Retrying")
             try {
                 get()
             } catch (e: Exception) {
-                log(ERROR, "GET ERROR - Failed 2 times", e)
+                log(TAG, "GET ERROR - Failed 2 times", e)
                 throw e
             }
         }
     }
 
     private fun post(jsonPayload: String) = try {
-        log(INFO, "POST $jsonPayload")
+        log(TAG, "POST $jsonPayload")
 
         val postRequestBody: RequestBody = jsonPayload.toRequestBody("application/json".toMediaType())
         val postRequest: Request = Request.Builder().url(Config.get("kgs.api.url")).post(postRequestBody).build()
@@ -167,37 +167,37 @@ class KgsClient : UserAccountClient {
 
         if (!postResponse.isSuccessful) {
             val error = ApiException("POST FAILURE " + postResponse.code)
-            log(ERROR, error.message!!, error)
+            log(TAG, error.message!!, error)
             throw error
         }
 
-        log(INFO, "POST SUCCESS ${postResponse.code}")
+        log(TAG, "POST SUCCESS ${postResponse.code}")
         postResponse.close()
     } catch (e: Exception) {
-        log(ERROR, "POST ERROR", e)
+        log(TAG, "POST ERROR", e)
         throw e
     }
 
     private fun get(): KgsApi.Response {
-        log(INFO, "GET")
+        log(TAG, "GET")
 
         val getRequest: Request = Request.Builder().url(Config.get("kgs.api.url")).get().build()
         val getResponse = okHttpClient.newCall(getRequest).execute()
 
         if (!getResponse.isSuccessful) {
             val error = ApiException("GET FAILURE " + getResponse.code)
-            log(ERROR, error.message!!, error)
+            log(TAG, error.message!!, error)
             throw error
         }
 
         val getResponseBody: String = getResponse.body!!.string()
-        log(INFO, "GET SUCCESS ${getResponse.code}")
+        log(TAG, "GET SUCCESS ${getResponse.code}")
         val kgsApiResponse = gson.fromJson(getResponseBody, KgsApi.Response::class.java)
         getResponse.close()
 
         if (kgsApiResponse == null) {
             val error = ApiException("GET ERROR: Response is null")
-            log(ERROR, error.message!!, error)
+            log(TAG, error.message!!, error)
             throw error
         }
 

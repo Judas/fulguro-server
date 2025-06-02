@@ -30,6 +30,7 @@ noArg {
 dependencies {
     implementation(project(":common"))
     implementation(project(":kgs"))
+    implementation(project(":discord"))
 
     implementation(libs.commons.net)
     implementation(libs.gson)

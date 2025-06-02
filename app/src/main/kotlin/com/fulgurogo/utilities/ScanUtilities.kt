@@ -1,7 +1,6 @@
 package com.fulgurogo.utilities
 
-import com.fulgurogo.common.logger.Logger.Level.ERROR
-import com.fulgurogo.common.logger.Logger.Level.INFO
+import com.fulgurogo.TAG
 import com.fulgurogo.common.logger.log
 import com.fulgurogo.features.database.DatabaseAccessor
 import com.fulgurogo.features.user.User
@@ -11,11 +10,11 @@ fun Any.forAllUsers(process: (User) -> Unit) {
     val failedUsers = mutableListOf<User>()
     users.forEachIndexed { index, user ->
         try {
-            log(INFO, "===================================")
-            log(INFO, "[${index + 1}/${users.size}] Processing user ${user.discordId}")
+            log(TAG, "===================================")
+            log(TAG, "[${index + 1}/${users.size}] Processing user ${user.discordId}")
             process(user)
         } catch (e: Exception) {
-            log(ERROR, "Error processing user ${user.discordId}", e)
+            log(TAG, "Error processing user ${user.discordId}", e)
             if (e !is InvalidUserException) failedUsers.add(user)
         }
     }
@@ -23,11 +22,11 @@ fun Any.forAllUsers(process: (User) -> Unit) {
     // Try a second time for failed users (it may come from a timeout issue)
     failedUsers.forEachIndexed { index, user ->
         try {
-            log(INFO, "===================================")
-            log(INFO, "[${index + 1}/${failedUsers.size}] Processing failed for user ${user.discordId}")
+            log(TAG, "===================================")
+            log(TAG, "[${index + 1}/${failedUsers.size}] Processing failed for user ${user.discordId}")
             process(user)
         } catch (e: Exception) {
-            log(ERROR, "Failed again while processing user ${user.discordId}", e)
+            log(TAG, "Failed again while processing user ${user.discordId}", e)
         }
     }
 }

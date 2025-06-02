@@ -1,11 +1,10 @@
 package com.fulgurogo.kgs
 
 import com.fulgurogo.common.config.Config
-import com.fulgurogo.common.logger.Logger.Level.ERROR
-import com.fulgurogo.common.logger.Logger.Level.INFO
 import com.fulgurogo.common.logger.log
 import com.fulgurogo.common.service.PeriodicFlowService
 import com.fulgurogo.common.utilities.DATE_ZONE
+import com.fulgurogo.kgs.KgsModule.TAG
 import com.fulgurogo.kgs.db.KgsDatabaseAccessor
 import com.fulgurogo.kgs.db.model.KgsGame
 import com.fulgurogo.kgs.db.model.KgsUserInfo
@@ -32,14 +31,14 @@ class KgsService : PeriodicFlowService(0, 5) {
         if (processing) return
         processing = true
 
-        log(INFO, "onTick")
+        log(TAG, "onTick")
 
         // Get stalest user
         KgsDatabaseAccessor.stalestUser()?.let { stale ->
             try {
                 // Scrap archives pages
                 val games = scrapGames(stale)
-                if (!games.isEmpty()) log(INFO, "Found ${games.size} total games")
+                if (!games.isEmpty()) log(TAG, "Found ${games.size} total games")
 
                 // Update user rank
                 val updatedRank = games.maxByOrNull { it.date }?.let {
@@ -62,7 +61,7 @@ class KgsService : PeriodicFlowService(0, 5) {
                     if (!KgsDatabaseAccessor.existGame(it)) KgsDatabaseAccessor.addGame(it)
                 }
             } catch (e: Exception) {
-                log(ERROR, "onTick FAILURE ${e.message}")
+                log(TAG, "onTick FAILURE ${e.message}")
                 KgsDatabaseAccessor.markAsError(stale)
             }
         }
@@ -82,13 +81,13 @@ class KgsService : PeriodicFlowService(0, 5) {
     private fun scrapMonthlyGames(kgsId: String?, year: Int, month: Int): MutableList<KgsGame> = try {
         val route = "${Config.get("kgs.archives.url")}?user=$kgsId&year=$year&month=$month"
         val html = Jsoup.connect(route).get()
-        log(INFO, "Scraping $route")
+        log(TAG, "Scraping $route")
 
         // Get the tables, there might be 0 (no games at all), 1 (no games this month) or 2 (games, yay !)
         val tables = html.select("table.grid").asList()
         if (tables.size == 2) extractGamesFrom(tables[0]) else mutableListOf()
     } catch (e: IOException) {
-        log(INFO, "scrapMonthlyGames FAILURE ${e.message}")
+        log(TAG, "scrapMonthlyGames FAILURE ${e.message}")
         mutableListOf()
     }
 
@@ -168,11 +167,11 @@ class KgsService : PeriodicFlowService(0, 5) {
         } else if (allowRetry) {
             // Retry once after delay
             Thread.sleep(1000L)
-            log(INFO, "Fetching SGF ERROR: Waiting then retrying")
+            log(TAG, "Fetching SGF ERROR: Waiting then retrying")
             fetchSgf(sgfLink, false)
         } else {
             // Failed twice
-            log(ERROR, "Fetching SGF FAILURE " + response.code)
+            log(TAG, "Fetching SGF FAILURE " + response.code)
             ""
         }
     }

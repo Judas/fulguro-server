@@ -2,31 +2,25 @@ package com.fulgurogo
 
 import com.fulgurogo.common.config.Config
 import com.fulgurogo.common.db.ssh.SSHConnector
-import com.fulgurogo.kgs.KgsService
+import com.fulgurogo.discord.DiscordModule
+import com.fulgurogo.kgs.KgsModule
+
+const val TAG = "OldAppModule"
 
 fun main() {
-    // Launch Discord bot
-//    val bot = DiscordBot() // TODO Extract this part into the discord Module
-//    JDABuilder.createDefault(Config.get("bot.token"))
-//        .setChunkingFilter(ChunkingFilter.ALL)
-//        .setMemberCachePolicy(MemberCachePolicy.ALL)
-//        .enableIntents(GatewayIntent.GUILD_MEMBERS)
-//        .addEventListeners(FulguroBot)
-//        .build()
-
     val isDebug = Config.get("debug").toBoolean()
 
     // In dev we need to connect via SSH to the server for the MySQL access (only local connection allowed)
     if (isDebug) SSHConnector.connect()
 
-    // TODO DiscordService (pseudo avatar update)
-    KgsService().start()
+    DiscordModule.init()
+    KgsModule.init()
     // TODO OgsService
     // TODO FoxService
     // TODO IgsService
     // TODO FfgService
     // TODO EgfService
-    // TODO service exam (needs the bot jda, pass it from here)
+    // TODO service exam (needs the bot jda, pass it from here?) => change to stats ?
     // TODO service rank / tier (ladder)
     // TODO Service clean (old games / empty users)
 

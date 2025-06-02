@@ -1,14 +1,13 @@
 package com.fulgurogo.features.user.igs
 
+import com.fulgurogo.TAG
 import com.fulgurogo.common.config.Config
+import com.fulgurogo.common.logger.log
 import com.fulgurogo.features.user.User
 import com.fulgurogo.features.user.UserAccountClient
 import com.fulgurogo.features.user.UserAccountGame
 import com.fulgurogo.utilities.ApiException
 import com.fulgurogo.utilities.EmptyUserIdException
-import com.fulgurogo.common.logger.Logger.Level.ERROR
-import com.fulgurogo.common.logger.Logger.Level.INFO
-import com.fulgurogo.common.logger.log
 import java.util.*
 
 class IgsClient : UserAccountClient {
@@ -40,10 +39,10 @@ class IgsClient : UserAccountClient {
             igsTelnetClient.disconnect()
             if (playerInfo.contains(UNKNOWN_PLAYER)) {
                 val error = ApiException(UNKNOWN_PLAYER)
-                log(ERROR, error.message!!, error)
+                log(TAG, error.message!!, error)
                 throw error
             } else {
-                log(INFO, "user SUCCESS")
+                log(TAG, "user SUCCESS")
                 IgsUser(playerInfo)
             }
         }

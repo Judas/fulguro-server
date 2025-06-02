@@ -1,12 +1,12 @@
 package com.fulgurogo.features.ladder
 
+import com.fulgurogo.TAG
+import com.fulgurogo.common.logger.log
 import com.fulgurogo.features.database.DatabaseAccessor
 import com.fulgurogo.features.user.ServerUser
 import com.fulgurogo.features.user.UserAccount
 import com.fulgurogo.features.user.kgs.KgsUser
 import com.fulgurogo.features.user.ogs.OgsUser
-import com.fulgurogo.common.logger.Logger.Level.INFO
-import com.fulgurogo.common.logger.log
 import com.fulgurogo.utilities.toRating
 
 object RatingCalculator {
@@ -38,7 +38,7 @@ object RatingCalculator {
         val rating = weightedSum / totalWeight
         val tier = DatabaseAccessor.tierForRating(rating) ?: throw IllegalStateException()
 
-        log(INFO, "rate $ratingsMap => $rating => ${tier.name}")
+        log(TAG, "rate $ratingsMap => $rating => ${tier.name}")
 
         return Rating(rating, tier)
     }

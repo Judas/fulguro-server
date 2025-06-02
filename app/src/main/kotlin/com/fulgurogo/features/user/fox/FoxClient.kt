@@ -1,14 +1,13 @@
 package com.fulgurogo.features.user.fox
 
+import com.fulgurogo.TAG
 import com.fulgurogo.common.config.Config
+import com.fulgurogo.common.logger.log
 import com.fulgurogo.features.user.User
 import com.fulgurogo.features.user.UserAccountClient
 import com.fulgurogo.features.user.UserAccountGame
 import com.fulgurogo.utilities.ApiException
 import com.fulgurogo.utilities.EmptyUserIdException
-import com.fulgurogo.common.logger.Logger.Level.ERROR
-import com.fulgurogo.common.logger.Logger.Level.INFO
-import com.fulgurogo.common.logger.log
 import com.google.gson.Gson
 import okhttp3.JavaNetCookieJar
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -79,22 +78,22 @@ class FoxClient : UserAccountClient {
         )
 
         val games = gameRequest.chesslist.toMutableList()
-        log(INFO, "Found ${games.size} total games")
+        log(TAG, "Found ${games.size} total games")
         return games
     }
 
     private fun <T : Any> get(route: String, className: Class<T>): T {
         val request: Request = Request.Builder().url(route).get().build()
-        log(INFO, "GET REQUEST $route")
+        log(TAG, "GET REQUEST $route")
         val response = okHttpClient.newCall(request).execute()
         if (response.isSuccessful) {
-            log(INFO, "GET SUCCESS ${response.code}")
+            log(TAG, "GET SUCCESS ${response.code}")
             val apiResponse = gson.fromJson(response.body?.string(), className)
             response.close()
             return apiResponse
         } else {
             val error = ApiException("GET FAILURE " + response.code)
-            log(ERROR, error.message!!, error)
+            log(TAG, error.message!!, error)
             throw error
         }
     }

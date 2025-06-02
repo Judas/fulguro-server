@@ -1,6 +1,6 @@
 package com.fulgurogo.features.user.igs
 
-import com.fulgurogo.common.logger.Logger.Level.INFO
+import com.fulgurogo.TAG
 import com.fulgurogo.common.logger.log
 import org.apache.commons.net.telnet.TelnetClient
 import java.io.IOException
@@ -14,7 +14,7 @@ class IgsTelnetClient {
 
     @Throws(IOException::class)
     fun connect(server: String, port: Int) {
-        log(INFO, "connect $server:$port")
+        log(TAG, "connect $server:$port")
         telnetClient.connect(server, port)
         input = telnetClient.inputStream
         output = PrintStream(telnetClient.outputStream)
@@ -22,7 +22,7 @@ class IgsTelnetClient {
 
     @Throws(IOException::class)
     fun readUntil(pattern: String): String {
-        log(INFO, "readUntil $pattern")
+        log(TAG, "readUntil $pattern")
         val lastChar = pattern[pattern.length - 1]
         val sb = StringBuilder()
         var ch = input!!.read().toChar()
@@ -38,14 +38,14 @@ class IgsTelnetClient {
     }
 
     fun write(value: String) {
-        log(INFO, "write $value")
+        log(TAG, "write $value")
         output!!.println(value)
         output!!.flush()
     }
 
     @Throws(IOException::class)
     fun disconnect() {
-        log(INFO, "disconnect")
+        log(TAG, "disconnect")
         telnetClient.disconnect()
     }
 }

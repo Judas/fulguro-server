@@ -1,10 +1,10 @@
 package com.fulgurogo.features.bot
 
+import com.fulgurogo.TAG
+import com.fulgurogo.common.logger.log
 import com.fulgurogo.features.database.DatabaseAccessor
 import com.fulgurogo.features.games.GameScanner
-import com.fulgurogo.common.logger.Logger.Level.INFO
 import com.fulgurogo.utilities.acknowledge
-import com.fulgurogo.common.logger.log
 import com.fulgurogo.utilities.simpleError
 import com.fulgurogo.utilities.simpleMessage
 import kotlinx.coroutines.CoroutineScope
@@ -26,7 +26,7 @@ object FulguroBot : ListenerAdapter() {
      */
     override fun onReady(event: ReadyEvent) {
         super.onReady(event)
-        log(INFO, "onReady")
+        log(TAG, "onReady")
 
         jda = event.jda
 
@@ -43,7 +43,7 @@ object FulguroBot : ListenerAdapter() {
      */
     override fun onShutdown(event: ShutdownEvent) {
         super.onShutdown(event)
-        log(INFO, "onShutdown")
+        log(TAG, "onShutdown")
         jda = null
     }
 
@@ -52,7 +52,7 @@ object FulguroBot : ListenerAdapter() {
      */
     override fun onSlashCommandInteraction(event: SlashCommandInteractionEvent) {
         super.onSlashCommandInteraction(event)
-        log(INFO, "onSlashCommandInteraction ${event.name} ${event.subcommandName}")
+        log(TAG, "onSlashCommandInteraction ${event.name} ${event.subcommandName}")
 
         if (event.name == "fulguro" && event.subcommandName == "scan")
             scan(event)
@@ -64,7 +64,7 @@ object FulguroBot : ListenerAdapter() {
     }
 
     private fun scan(event: SlashCommandInteractionEvent) {
-        log(INFO, "scan")
+        log(TAG, "scan")
 
         val hook = acknowledge(event)
         DatabaseAccessor.ensureUser(event.user.id)
@@ -72,7 +72,7 @@ object FulguroBot : ListenerAdapter() {
         val asimov = event.guild?.getMember(event.user)?.roles?.any { it.name == "Asimov" } ?: false
         if (asimov) {
             CoroutineScope(Dispatchers.IO).launch {
-                log(INFO, "Starting manual scan.")
+                log(TAG, "Starting manual scan.")
                 GameScanner.scan()
             }
             simpleMessage(hook, ":robot:", "Scan manuel", "Scan démarré")

@@ -1,6 +1,6 @@
 package com.fulgurogo.utilities
 
-import com.fulgurogo.common.logger.Logger.Level.INFO
+import com.fulgurogo.TAG
 import com.fulgurogo.common.logger.log
 import com.fulgurogo.features.user.UserAccountGame
 import java.text.DecimalFormat
@@ -53,6 +53,6 @@ fun <T : UserAccountGame> Sequence<T>.filterGame(
     predicate: (T) -> Boolean
 ): Sequence<T> = filter {
     val condition = predicate.invoke(it)
-    if (!condition) log(INFO, "Filtering game ${it.gameId()} because game $message.")
+    if (!condition) log(TAG, "Filtering game ${it.gameId()} because game $message.")
     condition
 }

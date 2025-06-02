@@ -1,8 +1,7 @@
 package com.fulgurogo.features.games
 
+import com.fulgurogo.TAG
 import com.fulgurogo.common.config.Config
-import com.fulgurogo.common.logger.Logger.Level.ERROR
-import com.fulgurogo.common.logger.Logger.Level.INFO
 import com.fulgurogo.common.logger.log
 import com.fulgurogo.common.utilities.DATE_ZONE
 import com.fulgurogo.common.utilities.millisecondsFromNow
@@ -47,7 +46,7 @@ object GameScanner {
     }
     private var scanJob: Job? = null
     private val scanFlowExceptionHandler = CoroutineExceptionHandler { _, e ->
-        log(ERROR, "Error while scanning", e)
+        log(TAG, "Error while scanning", e)
         stop()
         start()
     }
@@ -58,15 +57,15 @@ object GameScanner {
         .build()
 
     fun start() {
-        log(INFO, "start")
+        log(TAG, "start")
 
         scanJob = CoroutineScope(Dispatchers.IO + scanFlowExceptionHandler).launch {
-            log(INFO, "starting scan job")
+            log(TAG, "starting scan job")
             scanFlow.collect {
-                log(INFO, "scanFlow tick")
+                log(TAG, "scanFlow tick")
                 when {
-                    isScanning -> log(INFO, "Skip scan, previous scan is still ongoing")
-                    Config.get("debug").toBoolean() -> log(INFO, "Skip scan in developer mode")
+                    isScanning -> log(TAG, "Skip scan, previous scan is still ongoing")
+                    Config.get("debug").toBoolean() -> log(TAG, "Skip scan in developer mode")
                     else -> scan()
                 }
             }
@@ -74,9 +73,9 @@ object GameScanner {
     }
 
     fun stop() {
-        log(INFO, "stop")
+        log(TAG, "stop")
         scanJob?.let {
-            log(INFO, "stopping scan job")
+            log(TAG, "stopping scan job")
             it.cancel()
         }
     }
@@ -90,14 +89,14 @@ object GameScanner {
             date
         }
 
-        log(INFO, "refreshScanDates")
-        log(INFO, "  - Last scan at $lastScanDate")
-        log(INFO, "  - Next scan at $nextScanDate")
+        log(TAG, "refreshScanDates")
+        log(TAG, "  - Last scan at $lastScanDate")
+        log(TAG, "  - Next scan at $nextScanDate")
     }
 
     fun scan() {
         FulguroBot.jda?.let { jda ->
-            log(INFO, "Scan started !")
+            log(TAG, "Scan started !")
             isScanning = true
 
             forAllUsers { rawUser ->
@@ -117,12 +116,12 @@ object GameScanner {
             cleanDatabase()
 
             isScanning = false
-            log(INFO, "Scan ended !")
-        } ?: log(ERROR, "Can't start scan, JDA is null")
+            log(TAG, "Scan ended !")
+        } ?: log(TAG, "Can't start scan, JDA is null")
     }
 
     private fun refreshUserProfile(jda: JDA, rawUser: User): User {
-        log(INFO, "Refreshing user profile")
+        log(TAG, "Refreshing user profile")
 
         // Refresh server pseudos and ranks
         val user = rawUser.cloneUserWithUpdatedProfile(jda, true)
@@ -136,31 +135,31 @@ object GameScanner {
     }
 
     private fun createExamPlayer(user: User) {
-        log(INFO, "Creating exam player if needed")
+        log(TAG, "Creating exam player if needed")
         DatabaseAccessor.ensureExamPlayer(user)
     }
 
     private fun fetchUserGames(user: User, scanStart: Date, scanEnd: Date): List<UserAccountGame> {
-        log(INFO, "Fetching user games between $scanStart | $scanEnd")
+        log(TAG, "Fetching user games between $scanStart | $scanEnd")
 
         val clients = mutableListOf<UserAccountClient>()
         user.kgsId?.let { clients.add(UserAccount.KGS.client) }
         user.ogsId?.let { clients.add(UserAccount.OGS.client) }
         user.foxPseudo?.let { clients.add(UserAccount.FOX.client) }
         val allGames = clients.map { it.userGames(user, scanStart, scanEnd) }.flatten()
-        log(INFO, "Fetched ${allGames.size} valid games !")
+        log(TAG, "Fetched ${allGames.size} valid games !")
 
         return allGames
     }
 
     private fun updateUnfinishedGamesStatus(user: User) {
-        log(INFO, "Checking unfinished games")
+        log(TAG, "Checking unfinished games")
         DatabaseAccessor.unfinishedGamesFor(user.discordId)
             .forEach { game ->
                 // Check if game is now finished and update flag in db
                 val updatedGame = UserAccount.find(game.server)?.client?.userGame(user, game.gameServerId())
                 if (updatedGame?.isFinished() == true) {
-                    log(INFO, "Updating game as it is now finished")
+                    log(TAG, "Updating game as it is now finished")
                     val blackPlayerDiscordId =
                         DatabaseAccessor.user(updatedGame.account(), updatedGame.blackPlayerServerId())?.discordId
                     val whitePlayerDiscordId =
@@ -178,7 +177,7 @@ object GameScanner {
                 val whitePlayerDiscordId = DatabaseAccessor.user(game.account(), game.whitePlayerServerId())?.discordId
                 val sgf = fetchGameSgf(game, blackPlayerDiscordId, whitePlayerDiscordId)
                 DatabaseAccessor.saveGame(game, blackPlayerDiscordId, whitePlayerDiscordId, sgf)
-            } else log(INFO, "Skipping. Game already exists in database")
+            } else log(TAG, "Skipping. Game already exists in database")
         }
     }
 
@@ -189,45 +188,45 @@ object GameScanner {
         allowRetry: Boolean = true
     ): String? {
         if (blackPlayerDiscordId == null || whitePlayerDiscordId == null) {
-            log(INFO, "Fetching SGF: Skipping because player id is null")
+            log(TAG, "Fetching SGF: Skipping because player id is null")
             return null
         }
 
         if (!game.isFinished()) {
-            log(INFO, "Fetching SGF: Skipping because game is ongoing")
+            log(TAG, "Fetching SGF: Skipping because game is ongoing")
             return null
         }
 
         val sgfLink = game.sgfLink(blackPlayerDiscordId, whitePlayerDiscordId)
 
         if (sgfLink == null) {
-            log(INFO, "Fetching SGF: Skipping because no valid link")
+            log(TAG, "Fetching SGF: Skipping because no valid link")
             return null
         }
 
-        log(INFO, "Fetching SGF $sgfLink")
+        log(TAG, "Fetching SGF $sgfLink")
         val request: Request = Request.Builder().url(sgfLink).get().build()
         val response = okHttpClient.newCall(request).execute()
         return if (response.isSuccessful) {
-            log(INFO, "Fetching SGF SUCCESS ${response.code}")
+            log(TAG, "Fetching SGF SUCCESS ${response.code}")
             val apiResponse = response.body!!.string().replace("\n", "")
             response.close()
             apiResponse
         } else {
             if (response.code == 429 && allowRetry) {
-                log(INFO, "Fetching SGF ERROR 429: Waiting then retrying")
+                log(TAG, "Fetching SGF ERROR 429: Waiting then retrying")
                 Thread.sleep(Config.get("ogs.api.delay.seconds").toInt() * 1000L)
                 fetchGameSgf(game, blackPlayerDiscordId, whitePlayerDiscordId, false)
             } else {
                 val error = ApiException("Fetching SGF FAILURE " + response.code)
-                log(ERROR, error.message!!, error)
+                log(TAG, error.message!!, error)
                 null
             }
         }
     }
 
     private fun cleanDatabase() {
-        log(INFO, "Deleting old games")
+        log(TAG, "Deleting old games")
         DatabaseAccessor.cleanGames()
     }
 }

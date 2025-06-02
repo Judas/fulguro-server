@@ -1,7 +1,11 @@
 package com.fulgurogo.features.database
 
+import com.fulgurogo.TAG
 import com.fulgurogo.common.config.Config
 import com.fulgurogo.common.db.CustomDateConverter
+import com.fulgurogo.common.logger.log
+import com.fulgurogo.common.utilities.DATE_ZONE
+import com.fulgurogo.common.utilities.toDate
 import com.fulgurogo.features.api.*
 import com.fulgurogo.features.exam.*
 import com.fulgurogo.features.games.Game
@@ -10,10 +14,6 @@ import com.fulgurogo.features.user.User
 import com.fulgurogo.features.user.UserAccount
 import com.fulgurogo.features.user.UserAccount.Companion.SUPPORTED_PLAYABLE_ACCOUNTS
 import com.fulgurogo.features.user.UserAccountGame
-import com.fulgurogo.common.utilities.DATE_ZONE
-import com.fulgurogo.common.logger.Logger.Level.INFO
-import com.fulgurogo.common.logger.log
-import com.fulgurogo.common.utilities.toDate
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import org.sql2o.Connection
@@ -102,7 +102,7 @@ object DatabaseAccessor {
 
     fun user(account: UserAccount, accountId: String): User? = dao.open().use { connection ->
         val query = "SELECT * FROM users WHERE ${account.databaseId} = :accountId"
-        log(INFO, "user [$query] $accountId")
+        log(TAG, "user [$query] $accountId")
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)
@@ -118,7 +118,7 @@ object DatabaseAccessor {
 
     private fun createUser(discordId: String): Connection = dao.open().use { connection ->
         val query = "INSERT INTO users(${UserAccount.DISCORD.databaseId}) VALUES (:discordId) "
-        log(INFO, "createUser [$query] $discordId")
+        log(TAG, "createUser [$query] $discordId")
         connection
             .createQuery(query)
             .addParameter("discordId", discordId)
@@ -153,7 +153,7 @@ object DatabaseAccessor {
                 " tier_rank = :tierRank, " +
                 " tier_name = :tierName " +
                 " WHERE ${UserAccount.DISCORD.databaseId} = :discordId "
-        log(INFO, "updateUser [$query] ${user.discordId}")
+        log(TAG, "updateUser [$query] ${user.discordId}")
         connection
             .createQuery(query)
             .addParameter("discordId", user.discordId)
@@ -190,7 +190,7 @@ object DatabaseAccessor {
                 " name = :name, " +
                 " avatar = :avatar" +
                 " WHERE ${UserAccount.DISCORD.databaseId} = :discordId "
-        log(INFO, "updateSimpleUser [$query] ${user.discordId}")
+        log(TAG, "updateSimpleUser [$query] ${user.discordId}")
         connection
             .createQuery(query)
             .addParameter("discordId", user.discordId)
@@ -203,7 +203,7 @@ object DatabaseAccessor {
         val query = "UPDATE users SET " +
                 " last_game_scan = :lastGameScan " +
                 " WHERE ${UserAccount.DISCORD.databaseId} = :discordId "
-        log(INFO, "updateUserScanDate [$query] $discordId")
+        log(TAG, "updateUserScanDate [$query] $discordId")
         connection
             .createQuery(query)
             .addParameter("discordId", discordId)
@@ -216,7 +216,7 @@ object DatabaseAccessor {
             val query = "UPDATE users " +
                     " SET ${account.databaseId} = :accountId " +
                     " WHERE ${UserAccount.DISCORD.databaseId} = :discordId"
-            log(INFO, "linkUserAccount [$query] $accountId $discordId")
+            log(TAG, "linkUserAccount [$query] $accountId $discordId")
             connection
                 .createQuery(query)
                 .addParameter("accountId", accountId)
@@ -229,7 +229,7 @@ object DatabaseAccessor {
             val query = "UPDATE users " +
                     " SET ${account.databaseId} = NULL " +
                     " WHERE ${UserAccount.DISCORD.databaseId} = :discordId"
-            log(INFO, "unlinkUserAccount [$query] $accountId $discordId")
+            log(TAG, "unlinkUserAccount [$query] $accountId $discordId")
             connection
                 .createQuery(query)
                 .addParameter("accountId", accountId)
@@ -240,7 +240,7 @@ object DatabaseAccessor {
     fun deleteUser(discordId: String): Connection = dao.open().use { connection ->
         listOf("exam_points", "users").forEach { table ->
             val query = "DELETE FROM $table WHERE ${UserAccount.DISCORD.databaseId} = :discordId"
-            log(INFO, "deleteUser [$query] $discordId")
+            log(TAG, "deleteUser [$query] $discordId")
             connection.createQuery(query).addParameter("discordId", discordId).executeUpdate()
         }
 
@@ -250,7 +250,7 @@ object DatabaseAccessor {
                 " (black_player_discord_id = :discordId AND white_player_discord_id IS NULL) " +
                 " OR " +
                 " (white_player_discord_id = :discordId AND black_player_discord_id IS NULL) "
-        log(INFO, "deleteUser [$query] $discordId")
+        log(TAG, "deleteUser [$query] $discordId")
         connection.createQuery(query).addParameter("discordId", discordId).executeUpdate()
     }
 
@@ -260,7 +260,7 @@ object DatabaseAccessor {
                 .map { "${it.databaseId} IS NOT NULL" }
                 .reduce { a, b -> "$a OR $b" }
         }"
-        log(INFO, "usersWithLinkedPlayableAccount [$query]")
+        log(TAG, "usersWithLinkedPlayableAccount [$query]")
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)
@@ -274,7 +274,7 @@ object DatabaseAccessor {
     fun existGame(game: UserAccountGame): Boolean = dao.open().use { connection ->
         val query = " SELECT * FROM games WHERE id = :id "
 
-        log(INFO, "existGame [$query] ${game.gameId()}")
+        log(TAG, "existGame [$query] ${game.gameId()}")
         connection
             .createQuery(query)
             .addParameter("id", game.gameId())
@@ -297,7 +297,7 @@ object DatabaseAccessor {
                 " :whitePlayerDiscordId, :whitePlayerServerId, :whitePlayerPseudo, :whitePlayerRank, :whitePlayerWon, " +
                 " :handicap, :komi, :longGame, :finished, :sgf) "
 
-        log(INFO, "saveGame [$query] ${game.gameId()}")
+        log(TAG, "saveGame [$query] ${game.gameId()}")
 
         connection
             .createQuery(query)
@@ -329,7 +329,7 @@ object DatabaseAccessor {
                 " AND finished = 0 " +
                 " ORDER BY date "
 
-        log(INFO, "unfinishedGamesFor [$query] $discordId")
+        log(TAG, "unfinishedGamesFor [$query] $discordId")
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)
@@ -345,7 +345,7 @@ object DatabaseAccessor {
                 " sgf = :sgf " +
                 " WHERE id = :id "
 
-        log(INFO, "updateFinishedGame [$query] ${game.gameId()}")
+        log(TAG, "updateFinishedGame [$query] ${game.gameId()}")
         connection
             .createQuery(query)
             .addParameter("id", game.gameId())
@@ -362,7 +362,7 @@ object DatabaseAccessor {
                 " finished = 1 AND :from < date AND date < :to " +
                 " ORDER BY date "
 
-        log(INFO, "examGames [$query]")
+        log(TAG, "examGames [$query]")
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)
@@ -381,7 +381,7 @@ object DatabaseAccessor {
                 " AND :from < date AND date < :to " +
                 " ORDER BY date "
 
-        log(INFO, "ladderGamesFor [$query] $discordId from ($from) to ($to)")
+        log(TAG, "ladderGamesFor [$query] $discordId from ($from) to ($to)")
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)
@@ -398,7 +398,7 @@ object DatabaseAccessor {
                     " WHERE ((black_player_discord_id = :blackPlayerDiscordId AND white_player_discord_id = :whitePlayerDiscordId) " +
                     " OR (black_player_discord_id = :whitePlayerDiscordId AND white_player_discord_id = :blackPlayerDiscordId)) " +
                     " AND DATE(date) = DATE(:date) AND date <= :date "
-            log(INFO, "countDailyGamesBetween [$query] $blackPlayerDiscordId $whitePlayerDiscordId $date")
+            log(TAG, "countDailyGamesBetween [$query] $blackPlayerDiscordId $whitePlayerDiscordId $date")
             connection
                 .createQuery(query)
                 .throwOnMappingFailure(false)
@@ -410,7 +410,7 @@ object DatabaseAccessor {
 
     fun cleanGames(): Connection = dao.open().use { connection ->
         val query = "DELETE FROM games WHERE DATEDIFF(NOW(), date) > 32"
-        log(INFO, "cleanGames [$query]")
+        log(TAG, "cleanGames [$query]")
         connection.createQuery(query).executeUpdate()
     }
 
@@ -420,7 +420,7 @@ object DatabaseAccessor {
 
     fun examPlayers(): MutableList<ExamPlayer> = dao.open().use { connection ->
         val query = "SELECT * FROM exam_points"
-        log(INFO, "examPlayers [$query]")
+        log(TAG, "examPlayers [$query]")
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)
@@ -431,7 +431,7 @@ object DatabaseAccessor {
 
     fun examPlayer(discordId: String): ExamPlayer? = dao.open().use { connection ->
         val query = "SELECT * FROM exam_points WHERE ${UserAccount.DISCORD.databaseId} = :discordId"
-        log(INFO, "examPlayer [$query] $discordId")
+        log(TAG, "examPlayer [$query] $discordId")
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)
@@ -446,7 +446,7 @@ object DatabaseAccessor {
 
     private fun createExamPlayer(user: User): Connection = dao.open().use { connection ->
         val query = "INSERT INTO exam_points(${UserAccount.DISCORD.databaseId}) VALUES (:discordId) "
-        log(INFO, "createExamPlayer [$query] $user")
+        log(TAG, "createExamPlayer [$query] $user")
         connection
             .createQuery(query)
             .addParameter("discordId", user.discordId)
@@ -467,7 +467,7 @@ object DatabaseAccessor {
                     " achievement = achievement + :achievement " +
                     " WHERE ${UserAccount.DISCORD.databaseId} = :discordId"
 
-            log(INFO, "addExamPoints [$query] $discordId")
+            log(TAG, "addExamPoints [$query] $discordId")
             connection
                 .createQuery(query)
                 .addParameter("participation", points.participation)
@@ -489,7 +489,7 @@ object DatabaseAccessor {
                 " COUNT(*) AS candidates, " +
                 " (SUM(participation) + SUM(community) + SUM(patience) + SUM(victory) + SUM(refinement) + SUM(performance) + SUM(achievement)) AS promoTotal " +
                 " FROM exam_points WHERE participation > 0"
-        log(INFO, "examStats [$query]")
+        log(TAG, "examStats [$query]")
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)
@@ -503,7 +503,7 @@ object DatabaseAccessor {
                 " WHERE e.information > 0 OR e.lost > 0 " +
                 " OR e.ruin > 0 OR e.treasure > 0 OR e.gourmet > 0 " +
                 " OR e.beast > 0 OR e.blacklist > 0 OR e.head > 0 "
-        log(INFO, "titledHunters [$query]")
+        log(TAG, "titledHunters [$query]")
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)
@@ -512,7 +512,7 @@ object DatabaseAccessor {
 
     fun getPromotions(): List<ExamAward> = dao.open().use { connection ->
         val query = "SELECT * FROM exam_awards ORDER BY id"
-        log(INFO, "getPromotions [$query]")
+        log(TAG, "getPromotions [$query]")
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)
@@ -521,7 +521,7 @@ object DatabaseAccessor {
 
     fun hasPromotionScore(promoName: String): Boolean = dao.open().use { connection ->
         val query = "SELECT * FROM exam_awards WHERE promo = :promoName"
-        log(INFO, "hasPromotionScore [$query] $promoName")
+        log(TAG, "hasPromotionScore [$query] $promoName")
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)
@@ -533,7 +533,7 @@ object DatabaseAccessor {
         val query = "INSERT INTO exam_awards(promo, score, players, games, community_games) " +
                 " VALUES (:promo, :score, :players, :games, :communityGames) "
 
-        log(INFO, "savePromotionScore [$query] $promoName $stats")
+        log(TAG, "savePromotionScore [$query] $promoName $stats")
         connection
             .createQuery(query)
             .addParameter("promo", promoName)
@@ -546,7 +546,7 @@ object DatabaseAccessor {
 
     fun examAward(): ExamAward? = dao.open().use { connection ->
         val query = "SELECT * FROM exam_awards ORDER BY score DESC LIMIT 1"
-        log(INFO, "examAward [$query]")
+        log(TAG, "examAward [$query]")
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)
@@ -555,7 +555,7 @@ object DatabaseAccessor {
 
     fun promoteHunter(examPlayer: ExamPlayer): Connection = dao.open().use { connection ->
         val query = "UPDATE exam_points SET hunter = 1 WHERE ${UserAccount.DISCORD.databaseId} = :discordId"
-        log(INFO, "promoteExamPlayer [$query] ${examPlayer.discordId}")
+        log(TAG, "promoteExamPlayer [$query] ${examPlayer.discordId}")
         connection
             .createQuery(query)
             .addParameter("discordId", examPlayer.discordId)
@@ -564,7 +564,7 @@ object DatabaseAccessor {
 
     fun resetSpec(specialization: ExamSpecialization): Connection = dao.open().use { connection ->
         val query = "UPDATE exam_points SET ${specialization.databaseId} = 0"
-        log(INFO, "resetSpec [$query] ${specialization.name}")
+        log(TAG, "resetSpec [$query] ${specialization.name}")
         connection
             .createQuery(query)
             .executeUpdate()
@@ -577,10 +577,10 @@ object DatabaseAccessor {
             val capQuery =
                 "UPDATE exam_points SET ${specialization.databaseId} = 4 WHERE ${UserAccount.DISCORD.databaseId} = :discordId AND ${specialization.databaseId} > 4"
 
-            log(INFO, "incrementSpec [$updateQuery] ${hunter.discordId} ${specialization.name}")
+            log(TAG, "incrementSpec [$updateQuery] ${hunter.discordId} ${specialization.name}")
             connection.createQuery(updateQuery).addParameter("discordId", hunter.discordId).executeUpdate()
 
-            log(INFO, "capQuery [$capQuery] ${hunter.discordId}")
+            log(TAG, "capQuery [$capQuery] ${hunter.discordId}")
             connection.createQuery(capQuery).addParameter("discordId", hunter.discordId).executeUpdate()
         }
 
@@ -594,7 +594,7 @@ object DatabaseAccessor {
                 "performance = 0, " +
                 "achievement = 0 "
 
-        log(INFO, "clearExamPoints [$query]")
+        log(TAG, "clearExamPoints [$query]")
         connection.createQuery(query).executeUpdate()
     }
 
@@ -602,7 +602,7 @@ object DatabaseAccessor {
         val query = "SELECT * FROM exam_players " +
                 " WHERE total > 0" +
                 " ORDER BY total DESC, victory DESC, performance DESC, achievement DESC, refinement DESC, community DESC, patience DESC, participation DESC, ratio DESC, discord_id ASC "
-        log(INFO, "examRanking [$query]")
+        log(TAG, "examRanking [$query]")
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)
@@ -618,7 +618,7 @@ object DatabaseAccessor {
                 " FROM users AS u " +
                 " WHERE u.rating IS NOT NULL " +
                 " ORDER BY u.rating DESC "
-        log(INFO, "apiLadderPlayers [$query]")
+        log(TAG, "apiLadderPlayers [$query]")
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)
@@ -629,7 +629,7 @@ object DatabaseAccessor {
         val query = "SELECT u.*, is_player_stable(u.discord_id) AS stable " +
                 " FROM users AS u " +
                 " WHERE ${UserAccount.DISCORD.databaseId} = :discordId"
-        log(INFO, "apiLadderPlayer [$query] $discordId")
+        log(TAG, "apiLadderPlayer [$query] $discordId")
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)
@@ -640,7 +640,7 @@ object DatabaseAccessor {
     fun apiLadderGame(gameId: String): Game? = dao.open().use { connection ->
         val query = "SELECT * FROM ladder_games " +
                 " WHERE id = :gameId "
-        log(INFO, "apiLadderGame [$query] $gameId")
+        log(TAG, "apiLadderGame [$query] $gameId")
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)
@@ -652,7 +652,7 @@ object DatabaseAccessor {
         val query = "SELECT * FROM ladder_games " +
                 " WHERE black_player_discord_id = :discordId OR white_player_discord_id = :discordId " +
                 " ORDER BY date DESC LIMIT 10 "
-        log(INFO, "apiLadderGamesFor [$query] $discordId")
+        log(TAG, "apiLadderGamesFor [$query] $discordId")
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)
@@ -662,7 +662,7 @@ object DatabaseAccessor {
 
     fun apiLadderRecentGames(): List<Game> = dao.open().use { connection ->
         val query = "SELECT * FROM ladder_games ORDER BY date DESC LIMIT 20 "
-        log(INFO, "apiLadderRecentGames [$query]")
+        log(TAG, "apiLadderRecentGames [$query]")
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)
@@ -670,7 +670,7 @@ object DatabaseAccessor {
     }
 
     fun fgcValidation(discordId: String): ApiFgcValidation = dao.open().use { connection ->
-        log(INFO, "stability $discordId")
+        log(TAG, "stability $discordId")
 
         val periodQuery = " SELECT period FROM fgc_validation "
         val period = connection
@@ -707,7 +707,7 @@ object DatabaseAccessor {
 
     fun fgcValidation(): ApiFgcValidation? = dao.open().use { connection ->
         val query = " SELECT game_count, ladder_game_count, period FROM fgc_validation "
-        log(INFO, "fgcValidation [$query]")
+        log(TAG, "fgcValidation [$query]")
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)
@@ -716,7 +716,7 @@ object DatabaseAccessor {
 
     fun tiers(): List<Tier> = dao.open().use { connection ->
         val query = " SELECT * FROM ladder_tiers "
-        log(INFO, "tiers [$query]")
+        log(TAG, "tiers [$query]")
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)
@@ -725,7 +725,7 @@ object DatabaseAccessor {
 
     fun tierForRating(rating: Double): Tier? = dao.open().use { connection ->
         val query = " SELECT * FROM ladder_tiers WHERE rank = tierRankFor(:rating) "
-        log(INFO, "tierForRating [$query] $rating")
+        log(TAG, "tierForRating [$query] $rating")
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)
@@ -744,7 +744,7 @@ object DatabaseAccessor {
                         " token_type=VALUES(token_type), " +
                         " refresh_token=VALUES(refresh_token), " +
                         " expiration_date=VALUES(expiration_date)"
-            log(INFO, "saveAuthCredentials [$query] $goldId $authCredentials")
+            log(TAG, "saveAuthCredentials [$query] $goldId $authCredentials")
             connection
                 .createQuery(query)
                 .addParameter("gold_id", goldId)
@@ -760,7 +760,7 @@ object DatabaseAccessor {
 
     fun getAuthCredentials(goldId: String): AuthCredentials? = dao.open().use { connection ->
         val query = " SELECT * FROM auth_credentials WHERE gold_id = :goldId"
-        log(INFO, "getAuthCredentials [$query] $goldId")
+        log(TAG, "getAuthCredentials [$query] $goldId")
         connection
             .createQuery(query)
             .addParameter("goldId", goldId)

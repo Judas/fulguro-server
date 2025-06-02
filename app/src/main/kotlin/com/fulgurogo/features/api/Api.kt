@@ -1,6 +1,8 @@
 package com.fulgurogo.features.api
 
+import com.fulgurogo.TAG
 import com.fulgurogo.common.config.Config
+import com.fulgurogo.common.logger.log
 import com.fulgurogo.common.utilities.DATE_ZONE
 import com.fulgurogo.common.utilities.toDate
 import com.fulgurogo.features.bot.FulguroBot
@@ -11,9 +13,6 @@ import com.fulgurogo.features.user.User
 import com.fulgurogo.features.user.UserAccount
 import com.fulgurogo.features.user.ogs.OgsClient
 import com.fulgurogo.utilities.*
-import com.fulgurogo.common.logger.Logger.Level.ERROR
-import com.fulgurogo.common.logger.Logger.Level.INFO
-import com.fulgurogo.common.logger.log
 import com.google.gson.Gson
 import io.javalin.http.Context
 import okhttp3.JavaNetCookieJar
@@ -34,7 +33,7 @@ object Api {
         val players = DatabaseAccessor.apiLadderPlayers()
         context.standardResponse(players)
     } catch (e: Exception) {
-        log(ERROR, "getPlayers", e)
+        log(TAG, "getPlayers", e)
         context.internalError()
     }
 
@@ -62,7 +61,7 @@ object Api {
             context.standardResponse(p)
         } ?: context.notFoundError()
     } catch (e: Exception) {
-        log(ERROR, "getPlayerProfile", e)
+        log(TAG, "getPlayerProfile", e)
         context.internalError()
     }
 
@@ -74,7 +73,7 @@ object Api {
 
         context.standardResponse(latestGames)
     } catch (e: Exception) {
-        log(ERROR, "getRecentGames", e)
+        log(TAG, "getRecentGames", e)
         context.internalError()
     }
 
@@ -88,7 +87,7 @@ object Api {
 
         game?.let { context.standardResponse(it) } ?: context.notFoundError()
     } catch (e: Exception) {
-        log(ERROR, "getGame", e)
+        log(TAG, "getGame", e)
         context.internalError()
     }
 
@@ -98,7 +97,7 @@ object Api {
             ?.let { context.standardResponse(it) }
             ?: context.notFoundError()
     } catch (e: Exception) {
-        log(ERROR, "getFgcValidation", e)
+        log(TAG, "getFgcValidation", e)
         context.internalError()
     }
 
@@ -106,7 +105,7 @@ object Api {
         context.rateLimit()
         DatabaseAccessor.tiers().let { context.standardResponse(it) }
     } catch (e: Exception) {
-        log(ERROR, "getTiers", e)
+        log(TAG, "getTiers", e)
         context.internalError()
     }
 
@@ -118,7 +117,7 @@ object Api {
         DatabaseAccessor.saveAuthCredentials(body.goldId, authRequestResponse)
         context.standardResponse()
     } catch (e: Exception) {
-        log(ERROR, "authenticateUser", e)
+        log(TAG, "authenticateUser", e)
         context.internalError()
     }
 
@@ -134,7 +133,7 @@ object Api {
 
                 // Check expiration
                 if (creds.expirationDate.before(ZonedDateTime.now(DATE_ZONE).toDate())) {
-                    log(INFO, "Refreshing expired token")
+                    log(TAG, "Refreshing expired token")
                     val authRequestResponse = refreshAuthToken(refreshToken = creds.refreshToken)
                     DatabaseAccessor.saveAuthCredentials(goldId, authRequestResponse)
                     validCredentials = DatabaseAccessor.getAuthCredentials(goldId)
@@ -161,7 +160,7 @@ object Api {
             } ?: context.notFoundError()
         } ?: context.notFoundError()
     } catch (e: Exception) {
-        log(ERROR, "getAuthProfile", e)
+        log(TAG, "getAuthProfile", e)
         context.internalError()
     }
 
@@ -173,11 +172,11 @@ object Api {
 
         if (!response.isSuccessful) {
             val error = ApiException("DISCORD AUTH REQUEST FAILURE " + response.code)
-            log(ERROR, error.message!!, error)
+            log(TAG, error.message!!, error)
             throw error
         }
 
-        log(INFO, "DISCORD AUTH REQUEST SUCCESS ${response.code}")
+        log(TAG, "DISCORD AUTH REQUEST SUCCESS ${response.code}")
         val responseBody = response.body?.string()
         response.close()
         return gson.fromJson(responseBody, AuthRequestResponse::class.java)
@@ -190,11 +189,11 @@ object Api {
 
         if (!response.isSuccessful) {
             val error = ApiException("DISCORD AUTH REFRESH FAILURE " + response.code)
-            log(ERROR, error.message!!, error)
+            log(TAG, error.message!!, error)
             throw error
         }
 
-        log(INFO, "DISCORD AUTH REFRESH SUCCESS ${response.code}")
+        log(TAG, "DISCORD AUTH REFRESH SUCCESS ${response.code}")
         val responseBody = response.body?.string()
         response.close()
         return gson.fromJson(responseBody, AuthRequestResponse::class.java)
@@ -210,11 +209,11 @@ object Api {
 
         if (!response.isSuccessful) {
             val error = ApiException("DISCORD PROFILE REQUEST FAILURE " + response.code)
-            log(ERROR, error.message!!, error)
+            log(TAG, error.message!!, error)
             throw error
         }
 
-        log(INFO, "DISCORD PROFILE REQUEST SUCCESS ${response.code}")
+        log(TAG, "DISCORD PROFILE REQUEST SUCCESS ${response.code}")
         val responseBody = response.body?.string()
         response.close()
         return gson.fromJson(responseBody, ProfileRequestResponse::class.java).id
@@ -224,7 +223,7 @@ object Api {
         context.rateLimit()
         context.standardResponse(GameScanner.isScanning)
     } catch (e: Exception) {
-        log(ERROR, "getUserDiscordId", e)
+        log(TAG, "getUserDiscordId", e)
         context.internalError()
     }
 
@@ -232,7 +231,7 @@ object Api {
         context.rateLimit()
         context.standardResponse(UserAccount.values().filter { it != UserAccount.DISCORD })
     } catch (e: Exception) {
-        log(ERROR, "getAccounts", e)
+        log(TAG, "getAccounts", e)
         context.internalError()
     }
 
@@ -259,7 +258,7 @@ object Api {
             // TODO Find a way to get id from name for FFG/EGF
         }
     } catch (e: Exception) {
-        log(ERROR, "link", e)
+        log(TAG, "link", e)
         context.internalError()
     }
 
@@ -313,7 +312,7 @@ object Api {
             }
         }
     } catch (e: Exception) {
-        log(ERROR, "unlink", e)
+        log(TAG, "unlink", e)
         context.internalError()
     }
 
@@ -321,7 +320,7 @@ object Api {
         context.rateLimit()
         context.standardResponse(DatabaseAccessor.examRanking())
     } catch (e: Exception) {
-        log(ERROR, "examRanking", e)
+        log(TAG, "examRanking", e)
         context.internalError()
     }
 
@@ -335,7 +334,7 @@ object Api {
         }
         context.standardResponse(titles)
     } catch (e: Exception) {
-        log(ERROR, "examTitles", e)
+        log(TAG, "examTitles", e)
         context.internalError()
     }
 
@@ -343,7 +342,7 @@ object Api {
         context.rateLimit()
         context.standardResponse(DatabaseAccessor.getPromotions().reversed())
     } catch (e: Exception) {
-        log(ERROR, "examHistory", e)
+        log(TAG, "examHistory", e)
         context.internalError()
     }
 
@@ -351,7 +350,7 @@ object Api {
         context.rateLimit()
         context.standardResponse(ApiExamStats.from(DatabaseAccessor.examStats()))
     } catch (e: Exception) {
-        log(ERROR, "examStats", e)
+        log(TAG, "examStats", e)
         context.internalError()
     }
 }
