@@ -12,6 +12,7 @@ data class KgsGame(
     val whiteName: String,
     val whiteRank: String,
     val whiteWon: Boolean,
+    val size: Int,
     val komi: Float,
     val handicap: Int,
     val longGame: Boolean,

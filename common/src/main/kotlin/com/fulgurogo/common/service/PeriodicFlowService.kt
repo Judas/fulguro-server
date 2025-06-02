@@ -7,8 +7,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
 abstract class PeriodicFlowService(
-    val initialDelayInSeconds: Long,
-    val intervalInSeconds: Long
+    val initialDelayInSeconds: Long = 0,
+    val intervalInSeconds: Long = 4
 ) {
     private val flow: Flow<Boolean> = flow {
         delay(initialDelayInSeconds * 1000)

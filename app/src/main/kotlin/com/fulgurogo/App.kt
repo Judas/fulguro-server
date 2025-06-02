@@ -15,6 +15,7 @@ fun main() {
 
     DiscordModule.init()
     KgsModule.init()
+
     // TODO OgsService
     // TODO FoxService
     // TODO IgsService
@@ -24,7 +25,7 @@ fun main() {
     // TODO service rank / tier (ladder)
     // TODO Service clean (old games / empty users)
 
-//    // TODO Make API serviec
+//    // TODO API module
 //    // Launching server API
 //    Javalin
 //        .create { config ->
@@ -50,6 +51,7 @@ fun main() {
 //            get("/gold/api/exam/titles", Api::examTitles)
 //            get("/gold/api/exam/history", Api::examHistory)
 //            get("/gold/api/exam/stats", Api::examStats)
+    // TODO Ad api to list players in error for each service
 //        }
 //
 //    // Launching GameScanner

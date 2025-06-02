@@ -21,7 +21,7 @@ import java.text.SimpleDateFormat
 import java.time.ZonedDateTime
 import java.util.*
 
-class KgsService : PeriodicFlowService(0, 5) {
+class KgsService : PeriodicFlowService() {
     private val okHttpClient: OkHttpClient = OkHttpClient.Builder()
         .cookieJar(JavaNetCookieJar(CookieManager().apply { setCookiePolicy(CookiePolicy.ACCEPT_ALL) })).build()
 
@@ -31,14 +31,11 @@ class KgsService : PeriodicFlowService(0, 5) {
         if (processing) return
         processing = true
 
-        log(TAG, "onTick")
-
         // Get stalest user
         KgsDatabaseAccessor.stalestUser()?.let { stale ->
             try {
                 // Scrap archives pages
                 val games = scrapGames(stale)
-                if (!games.isEmpty()) log(TAG, "Found ${games.size} total games")
 
                 // Update user rank
                 val updatedRank = games.maxByOrNull { it.date }?.let {
@@ -58,7 +55,11 @@ class KgsService : PeriodicFlowService(0, 5) {
 
                 // Add games in DB
                 games.forEach {
-                    if (!KgsDatabaseAccessor.existGame(it)) KgsDatabaseAccessor.addGame(it)
+                    if (!KgsDatabaseAccessor.existGame(it)) {
+                        // New game found
+                        KgsDatabaseAccessor.addGame(it)
+                        // TODO Post in discord
+                    }
                 }
             } catch (e: Exception) {
                 log(TAG, "onTick FAILURE ${e.message}")
@@ -81,7 +82,6 @@ class KgsService : PeriodicFlowService(0, 5) {
     private fun scrapMonthlyGames(kgsId: String?, year: Int, month: Int): MutableList<KgsGame> = try {
         val route = "${Config.get("kgs.archives.url")}?user=$kgsId&year=$year&month=$month"
         val html = Jsoup.connect(route).get()
-        log(TAG, "Scraping $route")
 
         // Get the tables, there might be 0 (no games at all), 1 (no games this month) or 2 (games, yay !)
         val tables = html.select("table.grid").asList()
@@ -120,16 +120,16 @@ class KgsService : PeriodicFlowService(0, 5) {
             if (sgf.isBlank()) return@mapNotNull null
 
             // Goban size => Skip wrong size games
-            if (!sgf.contains("SZ[19]")) return@mapNotNull null
+            val size = getSgfProperty(sgf, "SZ")?.toIntOrNull() ?: 0
 
             // Get handicap from SGF
-            val handicap = if (sgf.contains("]HA[")) getSgfProperty(sgf, "HA").toInt() else 0
+            val handicap = getSgfProperty(sgf, "HA")?.toIntOrNull() ?: 0
 
             // Get komi from SGF
-            val komi = if (sgf.contains("]KM[")) getSgfProperty(sgf, "KM").toFloat() else return@mapNotNull null
+            val komi = getSgfProperty(sgf, "KM")?.toFloatOrNull() ?: return@mapNotNull null
 
             // Get time setting from SGF
-            val isLongGame = if (sgf.contains("]TM[")) getSgfProperty(sgf, "TM").toInt() > 1200 else false
+            val isLongGame = (getSgfProperty(sgf, "TM")?.toIntOrNull() ?: 0) > 1200
 
             // Players
             val whitePlayer = columns[1].select("a").firstOrNull()?.text()?.trim().splitNameRank()
@@ -149,6 +149,7 @@ class KgsService : PeriodicFlowService(0, 5) {
                 whiteName = whitePlayer.first,
                 whiteRank = whitePlayer.second,
                 whiteWon = result.startsWith("W+"),
+                size = size,
                 komi = komi,
                 handicap = handicap,
                 longGame = isLongGame,
@@ -176,11 +177,12 @@ class KgsService : PeriodicFlowService(0, 5) {
         }
     }
 
-    private fun getSgfProperty(sgf: String, key: String): String {
-        val keyIndex = sgf.indexOf("]$key[")
-        val suffix = sgf.substring(keyIndex + 2 + key.length)
-        return suffix.substring(0, suffix.indexOf("]"))
-    }
+    private fun getSgfProperty(sgf: String, key: String): String? =
+        if (sgf.contains("$key[")) {
+            val keyIndex = sgf.indexOf("$key[")
+            val suffix = sgf.substring(keyIndex + key.length + 1)
+            suffix.substring(0, suffix.indexOf("]"))
+        } else null
 
     private fun String?.splitNameRank(): Pair<String, String> = this?.let {
         val splitted = split(" ")

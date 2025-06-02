@@ -27,7 +27,6 @@ object KgsDatabaseAccessor {
 
     fun stalestUser(): KgsUserInfo? = dao.open().use { connection ->
         val query = "SELECT * FROM kgs_user_info WHERE error IS NULL ORDER BY updated"
-        log(TAG, "stalestUser [$query]")
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)
@@ -50,7 +49,6 @@ object KgsDatabaseAccessor {
                 " updated = :updated " +
                 " WHERE discord_id = :discordId "
 
-        log(TAG, "updateUser [$query] $kgsUserInfo")
         connection
             .createQuery(query)
             .addParameter("kgsRank", kgsUserInfo.kgsRank)
@@ -78,11 +76,11 @@ object KgsDatabaseAccessor {
                 " date, " +
                 " black_name, black_rank, black_won, " +
                 " white_name, white_rank, white_won, " +
-                " komi, handicap, long_game, sgf) " +
+                " size, komi, handicap, long_game, sgf) " +
                 " VALUES (:date, " +
                 " :blackName, :blackRank, :blackWon, " +
                 " :whiteName, :whiteRank, :whiteWon, " +
-                " :komi, :handicap, :longGame, :sgf) "
+                " :size, :komi, :handicap, :longGame, :sgf) "
 
         log(TAG, "addGame [$query] ${game.date} ${game.blackName} ${game.whiteName}")
 
@@ -95,6 +93,7 @@ object KgsDatabaseAccessor {
             .addParameter("whiteName", game.whiteName)
             .addParameter("whiteRank", game.whiteRank)
             .addParameter("whiteWon", game.whiteWon)
+            .addParameter("size", game.size)
             .addParameter("komi", game.komi)
             .addParameter("handicap", game.handicap)
             .addParameter("longGame", game.longGame)

@@ -8,14 +8,12 @@ import com.fulgurogo.discord.db.DiscordDatabaseAccessor
 import com.fulgurogo.discord.db.model.DiscordUserInfo
 import java.util.*
 
-class DiscordService(private val discordBot: DiscordBot) : PeriodicFlowService(0, 5) {
+class DiscordService(private val discordBot: DiscordBot) : PeriodicFlowService() {
     private var processing = false
 
     override fun onTick() {
         if (processing) return
         processing = true
-
-        log(TAG, "onTick")
 
         // Get stalest user
         DiscordDatabaseAccessor.stalestUser()?.let { stale ->

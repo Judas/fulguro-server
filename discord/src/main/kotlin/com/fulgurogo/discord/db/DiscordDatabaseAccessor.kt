@@ -19,7 +19,6 @@ object DiscordDatabaseAccessor {
 
     fun stalestUser(): DiscordUserInfo? = dao.open().use { connection ->
         val query = "SELECT * FROM discord_user_info WHERE error IS NULL ORDER BY updated"
-        log(TAG, "stalestUser [$query]")
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)
@@ -43,11 +42,10 @@ object DiscordDatabaseAccessor {
                 " updated = :updated " +
                 " WHERE discord_id = :discordId "
 
-        log(TAG, "updateUser [$query] $discordUserInfo")
         connection
             .createQuery(query)
-            .addParameter("kgsRank", discordUserInfo.discordName)
-            .addParameter("kgsRank", discordUserInfo.discordAvatar)
+            .addParameter("discordName", discordUserInfo.discordName)
+            .addParameter("discordAvatar", discordUserInfo.discordAvatar)
             .addParameter("updated", discordUserInfo.updated)
             .addParameter("discordId", discordUserInfo.discordId)
             .executeUpdate()
