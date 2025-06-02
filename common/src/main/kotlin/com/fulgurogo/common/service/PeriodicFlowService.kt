@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.flow
 
 abstract class PeriodicFlowService(
     val initialDelayInSeconds: Long = 0,
-    val intervalInSeconds: Long = 4
+    val intervalInSeconds: Long = 2
 ) {
     private val flow: Flow<Boolean> = flow {
         delay(initialDelayInSeconds * 1000)
@@ -24,20 +24,13 @@ abstract class PeriodicFlowService(
     }
 
     fun start() {
-        log(TAG, "start")
-
         job = CoroutineScope(Dispatchers.IO + flowExceptionHandler).launch {
-            log(TAG, "starting periodic job")
             flow.collect { onTick() }
         }
     }
 
     fun stop() {
-        log(TAG, "stop")
-        job?.let {
-            log(TAG, "stopping periodic job")
-            it.cancel()
-        }
+        job?.cancel()
     }
 
     abstract fun onTick()

@@ -81,7 +81,7 @@ class KgsService : PeriodicFlowService() {
 
     private fun scrapMonthlyGames(kgsId: String?, year: Int, month: Int): MutableList<KgsGame> = try {
         val route = "${Config.get("kgs.archives.url")}?user=$kgsId&year=$year&month=$month"
-        val html = Jsoup.connect(route).get()
+        val html = Jsoup.connect(route).timeout(5000).get()
 
         // Get the tables, there might be 0 (no games at all), 1 (no games this month) or 2 (games, yay !)
         val tables = html.select("table.grid").asList()
