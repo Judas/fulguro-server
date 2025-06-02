@@ -24,12 +24,8 @@ noArg {
 }
 
 dependencies {
-    implementation(project(":common"))
+    implementation(project(":discord"))
     implementation(libs.jsoup)
-    implementation(platform(libs.kotlin.bom))
-    implementation(libs.kotlin.stdlib)
-    implementation(libs.kotlinx.coroutines)
-    implementation(libs.sql2o)
     implementation(platform(libs.okhttp.bom))
     implementation(libs.okhttp)
     implementation(libs.okhttp.urlconnection)

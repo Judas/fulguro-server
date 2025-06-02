@@ -9,7 +9,7 @@ import net.dv8tion.jda.api.utils.MemberCachePolicy
 object DiscordModule {
     const val TAG = "DISCORD"
 
-    private val discordBot = DiscordBot()
+    val discordBot = DiscordBot()
     private val discordService = DiscordService(discordBot)
 
     fun init() {

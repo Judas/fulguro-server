@@ -24,11 +24,6 @@ noArg {
 }
 
 dependencies {
-    implementation(project(":common"))
-
-    implementation(libs.jda)
-    implementation(platform(libs.kotlin.bom))
-    implementation(libs.kotlin.stdlib)
-    implementation(libs.kotlinx.coroutines)
-    implementation(libs.sql2o)
+    api(project(":common"))
+    api(libs.jda)
 }

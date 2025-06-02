@@ -24,10 +24,10 @@ noArg {
 }
 
 dependencies {
-    implementation(libs.hikari)
-    implementation(libs.jsch)
-    implementation(platform(libs.kotlin.bom))
-    implementation(libs.kotlinx.coroutines)
-    implementation(libs.kotlin.stdlib)
-    implementation(libs.sql2o)
+    api(libs.hikari)
+    api(libs.jsch)
+    api(platform(libs.kotlin.bom))
+    api(libs.kotlinx.coroutines)
+    api(libs.kotlin.stdlib)
+    api(libs.sql2o)
 }

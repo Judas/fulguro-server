@@ -4,6 +4,7 @@ import com.fulgurogo.common.config.Config
 import com.fulgurogo.common.logger.log
 import com.fulgurogo.common.service.PeriodicFlowService
 import com.fulgurogo.common.utilities.DATE_ZONE
+import com.fulgurogo.discord.DiscordModule
 import com.fulgurogo.kgs.KgsModule.TAG
 import com.fulgurogo.kgs.db.KgsDatabaseAccessor
 import com.fulgurogo.kgs.db.model.KgsGame
@@ -54,11 +55,23 @@ class KgsService : PeriodicFlowService() {
                 )
 
                 // Add games in DB
-                games.forEach {
-                    if (!KgsDatabaseAccessor.existGame(it)) {
-                        // New game found
-                        KgsDatabaseAccessor.addGame(it)
-                        // TODO Post in discord
+                games.forEach { game ->
+                    val oldGame = KgsDatabaseAccessor.game(game)
+                    val blackDiscordUser = KgsDatabaseAccessor.userByKgsId(game.blackName)
+                    val whiteDiscordUser = KgsDatabaseAccessor.userByKgsId(game.whiteName)
+                    val isGoldGame = blackDiscordUser != null && whiteDiscordUser != null
+                    if (oldGame != null && !oldGame.isFinished() && game.isFinished()) {
+                        // Game previously saved as "unfinished" is now finished
+                        KgsDatabaseAccessor.finishGame(game)
+                        if (isGoldGame) notifyGame(game)
+                    } else if (oldGame == null && !game.isFinished()) {
+                        // New "ongoing" game being played now
+                        KgsDatabaseAccessor.addGame(game)
+                        if (isGoldGame) notifyGame(game)
+                    } else if (oldGame == null) {
+                        // New game finished
+                        KgsDatabaseAccessor.addGame(game)
+                        if (isGoldGame) notifyGame(game)
                     }
                 }
             } catch (e: Exception) {
@@ -98,12 +111,15 @@ class KgsService : PeriodicFlowService() {
             val columns = row.select("td").asList()
             if (columns.size != 7) return@mapNotNull null
 
-            // Game result => skip unfinished games
-            // W+score, W+RESIGN, W+FORFEIT, W+TIME
-            // B+score, B+RESIGN, B+FORFEIT, B+TIME
-            // UNKNOWN, UNFINISHED, NO_RESULT
-            val result = columns[6].text().trim()
-            if (!result.contains("+")) return@mapNotNull null
+            // Game result => keep unfinished games to alert new games on Discord
+            val resultString = columns[6].text().trim()
+            val result = when {
+                resultString.contains("B+") -> "BLACK"
+                resultString.contains("W+") -> "WHITE"
+                resultString.equals("JIGO", false) -> "JIGO"
+                resultString.equals("UNFINISHED", false) -> "UNFINISHED"
+                else -> return@mapNotNull null
+            }
 
             // Game type => skip wrong types
             // challenge, demonstration, review, rengo_review, teaching, simul, rengo, free, ranked, tournament
@@ -145,14 +161,13 @@ class KgsService : PeriodicFlowService() {
                 date = date,
                 blackName = blackPlayer.first,
                 blackRank = blackPlayer.second,
-                blackWon = result.startsWith("B+"),
                 whiteName = whitePlayer.first,
                 whiteRank = whitePlayer.second,
-                whiteWon = result.startsWith("W+"),
                 size = size,
                 komi = komi,
                 handicap = handicap,
                 longGame = isLongGame,
+                result = result,
                 sgf = sgf
             )
         }.toMutableList()
@@ -196,4 +211,13 @@ class KgsService : PeriodicFlowService() {
         }
         (name to rank)
     } ?: ("" to "?")
+
+    private fun notifyGame(game: KgsGame) {
+        val title = "Partie ${if (game.isFinished()) "terminée" else "en cours"} sur KGS !"
+        DiscordModule.discordBot.notify(
+            channelId = Config.get("bot.notification.channel.id"),
+            message = game.description(),
+            title = title
+        )
+    }
 }

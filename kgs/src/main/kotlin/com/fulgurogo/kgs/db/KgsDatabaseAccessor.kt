@@ -17,12 +17,19 @@ object KgsDatabaseAccessor {
             "kgs_rank" to "kgsRank",
             "black_name" to "blackName",
             "black_rank" to "blackRank",
-            "black_won" to "blackWon",
             "white_name" to "whiteName",
             "white_rank" to "whiteRank",
-            "white_won" to "whiteWon",
             "long_game" to "longGame"
         )
+    }
+
+    fun userByKgsId(kgsId: String): KgsUserInfo? = dao.open().use { connection ->
+        val query = "SELECT * FROM kgs_user_info WHERE kgd_id = :kgsId LIMIT 1"
+        connection
+            .createQuery(query)
+            .throwOnMappingFailure(false)
+            .addParameter("kgsId", kgsId)
+            .executeAndFetchFirst(KgsUserInfo::class.java)
     }
 
     fun stalestUser(): KgsUserInfo? = dao.open().use { connection ->
@@ -57,7 +64,7 @@ object KgsDatabaseAccessor {
             .executeUpdate()
     }
 
-    fun existGame(game: KgsGame): Boolean = dao.open().use { connection ->
+    fun game(game: KgsGame): KgsGame? = dao.open().use { connection ->
         val query = " SELECT * FROM kgs_games " +
                 " WHERE  date = :date " +
                 " AND black_name = :blackName " +
@@ -68,19 +75,17 @@ object KgsDatabaseAccessor {
             .addParameter("date", game.date)
             .addParameter("blackName", game.blackName)
             .addParameter("whiteName", game.whiteName)
-            .executeAndFetchFirst(KgsGame::class.java) != null
+            .executeAndFetchFirst(KgsGame::class.java)
     }
 
     fun addGame(game: KgsGame): Connection = dao.open().use { connection ->
         val query = "INSERT INTO kgs_games( " +
                 " date, " +
-                " black_name, black_rank, black_won, " +
-                " white_name, white_rank, white_won, " +
-                " size, komi, handicap, long_game, sgf) " +
+                " black_name, black_rank, white_name, white_rank, " +
+                " size, komi, handicap, long_game, result, sgf) " +
                 " VALUES (:date, " +
-                " :blackName, :blackRank, :blackWon, " +
-                " :whiteName, :whiteRank, :whiteWon, " +
-                " :size, :komi, :handicap, :longGame, :sgf) "
+                " :blackName, :blackRank, :whiteName, :whiteRank, " +
+                " :size, :komi, :handicap, :longGame, :result, :sgf) "
 
         log(TAG, "addGame [$query] ${game.date} ${game.blackName} ${game.whiteName}")
 
@@ -89,15 +94,31 @@ object KgsDatabaseAccessor {
             .addParameter("date", game.date)
             .addParameter("blackName", game.blackName)
             .addParameter("blackRank", game.blackRank)
-            .addParameter("blackWon", game.blackWon)
             .addParameter("whiteName", game.whiteName)
             .addParameter("whiteRank", game.whiteRank)
-            .addParameter("whiteWon", game.whiteWon)
             .addParameter("size", game.size)
             .addParameter("komi", game.komi)
             .addParameter("handicap", game.handicap)
             .addParameter("longGame", game.longGame)
+            .addParameter("result", game.result)
             .addParameter("sgf", game.sgf)
+            .executeUpdate()
+    }
+
+    fun finishGame(game: KgsGame): Connection = dao.open().use { connection ->
+        val query = "UPDATE kgs_games " +
+                " SET result = :result " +
+                " WHERE date = :date " +
+                " AND black_name = :blackName " +
+                " AND white_name = :whiteName "
+
+        log(TAG, "finishGame [$query] ${game.date} ${game.blackName} ${game.whiteName}")
+
+        connection
+            .createQuery(query)
+            .addParameter("date", game.date)
+            .addParameter("blackName", game.blackName)
+            .addParameter("whiteName", game.whiteName)
             .executeUpdate()
     }
 }
