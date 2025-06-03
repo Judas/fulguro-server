@@ -5,6 +5,7 @@ import com.fulgurogo.common.db.ssh.SSHConnector
 import com.fulgurogo.discord.DiscordModule
 import com.fulgurogo.egf.EgfModule
 import com.fulgurogo.ffg.FfgModule
+import com.fulgurogo.igs.IgsModule
 import com.fulgurogo.kgs.KgsModule
 
 const val TAG = "OldAppModule"
@@ -19,7 +20,7 @@ fun main() {
     KgsModule.init()
     // TODO OgsModule
     // TODO FoxModule
-    // TODO IgsModule
+    IgsModule.init()
     FfgModule.init()
     EgfModule.init()
     // TODO GoldTierModule (assign tier based on server ranks weights)

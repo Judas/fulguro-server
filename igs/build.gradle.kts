@@ -25,5 +25,5 @@ noArg {
 
 dependencies {
     implementation(project(":common"))
-    implementation(libs.jsoup)
+    implementation(libs.commons.net)
 }

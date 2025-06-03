@@ -24,6 +24,6 @@ noArg {
 }
 
 dependencies {
-    implementation(project(":discord"))
+    implementation(project(":common"))
     implementation(libs.jsoup)
 }

@@ -32,6 +32,7 @@ dependencies {
     implementation(project(":discord"))
 
     implementation(project(":kgs"))
+    implementation(project(":igs"))
     implementation(project(":ffg"))
     implementation(project(":egf"))
 
