@@ -25,8 +25,10 @@ fun main() {
     FfgModule.init()
     EgfModule.init()
     // TODO GoldTierModule (assign tier based on server ranks weights)
+    // TODO FgcModule (level stability for FGC tournaments)
     // TODO CleanupModule (remove old users, users with failed linked accounts etc...)
     // TODO API module
+    // TODO frontend ping module (every 14 minutes)
 
     // TODO HouseModule
     // TODO CardsModule

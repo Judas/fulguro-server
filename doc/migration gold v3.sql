@@ -1,4 +1,5 @@
 -- DISCORD
+
 DROP TABLE IF EXISTS `discord_user_info`;
 CREATE TABLE `discord_user_info` (
   `discord_id` VARCHAR(255) NOT NULL,
@@ -39,9 +40,9 @@ DROP TABLE IF EXISTS `kgs_games`;
 CREATE TABLE `kgs_games` (
   `gold_id` VARCHAR(255) NOT NULL,
   `date` DATETIME NOT NULL,
-  `black_name` VARCHAR(255) NOT NULL,
+  `black_id` VARCHAR(255) NOT NULL,
   `black_rank` VARCHAR(255) NOT NULL,
-  `white_name` VARCHAR(255) NOT NULL,
+  `white_id` VARCHAR(255) NOT NULL,
   `white_rank` VARCHAR(255) NOT NULL,
   `size` INT(11) NOT NULL,
   `komi` DOUBLE NOT NULL,
@@ -96,43 +97,44 @@ CREATE TABLE `ogs_games` (
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8mb4;
 
--- -- FOX
+-- FOX
 
--- DROP TABLE IF EXISTS `fox_user_info`;
--- CREATE TABLE `fox_user_info` (
---   `discord_id` VARCHAR(255) NOT NULL,
---   `fox_id` VARCHAR(255) NOT NULL,
---   `fox_rank` VARCHAR(255) NOT NULL,
---   `updated` DATETIME NULL,
---   `error` DATETIME NULL,
---   PRIMARY KEY (`discord_id`)
--- )
--- ENGINE = InnoDB
--- DEFAULT CHARACTER SET = utf8mb4;
+DROP TABLE IF EXISTS `fox_user_info`;
+CREATE TABLE `fox_user_info` (
+  `discord_id` VARCHAR(255) NOT NULL,
+  `fox_id` VARCHAR(255) NOT NULL,
+  `fox_rank` VARCHAR(255) NOT NULL,
+  `updated` DATETIME NULL,
+  `error` DATETIME NULL,
+  PRIMARY KEY (`discord_id`)
+)
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4;
 
--- INSERT INTO `fox_user_info`
---   SELECT u.discord_id, u.fox_pseudo AS `fox_id`, "?" AS `fox_rank`, NULL AS `updated`, NULL AS `error`
---   FROM `users` AS u
---   WHERE `fox_pseudo` IS NOT NULL;
+INSERT INTO `fox_user_info`
+  SELECT u.discord_id, u.fox_pseudo AS `fox_id`, "?" AS `fox_rank`, NULL AS `updated`, NULL AS `error`
+  FROM `users` AS u
+  WHERE `fox_pseudo` IS NOT NULL;
 
--- DROP TABLE IF EXISTS `fox_games`;
--- CREATE TABLE `fox_games` (
---   `id` INT(11) NOT NULL,
---   `date` DATETIME NOT NULL,
---   `black_id` VARCHAR(255) NOT NULL,
---   `black_rank` VARCHAR(255) NOT NULL,
---   `white_id` VARCHAR(255) NOT NULL,
---   `white_rank` VARCHAR(255) NOT NULL,
---   `size` INT(11) NOT NULL,
---   `komi` DOUBLE NOT NULL,
---   `handicap` INT(11) NOT NULL,
---   `long_game` TINYINT(1) NOT NULL,
---   `result` VARCHAR(255) NOT NULL,
---   `sgf` TEXT NOT NULL,
---   PRIMARY KEY (`id`)
--- )
--- ENGINE = InnoDB
--- DEFAULT CHARACTER SET = utf8mb4;
+DROP TABLE IF EXISTS `fox_games`;
+CREATE TABLE `fox_games` (
+  `gold_id` VARCHAR(255) NOT NULL,
+  `id` INT(11) NOT NULL,
+  `date` DATETIME NOT NULL,
+  `black_id` VARCHAR(255) NOT NULL,
+  `black_rank` VARCHAR(255) NOT NULL,
+  `white_id` VARCHAR(255) NOT NULL,
+  `white_rank` VARCHAR(255) NOT NULL,
+  `size` INT(11) NOT NULL,
+  `komi` DOUBLE NOT NULL,
+  `handicap` INT(11) NOT NULL,
+  `long_game` TINYINT(1) NOT NULL,
+  `result` VARCHAR(255) NOT NULL,
+  `sgf` TEXT NOT NULL,
+  PRIMARY KEY (`gold_id`)
+)
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4;
 
 -- IGS
 

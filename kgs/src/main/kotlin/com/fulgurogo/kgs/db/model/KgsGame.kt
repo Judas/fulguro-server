@@ -7,9 +7,9 @@ import java.util.*
 data class KgsGame(
     val goldId: String,
     val date: Date,
-    val blackName: String,
+    val blackId: String,
     val blackRank: String,
-    val whiteName: String,
+    val whiteId: String,
     val whiteRank: String,
     val size: Int,
     val komi: Float,
@@ -20,8 +20,8 @@ data class KgsGame(
 ) {
     fun isFinished(): Boolean = result != "unfinished"
     fun description(): String {
-        val blackDesc = "**$blackName ($blackRank)**"
-        val whiteDesc = "**$whiteName ($whiteRank)**"
+        val blackDesc = "**$blackId ($blackRank)**"
+        val whiteDesc = "**$whiteId ($whiteRank)**"
         return when (result) {
             "black" -> "$blackDesc __gagne__ contre $whiteDesc"
             "white" -> "$whiteDesc __gagne__ contre $blackDesc"

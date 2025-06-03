@@ -44,8 +44,8 @@ class KgsService : PeriodicFlowService(0, 2) {
 
                 // Update user rank
                 val updatedRank = games.maxByOrNull { it.date }?.let {
-                    if (it.blackName == stale.kgsId) it.blackRank
-                    else if (it.whiteName == stale.kgsId) it.whiteRank
+                    if (it.blackId == stale.kgsId) it.blackRank
+                    else if (it.whiteId == stale.kgsId) it.whiteRank
                     else "?"
                 } ?: "?"
                 KgsDatabaseAccessor.updateUser(
@@ -61,8 +61,8 @@ class KgsService : PeriodicFlowService(0, 2) {
                 // Add games in DB
                 games.forEach { game ->
                     val oldGame = KgsDatabaseAccessor.game(game)
-                    val blackDiscordUser = KgsDatabaseAccessor.user(game.blackName)
-                    val whiteDiscordUser = KgsDatabaseAccessor.user(game.whiteName)
+                    val blackDiscordUser = KgsDatabaseAccessor.user(game.blackId)
+                    val whiteDiscordUser = KgsDatabaseAccessor.user(game.whiteId)
                     val isGoldGame = blackDiscordUser != null && whiteDiscordUser != null
                     if (oldGame != null && !oldGame.isFinished() && game.isFinished()) {
                         // Game previously saved as "unfinished" is now finished
@@ -168,9 +168,9 @@ class KgsService : PeriodicFlowService(0, 2) {
             KgsGame(
                 goldId = "KGS_${blackPlayer.first}_${whitePlayer.first}_${date.time}",
                 date = date,
-                blackName = blackPlayer.first,
+                blackId = blackPlayer.first,
                 blackRank = blackPlayer.second,
-                whiteName = whitePlayer.first,
+                whiteId = whitePlayer.first,
                 whiteRank = whitePlayer.second,
                 size = size,
                 komi = komi,

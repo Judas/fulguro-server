@@ -101,23 +101,29 @@ class OgsService : PeriodicFlowService(0, 2) {
         return games.mapNotNull {
             // Skip cancelled games
             if (it.annulled) return@mapNotNull null
+
             // Skip non-square goban
             if (it.height != it.width) return@mapNotNull null
+
             // Skip bot games
             if (it.players.black.isBot() || it.players.white.isBot()) return@mapNotNull null
+
             // Skip correspondence games
             if (it.isCorrespondence()) return@mapNotNull null
+
             // Skip rengo
             if (it.rengo) return@mapNotNull null
+
             // Skip weird result
             val result = it.result()
             if (result == null) return@mapNotNull null
+
             // Date => skip too old game
             val date = it.date()
             val now = ZonedDateTime.now(DATE_ZONE)
             if (now.minusDays(32).toDate().after(date)) return@mapNotNull null
 
-            // Fetch SGF
+            // Fetch SGF (if game is not finished, sgf can't be fetched)
             val sgf = fetchSgf(it)
             if (sgf.isBlank()) return@mapNotNull null
 
@@ -141,8 +147,11 @@ class OgsService : PeriodicFlowService(0, 2) {
         }
     }
 
-    private fun fetchSgf(game: OgsApiGame): String =
+    private fun fetchSgf(game: OgsApiGame): String = try {
         fetch("${Config.get("ogs.api.url")}/games/${game.id}/sgf")
+    } catch (_: Exception) {
+        ""
+    }
 
     private fun <T : Any> fetch(route: String, className: Class<T>): T =
         gson.fromJson(fetch(route), className)

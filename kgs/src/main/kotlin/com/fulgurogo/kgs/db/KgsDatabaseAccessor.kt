@@ -19,9 +19,9 @@ object KgsDatabaseAccessor {
             "gold_id" to "goldId",
             "kgs_id" to "kgsId",
             "kgs_rank" to "kgsRank",
-            "black_name" to "blackName",
+            "black_id" to "blackId",
             "black_rank" to "blackRank",
-            "white_name" to "whiteName",
+            "white_id" to "whiteId",
             "white_rank" to "whiteRank",
             "long_game" to "longGame"
         )
@@ -79,10 +79,10 @@ object KgsDatabaseAccessor {
     fun addGame(game: KgsGame): Connection = dao.open().use { connection ->
         val query = "INSERT INTO $GAME_TABLE( " +
                 " gold_id, date, " +
-                " black_name, black_rank, white_name, white_rank, " +
+                " black_id, black_rank, white_id, white_rank, " +
                 " size, komi, handicap, long_game, result, sgf) " +
                 " VALUES (:goldId, :date, " +
-                " :blackName, :blackRank, :whiteName, :whiteRank, " +
+                " :blackId, :blackRank, :whiteId, :whiteRank, " +
                 " :size, :komi, :handicap, :longGame, :result, :sgf) "
 
         log(TAG, "addGame [$query] ${game.goldId}")
@@ -91,9 +91,9 @@ object KgsDatabaseAccessor {
             .createQuery(query)
             .addParameter("goldId", game.goldId)
             .addParameter("date", game.date)
-            .addParameter("blackName", game.blackName)
+            .addParameter("blackId", game.blackId)
             .addParameter("blackRank", game.blackRank)
-            .addParameter("whiteName", game.whiteName)
+            .addParameter("whiteId", game.whiteId)
             .addParameter("whiteRank", game.whiteRank)
             .addParameter("size", game.size)
             .addParameter("komi", game.komi)

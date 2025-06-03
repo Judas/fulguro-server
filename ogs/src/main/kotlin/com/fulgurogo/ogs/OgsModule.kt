@@ -10,7 +10,7 @@ object OgsModule {
         // User info & games service
         ogsService.start()
 
-        // Real time game service
+        // TODO Real time game service
 //        ogsRealTimeService.start()
     }
 }
