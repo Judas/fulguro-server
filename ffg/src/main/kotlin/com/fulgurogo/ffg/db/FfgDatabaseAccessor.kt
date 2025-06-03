@@ -1,9 +1,9 @@
-package com.fulgurogo.kgs.db
+package com.fulgurogo.ffg.db
 
 import com.fulgurogo.common.db.DatabaseAccessor
 import com.fulgurogo.common.logger.log
-import com.fulgurogo.kgs.FfgModule.TAG
-import com.fulgurogo.kgs.db.model.FfgUserInfo
+import com.fulgurogo.ffg.FfgModule.TAG
+import com.fulgurogo.ffg.db.model.FfgUserInfo
 import org.sql2o.Connection
 import org.sql2o.Sql2o
 
@@ -15,17 +15,9 @@ object FfgDatabaseAccessor {
         defaultColumnMappings = mapOf(
             "discord_id" to "discordId",
             "ffg_id" to "ffgId",
+            "ffg_name" to "ffgName",
             "ffg_rank" to "ffgRank"
         )
-    }
-
-    fun userById(ffgId: String): FfgUserInfo? = dao.open().use { connection ->
-        val query = "SELECT * FROM $USER_TABLE WHERE ffg_id = :ffgId LIMIT 1"
-        connection
-            .createQuery(query)
-            .throwOnMappingFailure(false)
-            .addParameter("ffgId", ffgId)
-            .executeAndFetchFirst(FfgUserInfo::class.java)
     }
 
     fun stalestUser(): FfgUserInfo? = dao.open().use { connection ->

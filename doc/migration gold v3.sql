@@ -72,3 +72,23 @@ INSERT INTO `ffg_user_info`
   SELECT u.discord_id, u.ffg_id, "" AS `ffg_name`, "" AS `ffg_rank`, NULL AS `updated`, NULL AS `error`
   FROM `users` AS u
   WHERE `ffg_id` IS NOT NULL;
+
+-- EGF
+
+DROP TABLE IF EXISTS `egf_user_info`;
+CREATE TABLE `egf_user_info` (
+  `discord_id` VARCHAR(255) NOT NULL,
+  `egf_id` VARCHAR(255) NOT NULL,
+  `egf_name` VARCHAR(255) NOT NULL,
+  `egf_rank` VARCHAR(255) NOT NULL,
+  `updated` DATETIME NULL,
+  `error` DATETIME NULL,
+  PRIMARY KEY (`discord_id`)
+)
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4;
+
+INSERT INTO `egf_user_info`
+  SELECT u.discord_id, u.egf_id, "" AS `egf_name`, "" AS `egf_rank`, NULL AS `updated`, NULL AS `error`
+  FROM `users` AS u
+  WHERE `egf_id` IS NOT NULL;

@@ -8,7 +8,7 @@ import com.fulgurogo.discord.db.DiscordDatabaseAccessor
 import com.fulgurogo.discord.db.model.DiscordUserInfo
 import java.util.*
 
-class DiscordService(private val discordBot: DiscordBot) : PeriodicFlowService() {
+class DiscordService(private val discordBot: DiscordBot) : PeriodicFlowService(0, 2) {
     private var processing = false
 
     override fun onTick() {

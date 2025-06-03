@@ -33,6 +33,7 @@ dependencies {
 
     implementation(project(":kgs"))
     implementation(project(":ffg"))
+    implementation(project(":egf"))
 
     implementation(libs.commons.net)
     implementation(libs.gson)

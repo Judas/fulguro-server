@@ -1,11 +1,11 @@
-package com.fulgurogo.kgs
+package com.fulgurogo.ffg
 
 import com.fulgurogo.common.config.Config
 import com.fulgurogo.common.logger.log
 import com.fulgurogo.common.service.PeriodicFlowService
-import com.fulgurogo.kgs.FfgModule.TAG
-import com.fulgurogo.kgs.db.FfgDatabaseAccessor
-import com.fulgurogo.kgs.db.model.FfgUserInfo
+import com.fulgurogo.ffg.FfgModule.TAG
+import com.fulgurogo.ffg.db.FfgDatabaseAccessor
+import com.fulgurogo.ffg.db.model.FfgUserInfo
 import org.jsoup.Jsoup
 import java.util.*
 

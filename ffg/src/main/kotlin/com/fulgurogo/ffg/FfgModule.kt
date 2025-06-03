@@ -1,4 +1,4 @@
-package com.fulgurogo.kgs
+package com.fulgurogo.ffg
 
 object FfgModule {
     const val TAG = "FFG"
