@@ -1,0 +1,57 @@
+package com.fulgurogo.kgs
+
+import com.fulgurogo.common.config.Config
+import com.fulgurogo.common.logger.log
+import com.fulgurogo.common.service.PeriodicFlowService
+import com.fulgurogo.kgs.FfgModule.TAG
+import com.fulgurogo.kgs.db.FfgDatabaseAccessor
+import com.fulgurogo.kgs.db.model.FfgUserInfo
+import org.jsoup.Jsoup
+import java.util.*
+
+class FfgService : PeriodicFlowService(0, 30) {
+    private var processing = false
+
+    override fun onTick() {
+        if (processing) return
+        processing = true
+
+        // Get stalest user
+        FfgDatabaseAccessor.stalestUser()?.let { stale ->
+            try {
+                // Scrap profile page
+                val route = "${Config.get("ffg.website.url")}/php/affichePersonne.php?id=${stale.ffgId}"
+                val html = Jsoup.connect(route).timeout(5000).get()
+
+                // Get name
+                val name = html.select("#ffg_main_content > h3").asList().firstOrNull()?.text()?.trim()
+                if (name == "Aucune information disponible") {
+                    // Private user or wrong id
+                    FfgDatabaseAccessor.markAsError(stale)
+                } else {
+                    // Get rank
+                    val rank = html.select("#ffg_main_content > div").asList()
+                        .map { it.text().trim() }
+                        .firstOrNull { it.startsWith("Échelle principale : ") }
+                        ?.substring(21)
+                        ?: "?"
+
+                    FfgDatabaseAccessor.updateUser(
+                        FfgUserInfo(
+                            discordId = stale.discordId,
+                            ffgId = stale.ffgId,
+                            ffgName = name,
+                            ffgRank = rank,
+                            updated = Date(),
+                            error = null
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                log(TAG, "onTick FAILURE ${e.message}")
+                FfgDatabaseAccessor.markAsError(stale)
+            }
+        }
+        processing = false
+    }
+}

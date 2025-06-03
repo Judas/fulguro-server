@@ -29,8 +29,10 @@ noArg {
 
 dependencies {
     implementation(project(":common"))
-    implementation(project(":kgs"))
     implementation(project(":discord"))
+
+    implementation(project(":kgs"))
+    implementation(project(":ffg"))
 
     implementation(libs.commons.net)
     implementation(libs.gson)

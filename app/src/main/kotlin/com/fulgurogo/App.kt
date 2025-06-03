@@ -3,6 +3,7 @@ package com.fulgurogo
 import com.fulgurogo.common.config.Config
 import com.fulgurogo.common.db.ssh.SSHConnector
 import com.fulgurogo.discord.DiscordModule
+import com.fulgurogo.kgs.FfgModule
 import com.fulgurogo.kgs.KgsModule
 
 const val TAG = "OldAppModule"
@@ -19,7 +20,7 @@ fun main() {
     // TODO OgsService
     // TODO FoxService
     // TODO IgsService
-    // TODO FfgService
+    FfgModule.init()
     // TODO EgfService
     // TODO service exam (needs the bot jda, pass it from here?) => change to stats ?
     // TODO service rank / tier (ladder)

@@ -22,7 +22,7 @@ import java.text.SimpleDateFormat
 import java.time.ZonedDateTime
 import java.util.*
 
-class KgsService : PeriodicFlowService() {
+class KgsService : PeriodicFlowService(0, 2) {
     private val okHttpClient: OkHttpClient = OkHttpClient.Builder()
         .cookieJar(JavaNetCookieJar(CookieManager().apply { setCookiePolicy(CookiePolicy.ACCEPT_ALL) })).build()
 
@@ -57,8 +57,8 @@ class KgsService : PeriodicFlowService() {
                 // Add games in DB
                 games.forEach { game ->
                     val oldGame = KgsDatabaseAccessor.game(game)
-                    val blackDiscordUser = KgsDatabaseAccessor.userByKgsId(game.blackName)
-                    val whiteDiscordUser = KgsDatabaseAccessor.userByKgsId(game.whiteName)
+                    val blackDiscordUser = KgsDatabaseAccessor.user(game.blackName)
+                    val whiteDiscordUser = KgsDatabaseAccessor.user(game.whiteName)
                     val isGoldGame = blackDiscordUser != null && whiteDiscordUser != null
                     if (oldGame != null && !oldGame.isFinished() && game.isFinished()) {
                         // Game previously saved as "unfinished" is now finished

@@ -9,6 +9,9 @@ import org.sql2o.Connection
 import org.sql2o.Sql2o
 
 object KgsDatabaseAccessor {
+    private const val USER_TABLE = "kgs_user_info"
+    private const val GAME_TABLE = "kgs_games"
+
     private val dao: Sql2o = DatabaseAccessor.dao().apply {
         // MySQL column name => POJO variable name
         defaultColumnMappings = mapOf(
@@ -23,8 +26,8 @@ object KgsDatabaseAccessor {
         )
     }
 
-    fun userByKgsId(kgsId: String): KgsUserInfo? = dao.open().use { connection ->
-        val query = "SELECT * FROM kgs_user_info WHERE kgd_id = :kgsId LIMIT 1"
+    fun user(kgsId: String): KgsUserInfo? = dao.open().use { connection ->
+        val query = "SELECT * FROM $USER_TABLE WHERE kgd_id = :kgsId LIMIT 1"
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)
@@ -33,7 +36,7 @@ object KgsDatabaseAccessor {
     }
 
     fun stalestUser(): KgsUserInfo? = dao.open().use { connection ->
-        val query = "SELECT * FROM kgs_user_info WHERE error IS NULL ORDER BY updated"
+        val query = "SELECT * FROM $USER_TABLE WHERE error IS NULL ORDER BY updated"
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)
@@ -41,7 +44,7 @@ object KgsDatabaseAccessor {
     }
 
     fun markAsError(kgsUserInfo: KgsUserInfo): Connection = dao.open().use { connection ->
-        val query = "UPDATE kgs_user_info SET error = NOW() WHERE discord_id = :discordId "
+        val query = "UPDATE $USER_TABLE SET error = NOW() WHERE discord_id = :discordId "
 
         log(TAG, "markAsError [$query] $kgsUserInfo")
         connection
@@ -51,7 +54,7 @@ object KgsDatabaseAccessor {
     }
 
     fun updateUser(kgsUserInfo: KgsUserInfo): Connection = dao.open().use { connection ->
-        val query = "UPDATE kgs_user_info SET " +
+        val query = "UPDATE $USER_TABLE SET " +
                 " kgs_rank = :kgsRank, " +
                 " updated = :updated " +
                 " WHERE discord_id = :discordId "
@@ -65,7 +68,7 @@ object KgsDatabaseAccessor {
     }
 
     fun game(game: KgsGame): KgsGame? = dao.open().use { connection ->
-        val query = " SELECT * FROM kgs_games " +
+        val query = " SELECT * FROM $GAME_TABLE " +
                 " WHERE  date = :date " +
                 " AND black_name = :blackName " +
                 " AND white_name = :whiteName " +
@@ -79,7 +82,7 @@ object KgsDatabaseAccessor {
     }
 
     fun addGame(game: KgsGame): Connection = dao.open().use { connection ->
-        val query = "INSERT INTO kgs_games( " +
+        val query = "INSERT INTO $GAME_TABLE( " +
                 " date, " +
                 " black_name, black_rank, white_name, white_rank, " +
                 " size, komi, handicap, long_game, result, sgf) " +
@@ -106,7 +109,7 @@ object KgsDatabaseAccessor {
     }
 
     fun finishGame(game: KgsGame): Connection = dao.open().use { connection ->
-        val query = "UPDATE kgs_games " +
+        val query = "UPDATE $GAME_TABLE " +
                 " SET result = :result " +
                 " WHERE date = :date " +
                 " AND black_name = :blackName " +

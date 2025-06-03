@@ -52,3 +52,23 @@ CREATE TABLE `kgs_games` (
 )
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8mb4;
+
+-- FFG
+
+DROP TABLE IF EXISTS `ffg_user_info`;
+CREATE TABLE `ffg_user_info` (
+  `discord_id` VARCHAR(255) NOT NULL,
+  `ffg_id` VARCHAR(255) NOT NULL,
+  `ffg_name` VARCHAR(255) NOT NULL,
+  `ffg_rank` VARCHAR(255) NOT NULL,
+  `updated` DATETIME NULL,
+  `error` DATETIME NULL,
+  PRIMARY KEY (`discord_id`)
+)
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4;
+
+INSERT INTO `ffg_user_info`
+  SELECT u.discord_id, u.ffg_id, "" AS `ffg_name`, "" AS `ffg_rank`, NULL AS `updated`, NULL AS `error`
+  FROM `users` AS u
+  WHERE `ffg_id` IS NOT NULL;
