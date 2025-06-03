@@ -37,6 +37,7 @@ INSERT INTO `kgs_user_info`
 
 DROP TABLE IF EXISTS `kgs_games`;
 CREATE TABLE `kgs_games` (
+  `gold_id` VARCHAR(255) NOT NULL,
   `date` DATETIME NOT NULL,
   `black_name` VARCHAR(255) NOT NULL,
   `black_rank` VARCHAR(255) NOT NULL,
@@ -48,7 +49,7 @@ CREATE TABLE `kgs_games` (
   `long_game` TINYINT(1) NOT NULL,
   `result` VARCHAR(255) NOT NULL,
   `sgf` TEXT NOT NULL,
-  PRIMARY KEY (`date`, `black_name`, `white_name`)
+  PRIMARY KEY (`gold_id`)
 )
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8mb4;
@@ -75,6 +76,7 @@ INSERT INTO `ogs_user_info`
 
 DROP TABLE IF EXISTS `ogs_games`;
 CREATE TABLE `ogs_games` (
+  `gold_id` VARCHAR(255) NOT NULL,
   `id` INT(11) NOT NULL,
   `date` DATETIME NOT NULL,
   `black_id` INT(11) NOT NULL,
@@ -89,7 +91,7 @@ CREATE TABLE `ogs_games` (
   `long_game` TINYINT(1) NOT NULL,
   `result` VARCHAR(255) NOT NULL,
   `sgf` TEXT NOT NULL,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`gold_id`)
 )
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8mb4;

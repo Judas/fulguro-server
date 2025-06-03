@@ -166,6 +166,7 @@ class KgsService : PeriodicFlowService(0, 2) {
             val blackPlayer = columns[2].select("a").firstOrNull()?.text()?.trim().splitNameRank()
 
             KgsGame(
+                goldId = "KGS_${blackPlayer.first}_${whitePlayer.first}_${date.time}",
                 date = date,
                 blackName = blackPlayer.first,
                 blackRank = blackPlayer.second,

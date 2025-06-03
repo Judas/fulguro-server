@@ -5,6 +5,7 @@ import java.util.*
 
 @GenerateNoArgConstructor
 data class KgsGame(
+    val goldId: String,
     val date: Date,
     val blackName: String,
     val blackRank: String,

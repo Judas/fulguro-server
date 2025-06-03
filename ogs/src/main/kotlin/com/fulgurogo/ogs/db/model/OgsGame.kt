@@ -6,6 +6,7 @@ import java.util.*
 
 @GenerateNoArgConstructor
 data class OgsGame(
+    val goldId: String,
     val id: Int,
     val date: Date,
     val blackId: Int,

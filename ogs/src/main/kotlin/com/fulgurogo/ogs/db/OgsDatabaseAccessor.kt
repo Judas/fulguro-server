@@ -16,6 +16,7 @@ object OgsDatabaseAccessor {
         // MySQL column name => POJO variable name
         defaultColumnMappings = mapOf(
             "discord_id" to "discordId",
+            "gold_id" to "goldId",
             "ogs_id" to "ogsId",
             "ogs_name" to "ogsName",
             "ogs_rank" to "ogsRank",
@@ -73,19 +74,19 @@ object OgsDatabaseAccessor {
     }
 
     fun game(game: OgsGame): OgsGame? = dao.open().use { connection ->
-        val query = " SELECT * FROM $GAME_TABLE WHERE id = :id LIMIT 1 "
+        val query = " SELECT * FROM $GAME_TABLE WHERE gold_id = :goldId LIMIT 1 "
         connection
             .createQuery(query)
-            .addParameter("id", game.id)
+            .addParameter("goldId", game.goldId)
             .executeAndFetchFirst(OgsGame::class.java)
     }
 
     fun addGame(game: OgsGame): Connection = dao.open().use { connection ->
         val query = "INSERT INTO $GAME_TABLE( " +
-                " id, date, " +
+                " gold_id, id, date, " +
                 " black_id, black_name, black_rank, white_id, white_name, white_rank, " +
                 " size, komi, handicap, long_game, result, sgf) " +
-                " VALUES (:id, :date, " +
+                " VALUES (:goldId, :id, :date, " +
                 " :blackId, :blackName, :blackRank, :whiteId, :whiteName, :whiteRank, " +
                 " :size, :komi, :handicap, :longGame, :result, :sgf) "
 
@@ -93,6 +94,7 @@ object OgsDatabaseAccessor {
 
         connection
             .createQuery(query)
+            .addParameter("goldId", game.goldId)
             .addParameter("id", game.id)
             .addParameter("date", game.date)
             .addParameter("blackId", game.blackId)
@@ -111,14 +113,14 @@ object OgsDatabaseAccessor {
     }
 
     fun finishGame(game: OgsGame): Connection = dao.open().use { connection ->
-        val query = "UPDATE $GAME_TABLE SET result = :result WHERE id = :id"
+        val query = "UPDATE $GAME_TABLE SET result = :result WHERE gold_id = :goldId"
 
         log(TAG, "finishGame [$query] ${game.id}")
 
         connection
             .createQuery(query)
             .addParameter("result", game.result)
-            .addParameter("id", game.id)
+            .addParameter("goldId", game.goldId)
             .executeUpdate()
     }
 }

@@ -94,17 +94,9 @@ class OgsService : PeriodicFlowService(0, 2) {
     }
 
     private fun fetchPlayerGames(stale: OgsUserInfo): List<OgsGame> {
-        // Get last 20 games (2 pages)
-        val games = mutableListOf<OgsApiGame>()
-
-        // Fetch first page
+        // Get last 10 games
         val route = "${Config.get("ogs.api.url")}/players/${stale.ogsId}/games?ordering=-ended"
-        val gameList = fetch(route, OgsApiGameList::class.java)
-        games.addAll(gameList.results)
-
-        // Fetch second page
-        if (!gameList.next.isNullOrBlank())
-            games.addAll(fetch(gameList.next, OgsApiGameList::class.java).results)
+        val games = fetch(route, OgsApiGameList::class.java).results
 
         return games.mapNotNull {
             // Skip cancelled games
@@ -130,6 +122,7 @@ class OgsService : PeriodicFlowService(0, 2) {
             if (sgf.isBlank()) return@mapNotNull null
 
             OgsGame(
+                goldId = it.goldId(),
                 id = it.id,
                 date = date,
                 blackId = it.players.black.id,

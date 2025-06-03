@@ -27,6 +27,8 @@ data class OgsApiGame(
         private const val DATE_FORMAT_OLD = "yyyy-MM-dd'T'HH:mm:ssX"
     }
 
+    fun goldId(): String = "OGS_$id"
+
     fun date(): Date = try {
         SimpleDateFormat(DATE_FORMAT).parse(started, ParsePosition(0))
     } catch (_: Exception) {

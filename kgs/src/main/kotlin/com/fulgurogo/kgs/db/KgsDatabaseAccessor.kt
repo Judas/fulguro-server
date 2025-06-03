@@ -16,6 +16,7 @@ object KgsDatabaseAccessor {
         // MySQL column name => POJO variable name
         defaultColumnMappings = mapOf(
             "discord_id" to "discordId",
+            "gold_id" to "goldId",
             "kgs_id" to "kgsId",
             "kgs_rank" to "kgsRank",
             "black_name" to "blackName",
@@ -68,32 +69,27 @@ object KgsDatabaseAccessor {
     }
 
     fun game(game: KgsGame): KgsGame? = dao.open().use { connection ->
-        val query = " SELECT * FROM $GAME_TABLE " +
-                " WHERE  date = :date " +
-                " AND black_name = :blackName " +
-                " AND white_name = :whiteName " +
-                " LIMIT 1 "
+        val query = " SELECT * FROM $GAME_TABLE WHERE gold_id = :goldId LIMIT 1 "
         connection
             .createQuery(query)
-            .addParameter("date", game.date)
-            .addParameter("blackName", game.blackName)
-            .addParameter("whiteName", game.whiteName)
+            .addParameter("goldId", game.goldId)
             .executeAndFetchFirst(KgsGame::class.java)
     }
 
     fun addGame(game: KgsGame): Connection = dao.open().use { connection ->
         val query = "INSERT INTO $GAME_TABLE( " +
-                " date, " +
+                " gold_id, date, " +
                 " black_name, black_rank, white_name, white_rank, " +
                 " size, komi, handicap, long_game, result, sgf) " +
-                " VALUES (:date, " +
+                " VALUES (:goldId, :date, " +
                 " :blackName, :blackRank, :whiteName, :whiteRank, " +
                 " :size, :komi, :handicap, :longGame, :result, :sgf) "
 
-        log(TAG, "addGame [$query] ${game.date} ${game.blackName} ${game.whiteName}")
+        log(TAG, "addGame [$query] ${game.goldId}")
 
         connection
             .createQuery(query)
+            .addParameter("goldId", game.goldId)
             .addParameter("date", game.date)
             .addParameter("blackName", game.blackName)
             .addParameter("blackRank", game.blackRank)
@@ -109,19 +105,13 @@ object KgsDatabaseAccessor {
     }
 
     fun finishGame(game: KgsGame): Connection = dao.open().use { connection ->
-        val query = "UPDATE $GAME_TABLE " +
-                " SET result = :result " +
-                " WHERE date = :date " +
-                " AND black_name = :blackName " +
-                " AND white_name = :whiteName "
+        val query = "UPDATE $GAME_TABLE SET result = :result WHERE gold_id = :goldId "
 
-        log(TAG, "finishGame [$query] ${game.date} ${game.blackName} ${game.whiteName}")
+        log(TAG, "finishGame [$query] ${game.goldId}")
 
         connection
             .createQuery(query)
-            .addParameter("date", game.date)
-            .addParameter("blackName", game.blackName)
-            .addParameter("whiteName", game.whiteName)
+            .addParameter("goldId", game.goldId)
             .executeUpdate()
     }
 }
