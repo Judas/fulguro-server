@@ -21,9 +21,12 @@ import java.text.ParsePosition
 import java.text.SimpleDateFormat
 import java.time.ZonedDateTime
 import java.util.*
+import java.util.concurrent.TimeUnit
 
 class KgsService : PeriodicFlowService(0, 2) {
     private val okHttpClient: OkHttpClient = OkHttpClient.Builder()
+        .connectTimeout(Config.get("global.read.timeout.ms").toLong(), TimeUnit.MILLISECONDS)
+        .readTimeout(Config.get("global.read.timeout.ms").toLong(), TimeUnit.MILLISECONDS)
         .cookieJar(JavaNetCookieJar(CookieManager().apply { setCookiePolicy(CookiePolicy.ACCEPT_ALL) })).build()
 
     private var processing = false
@@ -94,7 +97,9 @@ class KgsService : PeriodicFlowService(0, 2) {
 
     private fun scrapMonthlyGames(kgsId: String?, year: Int, month: Int): MutableList<KgsGame> = try {
         val route = "${Config.get("kgs.archives.url")}?user=$kgsId&year=$year&month=$month"
-        val html = Jsoup.connect(route).timeout(5000).get()
+        val html = Jsoup.connect(route)
+            .timeout(Config.get("global.read.timeout.ms").toInt())
+            .get()
 
         // Get the tables, there might be 0 (no games at all), 1 (no games this month) or 2 (games, yay !)
         val tables = html.select("table.grid").asList()
@@ -114,10 +119,10 @@ class KgsService : PeriodicFlowService(0, 2) {
             // Game result => keep unfinished games to alert new games on Discord
             val resultString = columns[6].text().trim()
             val result = when {
-                resultString.contains("B+") -> "BLACK"
-                resultString.contains("W+") -> "WHITE"
-                resultString.equals("JIGO", false) -> "JIGO"
-                resultString.equals("UNFINISHED", false) -> "UNFINISHED"
+                resultString.contains("B+") -> "black"
+                resultString.contains("W+") -> "white"
+                resultString.equals("jigo", false) -> "jigo"
+                resultString.equals("unfinished", false) -> "unfinished"
                 else -> return@mapNotNull null
             }
 

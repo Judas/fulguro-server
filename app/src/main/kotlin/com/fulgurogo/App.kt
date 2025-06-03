@@ -3,8 +3,8 @@ package com.fulgurogo
 import com.fulgurogo.common.config.Config
 import com.fulgurogo.common.db.ssh.SSHConnector
 import com.fulgurogo.discord.DiscordModule
-import com.fulgurogo.ffg.FfgModule
 import com.fulgurogo.egf.EgfModule
+import com.fulgurogo.ffg.FfgModule
 import com.fulgurogo.kgs.KgsModule
 
 const val TAG = "OldAppModule"
@@ -17,16 +17,18 @@ fun main() {
 
     DiscordModule.init()
     KgsModule.init()
-    // TODO OgsService
-    // TODO FoxService
-    // TODO IgsService
+    // TODO OgsModule
+    // TODO FoxModule
+    // TODO IgsModule
     FfgModule.init()
     EgfModule.init()
-    // TODO service exam (needs the bot jda, pass it from here?) => change to stats ?
-    // TODO service rank / tier (ladder)
-    // TODO Service clean (old games / empty users)
+    // TODO GoldTierModule (assign tier based on server ranks weights)
+    // TODO CleanupModule (remove old users, users with failed linked accounts etc...)
+    // TODO API module
 
-//    // TODO API module
+    // TODO HouseModule
+    // TODO CardsModule
+
 //    // Launching server API
 //    Javalin
 //        .create { config ->
@@ -52,9 +54,6 @@ fun main() {
 //            get("/gold/api/exam/titles", Api::examTitles)
 //            get("/gold/api/exam/history", Api::examHistory)
 //            get("/gold/api/exam/stats", Api::examStats)
-    // TODO Ad api to list players in error for each service
+//            // TODO Ad api to list all players in error for each service
 //        }
-//
-//    // Launching GameScanner
-//    GameScanner.start()
 }

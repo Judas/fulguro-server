@@ -21,7 +21,9 @@ class FfgService : PeriodicFlowService(0, 30) {
             try {
                 // Scrap profile page
                 val route = "${Config.get("ffg.website.url")}/php/affichePersonne.php?id=${stale.ffgId}"
-                val html = Jsoup.connect(route).timeout(5000).get()
+                val html = Jsoup.connect(route)
+                    .timeout(Config.get("global.read.timeout.ms").toInt())
+                    .get()
 
                 // Get name
                 val name = html.select("#ffg_main_content > h3").asList().firstOrNull()?.text()?.trim()

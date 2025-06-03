@@ -27,7 +27,7 @@ object KgsDatabaseAccessor {
     }
 
     fun user(kgsId: String): KgsUserInfo? = dao.open().use { connection ->
-        val query = "SELECT * FROM $USER_TABLE WHERE kgd_id = :kgsId LIMIT 1"
+        val query = "SELECT * FROM $USER_TABLE WHERE kgs_id = :kgsId LIMIT 1"
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)

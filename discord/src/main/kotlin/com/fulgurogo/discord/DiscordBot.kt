@@ -2,6 +2,7 @@ package com.fulgurogo.discord
 
 import com.fulgurogo.common.config.Config
 import com.fulgurogo.common.logger.log
+import com.fulgurogo.common.utilities.ellipsize
 import com.fulgurogo.discord.DiscordModule.TAG
 import net.dv8tion.jda.api.EmbedBuilder
 import net.dv8tion.jda.api.JDA
@@ -29,9 +30,9 @@ class DiscordBot : ListenerAdapter() {
         ?.getTextChannelById(channelId)
         ?.sendMessageEmbeds(
             EmbedBuilder()
-                .setColor(Color.decode(Config.get("bot.guild.color")))
+                .setColor(Color.decode(Config.get("bot.color")))
                 .apply { if (title.isNotBlank()) setTitle(title) }
-                .setDescription(if (message.length > 2048) message.substring(0, 2045) + "..." else message)
+                .setDescription(message.ellipsize(2048))
                 .build()
         )
         ?.queue()

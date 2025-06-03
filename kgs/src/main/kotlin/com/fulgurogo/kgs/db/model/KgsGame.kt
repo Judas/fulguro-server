@@ -14,17 +14,17 @@ data class KgsGame(
     val komi: Float,
     val handicap: Int,
     val longGame: Boolean,
-    val result: String, // Black / White / Jigo / Unfinished
+    val result: String, // black / white / jigo / unfinished
     val sgf: String
 ) {
-    fun isFinished(): Boolean = result != "UNFINISHED"
+    fun isFinished(): Boolean = result != "unfinished"
     fun description(): String {
         val blackDesc = "$blackName ($blackRank)"
         val whiteDesc = "$whiteName ($whiteRank)"
         return when (result) {
-            "BLACK" -> "$blackDesc gagne contre $whiteDesc"
-            "WHITE" -> "$whiteDesc gagne contre $blackDesc"
-            "JIGO" -> "$blackDesc et $whiteDesc font match nul (jigo)"
+            "black" -> "$blackDesc gagne contre $whiteDesc"
+            "white" -> "$whiteDesc gagne contre $blackDesc"
+            "jigo" -> "$blackDesc et $whiteDesc font match nul (jigo)"
             else -> "$blackDesc :crossed_swords: $whiteDesc"
         }
     }
