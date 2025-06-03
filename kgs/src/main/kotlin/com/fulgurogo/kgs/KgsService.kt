@@ -4,6 +4,7 @@ import com.fulgurogo.common.config.Config
 import com.fulgurogo.common.logger.log
 import com.fulgurogo.common.service.PeriodicFlowService
 import com.fulgurogo.common.utilities.DATE_ZONE
+import com.fulgurogo.common.utilities.toDate
 import com.fulgurogo.discord.DiscordModule
 import com.fulgurogo.kgs.KgsModule.TAG
 import com.fulgurogo.kgs.db.KgsDatabaseAccessor
@@ -116,6 +117,14 @@ class KgsService : PeriodicFlowService(0, 2) {
             val columns = row.select("td").asList()
             if (columns.size != 7) return@mapNotNull null
 
+            // Date => skip too old game
+            val dateString = columns[4].text().trim()
+            val sdf = SimpleDateFormat("M/d/y h:mm a")
+            sdf.timeZone = TimeZone.getTimeZone("GMT")
+            val date = sdf.parse(dateString, ParsePosition(0))
+            val now = ZonedDateTime.now(DATE_ZONE)
+            if (now.minusDays(32).toDate().after(date)) return@mapNotNull null
+
             // Game result => keep unfinished games to alert new games on Discord
             val resultString = columns[6].text().trim()
             val result = when {
@@ -155,12 +164,6 @@ class KgsService : PeriodicFlowService(0, 2) {
             // Players
             val whitePlayer = columns[1].select("a").firstOrNull()?.text()?.trim().splitNameRank()
             val blackPlayer = columns[2].select("a").firstOrNull()?.text()?.trim().splitNameRank()
-
-            // Date
-            val dateString = columns[4].text().trim()
-            val sdf = SimpleDateFormat("M/d/y h:mm a")
-            sdf.timeZone = TimeZone.getTimeZone("GMT")
-            val date = sdf.parse(dateString, ParsePosition(0))
 
             KgsGame(
                 date = date,
@@ -218,8 +221,8 @@ class KgsService : PeriodicFlowService(0, 2) {
     } ?: ("" to "?")
 
     private fun notifyGame(game: KgsGame) {
-        val title = "Partie ${if (game.isFinished()) "terminée" else "en cours"} sur KGS !"
-        DiscordModule.discordBot.notify(
+        val title = ":popcorn: Partie ${if (game.isFinished()) "terminée" else "en cours"} sur KGS !"
+        DiscordModule.discordBot.sendMessageEmbeds(
             channelId = Config.get("bot.notification.channel.id"),
             message = game.description(),
             title = title

@@ -26,7 +26,7 @@ class DiscordBot : ListenerAdapter() {
         jda = null
     }
 
-    fun notify(channelId: String, message: String, title: String = "") = jda
+    fun sendMessageEmbeds(channelId: String, message: String, title: String = "") = jda
         ?.getTextChannelById(channelId)
         ?.sendMessageEmbeds(
             EmbedBuilder()
@@ -35,5 +35,10 @@ class DiscordBot : ListenerAdapter() {
                 .setDescription(message.ellipsize(2048))
                 .build()
         )
+        ?.queue()
+
+    fun sendMessage(channelId: String, message: String) = jda
+        ?.getTextChannelById(channelId)
+        ?.sendMessage(message)
         ?.queue()
 }

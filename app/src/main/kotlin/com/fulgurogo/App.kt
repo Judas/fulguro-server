@@ -7,6 +7,7 @@ import com.fulgurogo.egf.EgfModule
 import com.fulgurogo.ffg.FfgModule
 import com.fulgurogo.igs.IgsModule
 import com.fulgurogo.kgs.KgsModule
+import com.fulgurogo.ogs.OgsModule
 
 const val TAG = "OldAppModule"
 
@@ -18,7 +19,7 @@ fun main() {
 
     DiscordModule.init()
     KgsModule.init()
-    // TODO OgsModule
+    OgsModule.init()
     // TODO FoxModule
     IgsModule.init()
     FfgModule.init()
