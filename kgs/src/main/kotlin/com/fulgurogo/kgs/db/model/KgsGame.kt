@@ -19,12 +19,12 @@ data class KgsGame(
 ) {
     fun isFinished(): Boolean = result != "unfinished"
     fun description(): String {
-        val blackDesc = "$blackName ($blackRank)"
-        val whiteDesc = "$whiteName ($whiteRank)"
+        val blackDesc = "**$blackName ($blackRank)**"
+        val whiteDesc = "**$whiteName ($whiteRank)**"
         return when (result) {
-            "black" -> "$blackDesc gagne contre $whiteDesc"
-            "white" -> "$whiteDesc gagne contre $blackDesc"
-            "jigo" -> "$blackDesc et $whiteDesc font match nul (jigo)"
+            "black" -> "$blackDesc __gagne__ contre $whiteDesc"
+            "white" -> "$whiteDesc __gagne__ contre $blackDesc"
+            "jigo" -> "$blackDesc et $whiteDesc font __match nul__ (jigo)"
             else -> "$blackDesc :crossed_swords: $whiteDesc"
         }
     }

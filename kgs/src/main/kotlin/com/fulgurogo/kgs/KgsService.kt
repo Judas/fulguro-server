@@ -121,8 +121,8 @@ class KgsService : PeriodicFlowService(0, 2) {
             val result = when {
                 resultString.contains("B+") -> "black"
                 resultString.contains("W+") -> "white"
-                resultString.equals("jigo", false) -> "jigo"
-                resultString.equals("unfinished", false) -> "unfinished"
+                resultString.equals("jigo", true) -> "jigo"
+                resultString.equals("unfinished", true) -> "unfinished"
                 else -> return@mapNotNull null
             }
 
