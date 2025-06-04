@@ -30,6 +30,8 @@ fun main() {
     // TODO API module
     // TODO frontend ping module (every 14 minutes)
 
+    // TODO Manage users on error somehow
+
     // TODO HouseModule
     // TODO CardsModule
 

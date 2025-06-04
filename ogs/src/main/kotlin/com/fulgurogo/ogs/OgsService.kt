@@ -118,12 +118,12 @@ class OgsService : PeriodicFlowService(0, 2) {
             val result = it.result()
             if (result == null) return@mapNotNull null
 
-            // Date => skip too old game
+            // Date => skip games older than 6h
             val date = it.date()
             val now = ZonedDateTime.now(DATE_ZONE)
-            if (now.minusDays(32).toDate().after(date)) return@mapNotNull null
+            if (now.minusHours(6).toDate().after(date)) return@mapNotNull null
 
-            // Fetch SGF (if game is not finished, sgf can't be fetched)
+            // Fetch SGF
             val sgf = fetchSgf(it)
             if (sgf.isBlank()) return@mapNotNull null
 
