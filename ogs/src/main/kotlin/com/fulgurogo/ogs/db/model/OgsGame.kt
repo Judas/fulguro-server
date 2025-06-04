@@ -26,12 +26,16 @@ data class OgsGame(
     fun description(): String {
         val blackDesc = "**$blackName ($blackRank)**"
         val whiteDesc = "**$whiteName ($whiteRank)**"
-        val gameLink = "${Config.get("ogs.website.url")}/game/$id"
+        val gameLink =
+            if (isFinished()) "${Config.get("frontend.url")}/game/$goldId"
+            else "${Config.get("ogs.website.url")}/game/$id"
+        val gameDesc = "\n**[Voir la partie]($gameLink)**"
+
         return when (result) {
-            "black" -> "$blackDesc __gagne__ contre $whiteDesc\n$gameLink"
-            "white" -> "$whiteDesc __gagne__ contre $blackDesc\n$gameLink"
-            "jigo" -> "$blackDesc et $whiteDesc font __match nul__ (jigo)\n$gameLink"
-            else -> "$blackDesc :crossed_swords: $whiteDesc\n$gameLink"
+            "black" -> "Victoire de $blackDesc contre $whiteDesc$gameDesc"
+            "white" -> "Victoire de $whiteDesc contre $blackDesc$gameDesc"
+            "jigo" -> "$blackDesc et $whiteDesc font match nul$gameDesc"
+            else -> "$blackDesc :crossed_swords: $whiteDesc$gameDesc"
         }
     }
 }

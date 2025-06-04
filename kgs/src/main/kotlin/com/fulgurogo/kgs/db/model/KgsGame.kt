@@ -1,5 +1,6 @@
 package com.fulgurogo.kgs.db.model
 
+import com.fulgurogo.common.config.Config
 import com.fulgurogo.common.utilities.GenerateNoArgConstructor
 import java.util.*
 
@@ -19,14 +20,18 @@ data class KgsGame(
     val sgf: String
 ) {
     fun isFinished(): Boolean = result != "unfinished"
+
     fun description(): String {
         val blackDesc = "**$blackId ($blackRank)**"
         val whiteDesc = "**$whiteId ($whiteRank)**"
+        val gameLink = "${Config.get("frontend.url")}/game/$goldId"
+        val gameDesc = if (isFinished()) "\n**[Voir la partie]($gameLink)**" else ""
+
         return when (result) {
-            "black" -> "$blackDesc __gagne__ contre $whiteDesc"
-            "white" -> "$whiteDesc __gagne__ contre $blackDesc"
-            "jigo" -> "$blackDesc et $whiteDesc font __match nul__ (jigo)"
-            else -> "$blackDesc :crossed_swords: $whiteDesc"
+            "black" -> "Victoire de $blackDesc contre $whiteDesc$gameDesc"
+            "white" -> "Victoire de $whiteDesc contre $blackDesc$gameDesc"
+            "jigo" -> "$blackDesc et $whiteDesc font match nul$gameDesc"
+            else -> "$blackDesc :crossed_swords: $whiteDesc$gameDesc"
         }
     }
 }
