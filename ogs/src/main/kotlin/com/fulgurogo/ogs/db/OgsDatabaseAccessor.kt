@@ -73,6 +73,14 @@ object OgsDatabaseAccessor {
             .executeUpdate()
     }
 
+    fun allUserIds(): List<Int> = dao.open().use { connection ->
+        val query = "SELECT ogs_id FROM $USER_TABLE"
+        connection
+            .createQuery(query)
+            .throwOnMappingFailure(false)
+            .executeAndFetch(Int::class.java)
+    }
+
     fun game(game: OgsGame): OgsGame? = dao.open().use { connection ->
         val query = " SELECT * FROM $GAME_TABLE WHERE gold_id = :goldId LIMIT 1 "
         connection
@@ -113,13 +121,16 @@ object OgsDatabaseAccessor {
     }
 
     fun finishGame(game: OgsGame): Connection = dao.open().use { connection ->
-        val query = "UPDATE $GAME_TABLE SET result = :result WHERE gold_id = :goldId"
+        val query = "UPDATE $GAME_TABLE " +
+                " SET result = :result, sgf = :sgf " +
+                " WHERE gold_id = :goldId"
 
         log(TAG, "finishGame [$query] ${game.id}")
 
         connection
             .createQuery(query)
             .addParameter("result", game.result)
+            .addParameter("sgf", game.sgf)
             .addParameter("goldId", game.goldId)
             .executeUpdate()
     }

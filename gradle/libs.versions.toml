@@ -2,6 +2,7 @@
 commons-net = "3.11.1"
 gson = "2.13.1"
 hikari = "6.3.0"
+java-websocket = "1.5.7"
 javalin = "6.6.0"
 jda = "5.5.1"
 jsch = "2.27.0"
@@ -19,6 +20,7 @@ sql2o = "1.9.1"
 commons-net = { group = "commons-net", name = "commons-net", version.ref = "commons-net" }
 gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
 hikari = { group = "com.zaxxer", name = "HikariCP", version.ref = "hikari" }
+java-websocket = { group = "org.java-websocket", name = "Java-WebSocket", version.ref = "java-websocket" }
 javalin = { group = "io.javalin", name = "javalin", version.ref = "javalin" }
 jda = { group = "net.dv8tion", name = "JDA", version.ref = "jda" }
 jsch = { group = "com.github.mwiede", name = "jsch", version.ref = "jsch" }

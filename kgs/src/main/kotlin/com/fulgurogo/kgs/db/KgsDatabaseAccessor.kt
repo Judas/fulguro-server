@@ -105,12 +105,15 @@ object KgsDatabaseAccessor {
     }
 
     fun finishGame(game: KgsGame): Connection = dao.open().use { connection ->
-        val query = "UPDATE $GAME_TABLE SET result = :result WHERE gold_id = :goldId "
-
+        val query = "UPDATE $GAME_TABLE " +
+                " SET result = :result, sgf = :sgf " +
+                " WHERE gold_id = :goldId"
         log(TAG, "finishGame [$query] ${game.goldId}")
 
         connection
             .createQuery(query)
+            .addParameter("result", game.result)
+            .addParameter("sgf", game.sgf)
             .addParameter("goldId", game.goldId)
             .executeUpdate()
     }

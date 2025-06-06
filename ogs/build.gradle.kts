@@ -26,6 +26,7 @@ noArg {
 dependencies {
     implementation(project(":discord"))
     implementation(libs.gson)
+    implementation(libs.java.websocket)
     implementation(platform(libs.okhttp.bom))
     implementation(libs.okhttp)
     implementation(libs.okhttp.urlconnection)

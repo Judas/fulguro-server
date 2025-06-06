@@ -22,6 +22,7 @@ class EgfService : PeriodicFlowService(0, 30) {
                 // Scrap profile page
                 val route = "${Config.get("egf.website.url")}?key=${stale.egfId}"
                 val html = Jsoup.connect(route)
+                    .userAgent(Config.get("user.agent"))
                     .timeout(Config.get("global.read.timeout.ms").toInt())
                     .get()
 

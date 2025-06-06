@@ -8,30 +8,17 @@ import com.fulgurogo.common.utilities.rankToKyuDanString
 import com.fulgurogo.common.utilities.toDate
 import com.fulgurogo.discord.DiscordModule
 import com.fulgurogo.ogs.OgsModule.TAG
+import com.fulgurogo.ogs.api.OgsApiClient
 import com.fulgurogo.ogs.api.model.OgsApiGame
 import com.fulgurogo.ogs.api.model.OgsApiGameList
 import com.fulgurogo.ogs.api.model.OgsApiPlayerRating
 import com.fulgurogo.ogs.db.OgsDatabaseAccessor
 import com.fulgurogo.ogs.db.model.OgsGame
 import com.fulgurogo.ogs.db.model.OgsUserInfo
-import com.google.gson.Gson
-import okhttp3.JavaNetCookieJar
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import java.net.CookieManager
-import java.net.CookiePolicy
 import java.time.ZonedDateTime
 import java.util.*
-import java.util.concurrent.TimeUnit
 
 class OgsService : PeriodicFlowService(0, 2) {
-    private val gson: Gson = Gson()
-    private val okHttpClient: OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(Config.get("global.read.timeout.ms").toLong(), TimeUnit.MILLISECONDS)
-        .readTimeout(Config.get("global.read.timeout.ms").toLong(), TimeUnit.MILLISECONDS)
-        .cookieJar(JavaNetCookieJar(CookieManager().apply { setCookiePolicy(CookiePolicy.ACCEPT_ALL) })).build()
-    private var lastNetworkCallTime: ZonedDateTime = ZonedDateTime.now(DATE_ZONE)
-
     private var processing = false
 
     override fun onTick() {
@@ -65,18 +52,12 @@ class OgsService : PeriodicFlowService(0, 2) {
                     val blackDiscordUser = OgsDatabaseAccessor.user(game.blackId)
                     val whiteDiscordUser = OgsDatabaseAccessor.user(game.whiteId)
                     val isGoldGame = blackDiscordUser != null && whiteDiscordUser != null
-                    if (oldGame != null && !oldGame.isFinished() && game.isFinished()) {
+                    if (oldGame == null) {
+                        OgsDatabaseAccessor.addGame(game)
+                        if (isGoldGame) notifyGame(game)
+                    } else if (!oldGame.isFinished() && game.isFinished()) {
                         // Game previously saved as "unfinished" is now finished
                         OgsDatabaseAccessor.finishGame(game)
-                        if (isGoldGame) notifyGame(game)
-                    } else if (oldGame == null && !game.isFinished()) {
-                        // New "ongoing" game being played now
-                        // Should not happen, the real time API should have done that, but just to be sure
-                        OgsDatabaseAccessor.addGame(game)
-                        if (isGoldGame) notifyGame(game)
-                    } else if (oldGame == null) {
-                        // New game finished
-                        OgsDatabaseAccessor.addGame(game)
                         if (isGoldGame) notifyGame(game)
                     }
                 }
@@ -90,13 +71,13 @@ class OgsService : PeriodicFlowService(0, 2) {
 
     private fun fetchPlayerRating(stale: OgsUserInfo): OgsApiPlayerRating? {
         val route = "${Config.get("ogs.termination.api.url")}/player/${stale.ogsId}"
-        return fetch(route, OgsApiPlayerRating::class.java)
+        return OgsApiClient.get(route, OgsApiPlayerRating::class.java)
     }
 
     private fun fetchPlayerGames(stale: OgsUserInfo): List<OgsGame> {
         // Get last 10 games
         val route = "${Config.get("ogs.api.url")}/players/${stale.ogsId}/games?ordering=-ended"
-        val games = fetch(route, OgsApiGameList::class.java).results
+        val games = OgsApiClient.get(route, OgsApiGameList::class.java).results
 
         return games.mapNotNull {
             // Skip cancelled games
@@ -125,17 +106,16 @@ class OgsService : PeriodicFlowService(0, 2) {
 
             // Fetch SGF
             val sgf = fetchSgf(it)
-            if (sgf.isBlank()) return@mapNotNull null
 
             OgsGame(
                 goldId = it.goldId(),
                 id = it.id,
                 date = date,
                 blackId = it.players.black.id,
-                blackName = it.players.black.username ?: "?",
+                blackName = it.players.black.username,
                 blackRank = it.players.black.ranking.rankToKyuDanString(),
                 whiteId = it.players.white.id,
-                whiteName = it.players.white.username ?: "?",
+                whiteName = it.players.white.username,
                 whiteRank = it.players.white.ranking.rankToKyuDanString(),
                 size = it.width,
                 komi = it.komi.toDouble(),
@@ -148,35 +128,16 @@ class OgsService : PeriodicFlowService(0, 2) {
     }
 
     private fun fetchSgf(game: OgsApiGame): String = try {
-        fetch("${Config.get("ogs.api.url")}/games/${game.id}/sgf")
+        OgsApiClient.get("${Config.get("ogs.api.url")}/games/${game.id}/sgf")
     } catch (_: Exception) {
         ""
     }
 
-    private fun <T : Any> fetch(route: String, className: Class<T>): T =
-        gson.fromJson(fetch(route), className)
-
-    private fun fetch(route: String): String {
-        // Delay to avoid spamming OGS API: ensure between 500ms & 1500ms free time
-        val now = ZonedDateTime.now(DATE_ZONE)
-        if (lastNetworkCallTime.plusSeconds(1).isAfter(now))
-            Thread.sleep(500)
-        lastNetworkCallTime = ZonedDateTime.now(DATE_ZONE)
-
-        val request: Request = Request.Builder().url(route).get().build()
-        val response = okHttpClient.newCall(request).execute()
-        return if (response.isSuccessful) {
-            val apiResponse = response.body!!.string()
-            response.close()
-            apiResponse
-        } else {
-            val error = Exception("GET FAILURE " + response.code)
-            log(TAG, error.message!!, error)
-            throw error
-        }
-    }
-
     private fun notifyGame(game: OgsGame) {
+        // Do not notify if game started more than 4h ago
+        val now = ZonedDateTime.now(DATE_ZONE)
+        if (now.minusHours(4).toDate().after(game.date)) return
+
         val title = ":popcorn: Partie ${if (game.isFinished()) "terminée" else "en cours"} sur OGS !"
         DiscordModule.discordBot.sendMessageEmbeds(
             channelId = Config.get("bot.notification.channel.id"),

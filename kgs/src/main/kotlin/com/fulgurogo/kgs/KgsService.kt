@@ -64,17 +64,12 @@ class KgsService : PeriodicFlowService(0, 2) {
                     val blackDiscordUser = KgsDatabaseAccessor.user(game.blackId)
                     val whiteDiscordUser = KgsDatabaseAccessor.user(game.whiteId)
                     val isGoldGame = blackDiscordUser != null && whiteDiscordUser != null
-                    if (oldGame != null && !oldGame.isFinished() && game.isFinished()) {
+                    if (oldGame == null) {
+                        KgsDatabaseAccessor.addGame(game)
+                        if (isGoldGame) notifyGame(game)
+                    } else if (!oldGame.isFinished() && game.isFinished()) {
                         // Game previously saved as "unfinished" is now finished
                         KgsDatabaseAccessor.finishGame(game)
-                        if (isGoldGame) notifyGame(game)
-                    } else if (oldGame == null && !game.isFinished()) {
-                        // New "ongoing" game being played now
-                        KgsDatabaseAccessor.addGame(game)
-                        if (isGoldGame) notifyGame(game)
-                    } else if (oldGame == null) {
-                        // New game finished
-                        KgsDatabaseAccessor.addGame(game)
                         if (isGoldGame) notifyGame(game)
                     }
                 }
@@ -99,6 +94,7 @@ class KgsService : PeriodicFlowService(0, 2) {
     private fun scrapMonthlyGames(kgsId: String?, year: Int, month: Int): MutableList<KgsGame> = try {
         val route = "${Config.get("kgs.archives.url")}?user=$kgsId&year=$year&month=$month"
         val html = Jsoup.connect(route)
+            .userAgent(Config.get("user.agent"))
             .timeout(Config.get("global.read.timeout.ms").toInt())
             .get()
 
@@ -183,12 +179,15 @@ class KgsService : PeriodicFlowService(0, 2) {
     }
 
     private fun fetchSgf(sgfLink: String, allowRetry: Boolean = true): String {
-        val request: Request = Request.Builder().url(sgfLink).get().build()
+        val request = Request.Builder()
+            .url(sgfLink)
+            .header("User-Agent", Config.get("user.agent"))
+            .get().build()
         val response = okHttpClient.newCall(request).execute()
         return if (response.isSuccessful) {
-            val apiResponse = response.body!!.string().replace("\n", "")
+            val responseBody = response.body!!.string().replace("\n", "")
             response.close()
-            apiResponse
+            responseBody
         } else if (allowRetry) {
             // Retry once after delay
             Thread.sleep(1000L)
@@ -222,6 +221,10 @@ class KgsService : PeriodicFlowService(0, 2) {
     } ?: ("" to "?")
 
     private fun notifyGame(game: KgsGame) {
+        // Do not notify if game started more than 4h ago
+        val now = ZonedDateTime.now(DATE_ZONE)
+        if (now.minusHours(4).toDate().after(game.date)) return
+
         val title = ":popcorn: Partie ${if (game.isFinished()) "terminée" else "en cours"} sur KGS !"
         DiscordModule.discordBot.sendMessageEmbeds(
             channelId = Config.get("bot.notification.channel.id"),

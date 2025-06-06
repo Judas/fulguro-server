@@ -255,7 +255,6 @@ object Api {
                 ogsId?.let { linkAccount(context, account, it, discordId) }
                     ?: context.notFoundError()
             } else linkAccount(context, account, accountId, discordId)
-            // TODO Find a way to get id from name for FFG/EGF
         }
     } catch (e: Exception) {
         log(TAG, "link", e)
