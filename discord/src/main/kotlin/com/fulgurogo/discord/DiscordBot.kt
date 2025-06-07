@@ -26,19 +26,18 @@ class DiscordBot : ListenerAdapter() {
         jda = null
     }
 
-    fun sendMessageEmbeds(channelId: String, message: String, title: String = "") = jda
+    fun sendMessageEmbeds(channelId: String, message: String, title: String = "", imageUrl: String = "") = jda
         ?.getTextChannelById(channelId)
         ?.sendMessageEmbeds(
             EmbedBuilder()
                 .setColor(Color.decode(Config.get("bot.color")))
                 .apply { if (title.isNotBlank()) setTitle(title) }
+                .apply { if (imageUrl.isNotBlank()) setThumbnail(imageUrl) }
+                .setAuthor(Config.get("bot.name"), Config.get("frontend.url"), Config.get("gold.default.avatar"))
                 .setDescription(message.ellipsize(2048))
                 .build()
         )
         ?.queue()
 
-    fun sendMessage(channelId: String, message: String) = jda
-        ?.getTextChannelById(channelId)
-        ?.sendMessage(message)
-        ?.queue()
+
 }

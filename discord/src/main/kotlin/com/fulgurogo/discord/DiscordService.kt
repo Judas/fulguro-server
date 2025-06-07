@@ -32,7 +32,7 @@ class DiscordService(private val discordBot: DiscordBot) : PeriodicFlowService(0
 
                 // Update avatar
                 val discordAvatar = discordBot.jda?.getUserById(stale.discordId)?.effectiveAvatarUrl
-                    ?: Config.get("ladder.default.avatar")
+                    ?: Config.get("gold.default.avatar")
 
                 DiscordDatabaseAccessor.updateUser(
                     DiscordUserInfo(

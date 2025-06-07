@@ -27,6 +27,14 @@ object DiscordDatabaseAccessor {
             .executeAndFetchFirst(DiscordUserInfo::class.java)
     }
 
+    fun user(discordId: String): DiscordUserInfo? = dao.open().use { connection ->
+        val query = "SELECT * FROM $USER_TABLE WHERE discord_id = :discordId"
+        connection
+            .createQuery(query)
+            .addParameter("discordId", discordId)
+            .executeAndFetchFirst(DiscordUserInfo::class.java)
+    }
+
     fun markAsError(kgsUserInfo: DiscordUserInfo): Connection = dao.open().use { connection ->
         val query = "UPDATE $USER_TABLE SET updated = NOW(), error = 1 WHERE discord_id = :discordId "
 

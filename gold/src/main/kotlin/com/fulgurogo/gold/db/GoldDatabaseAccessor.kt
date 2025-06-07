@@ -64,7 +64,7 @@ object GoldDatabaseAccessor {
     }
 
     fun tierFor(rating: Double): GoldTier = dao.open().use { connection ->
-        val query = "SELECT rank FROM $TIERS_TABLE " +
+        val query = "SELECT * FROM $TIERS_TABLE " +
                 " WHERE (min <= :rating AND :rating < max) " +
                 " LIMIT 1"
         connection

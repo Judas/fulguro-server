@@ -70,7 +70,7 @@ data class User(
             val user = User(
                 discordId = discordId,
                 name = if (Config.get("debug").toBoolean()) name else jda.userName(discordId),
-                avatar = jda.getUserById(discordId)?.effectiveAvatarUrl ?: Config.get("ladder.default.avatar"),
+                avatar = jda.getUserById(discordId)?.effectiveAvatarUrl ?: Config.get("gold.default.avatar"),
                 titles = titles,
                 lastGameScan = lastGameScan,
                 kgsId = kgsId,
@@ -101,7 +101,7 @@ data class User(
             User(
                 discordId = discordId,
                 name = jda.userName(discordId),
-                avatar = jda.getUserById(discordId)?.effectiveAvatarUrl ?: Config.get("ladder.default.avatar")
+                avatar = jda.getUserById(discordId)?.effectiveAvatarUrl ?: Config.get("gold.default.avatar")
             )
         }
 
