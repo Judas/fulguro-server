@@ -46,7 +46,7 @@ class FfgService : PeriodicFlowService(0, 60) {
                             ffgName = name,
                             ffgRank = rank,
                             updated = Date(),
-                            error = null
+                            error = false
                         )
                     )
                 }

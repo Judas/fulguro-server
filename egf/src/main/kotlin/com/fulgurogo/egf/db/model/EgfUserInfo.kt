@@ -10,5 +10,5 @@ data class EgfUserInfo(
     val egfName: String? = null,
     val egfRank: String? = null,
     val updated: Date? = null,
-    val error: Date? = null
+    val error: Boolean = false
 )

@@ -40,7 +40,7 @@ class OgsService : PeriodicFlowService(0, 5) {
                             ogsName = rating.username,
                             ogsRank = rating.ranking.rankToKyuDanString(),
                             updated = Date(),
-                            error = null
+                            error = false
                         )
                     )
                 }

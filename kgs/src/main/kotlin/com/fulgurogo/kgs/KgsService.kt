@@ -54,7 +54,7 @@ class KgsService : PeriodicFlowService(0, 2) {
                         kgsId = stale.kgsId,
                         kgsRank = updatedRank,
                         updated = Date(),
-                        error = null
+                        error = false
                     )
                 )
 

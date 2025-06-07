@@ -34,7 +34,7 @@ class GoldService : PeriodicFlowService(0, 5) {
                         rating = rating,
                         tierRank = tier.rank,
                         updated = Date(),
-                        error = null
+                        error = false
                     )
                 )
 

@@ -28,7 +28,7 @@ object GoldDatabaseAccessor {
     }
 
     fun stalestUser(): GoldPlayer? = dao.open().use { connection ->
-        val query = "SELECT * FROM $RATINGS_TABLE WHERE error IS NULL ORDER BY updated"
+        val query = "SELECT * FROM $RATINGS_TABLE ORDER BY updated"
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)
@@ -36,7 +36,7 @@ object GoldDatabaseAccessor {
     }
 
     fun markAsError(goldPlayer: GoldPlayer): Connection = dao.open().use { connection ->
-        val query = "UPDATE $RATINGS_TABLE SET error = NOW() WHERE discord_id = :discordId "
+        val query = "UPDATE $RATINGS_TABLE SET updated = NOW(), error = 1 WHERE discord_id = :discordId "
 
         log(TAG, "markAsError [$query] $goldPlayer")
         connection
@@ -78,7 +78,8 @@ object GoldDatabaseAccessor {
         val query = "UPDATE $RATINGS_TABLE SET " +
                 " rating = :rating, " +
                 " tier_rank = :tierRank, " +
-                " updated = :updated " +
+                " updated = :updated, " +
+                " error = 0 " +
                 " WHERE discord_id = :discordId "
 
         connection

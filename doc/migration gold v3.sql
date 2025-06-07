@@ -6,7 +6,7 @@ CREATE TABLE `discord_user_info` (
   `discord_name` VARCHAR(255) NOT NULL,
   `discord_avatar` VARCHAR(255) NOT NULL,
   `updated` DATETIME NULL,
-  `error` DATETIME NULL,
+  `error` TINYINT(1) NOT NULL,
   PRIMARY KEY (`discord_id`)
 )
 ENGINE = InnoDB
@@ -25,7 +25,7 @@ CREATE TABLE `kgs_user_info` (
   `kgs_id` VARCHAR(255) NOT NULL,
   `kgs_rank` VARCHAR(255) NOT NULL,
   `updated` DATETIME NULL,
-  `error` DATETIME NULL,
+  `error`  TINYINT(1) NOT NULL,
   PRIMARY KEY (`discord_id`)
 )
 ENGINE = InnoDB
@@ -64,7 +64,7 @@ CREATE TABLE `ogs_user_info` (
   `ogs_name` VARCHAR(255) NOT NULL,
   `ogs_rank` VARCHAR(255) NOT NULL,
   `updated` DATETIME NULL,
-  `error` DATETIME NULL,
+  `error` TINYINT(1) NOT NULL,
   PRIMARY KEY (`discord_id`)
 )
 ENGINE = InnoDB
@@ -106,7 +106,7 @@ CREATE TABLE `fox_user_info` (
   `fox_name` VARCHAR(255) NOT NULL,
   `fox_rank` VARCHAR(255) NOT NULL,
   `updated` DATETIME NULL,
-  `error` DATETIME NULL,
+  `error` TINYINT(1) NOT NULL,
   PRIMARY KEY (`discord_id`)
 )
 ENGINE = InnoDB
@@ -147,7 +147,7 @@ CREATE TABLE `igs_user_info` (
   `igs_id` VARCHAR(255) NOT NULL,
   `igs_rank` VARCHAR(255) NOT NULL,
   `updated` DATETIME NULL,
-  `error` DATETIME NULL,
+  `error` TINYINT(1) NOT NULL,
   PRIMARY KEY (`discord_id`)
 )
 ENGINE = InnoDB
@@ -167,7 +167,7 @@ CREATE TABLE `ffg_user_info` (
   `ffg_name` VARCHAR(255) NOT NULL,
   `ffg_rank` VARCHAR(255) NOT NULL,
   `updated` DATETIME NULL,
-  `error` DATETIME NULL,
+  `error` TINYINT(1) NOT NULL,
   PRIMARY KEY (`discord_id`)
 )
 ENGINE = InnoDB
@@ -187,7 +187,7 @@ CREATE TABLE `egf_user_info` (
   `egf_name` VARCHAR(255) NOT NULL,
   `egf_rank` VARCHAR(255) NOT NULL,
   `updated` DATETIME NULL,
-  `error` DATETIME NULL,
+  `error` TINYINT(1) NOT NULL,
   PRIMARY KEY (`discord_id`)
 )
 ENGINE = InnoDB
@@ -226,6 +226,11 @@ CREATE TABLE `gold_ratings` (
   `rating` DOUBLE NOT NULL,
   `tier_rank` INT(11) NOT NULL,
   `updated` DATETIME NULL,
-  `error` DATETIME NULL,
+  `error` TINYINT(1) NOT NULL,
   PRIMARY KEY (`discord_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO `gold_ratings`
+  SELECT u.discord_id, 0 AS `rating`, 0 AS `tier_rank`, NULL AS `updated`, NULL AS `error`
+  FROM `users` AS u
+  WHERE `discord_id` IS NOT NULL;

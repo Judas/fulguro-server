@@ -52,7 +52,7 @@ class IgsService : PeriodicFlowService(0, 60) {
                             igsId = stale.igsId,
                             igsRank = rank,
                             updated = Date(),
-                            error = null
+                            error = false
                         )
                     )
                 }

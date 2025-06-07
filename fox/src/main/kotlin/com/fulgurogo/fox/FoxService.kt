@@ -40,7 +40,7 @@ class FoxService : PeriodicFlowService(0, 60) {
                             foxName = rating.nick,
                             foxRank = rating.rank.lowercase(),
                             updated = Date(),
-                            error = null
+                            error = false
                         )
                     )
                 }

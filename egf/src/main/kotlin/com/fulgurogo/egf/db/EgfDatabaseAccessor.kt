@@ -21,7 +21,7 @@ object EgfDatabaseAccessor {
     }
 
     fun stalestUser(): EgfUserInfo? = dao.open().use { connection ->
-        val query = "SELECT * FROM $USER_TABLE WHERE error IS NULL ORDER BY updated"
+        val query = "SELECT * FROM $USER_TABLE ORDER BY updated"
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)
@@ -29,7 +29,7 @@ object EgfDatabaseAccessor {
     }
 
     fun markAsError(egfUserInfo: EgfUserInfo): Connection = dao.open().use { connection ->
-        val query = "UPDATE $USER_TABLE SET error = NOW() WHERE discord_id = :discordId "
+        val query = "UPDATE $USER_TABLE SET updated = NOW(), error = 1 WHERE discord_id = :discordId "
 
         log(TAG, "markAsError [$query] $egfUserInfo")
         connection
@@ -42,7 +42,8 @@ object EgfDatabaseAccessor {
         val query = "UPDATE $USER_TABLE SET " +
                 " egf_name = :egfName, " +
                 " egf_rank = :egfRank, " +
-                " updated = :updated " +
+                " updated = :updated, " +
+                " error = 0 " +
                 " WHERE discord_id = :discordId "
 
         connection

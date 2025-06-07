@@ -9,5 +9,5 @@ data class GoldPlayer(
     val rating: Double,
     val tierRank: Int,
     val updated: Date? = null,
-    val error: Date? = null
+    val error: Boolean = false
 )

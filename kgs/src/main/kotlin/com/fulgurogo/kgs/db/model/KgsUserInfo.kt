@@ -9,5 +9,5 @@ data class KgsUserInfo(
     val kgsId: String? = null,
     val kgsRank: String? = null,
     val updated: Date? = null,
-    val error: Date? = null
+    val error: Boolean = false
 )

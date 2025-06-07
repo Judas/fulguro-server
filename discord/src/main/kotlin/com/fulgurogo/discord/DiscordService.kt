@@ -40,7 +40,7 @@ class DiscordService(private val discordBot: DiscordBot) : PeriodicFlowService(0
                         discordName = discordName,
                         discordAvatar = discordAvatar,
                         updated = Date(),
-                        error = null
+                        error = false
                     )
                 )
             } catch (e: Exception) {

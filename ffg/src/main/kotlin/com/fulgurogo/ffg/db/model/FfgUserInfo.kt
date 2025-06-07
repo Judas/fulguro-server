@@ -10,5 +10,5 @@ data class FfgUserInfo(
     val ffgName: String? = null,
     val ffgRank: String? = null,
     val updated: Date? = null,
-    val error: Date? = null
+    val error: Boolean = false
 )

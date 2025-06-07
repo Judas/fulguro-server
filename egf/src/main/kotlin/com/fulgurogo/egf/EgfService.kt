@@ -44,7 +44,7 @@ class EgfService : PeriodicFlowService(0, 60) {
                             egfName = name,
                             egfRank = if (rank.isNullOrBlank()) "?" else rank,
                             updated = Date(),
-                            error = null
+                            error = false
                         )
                     )
                 }

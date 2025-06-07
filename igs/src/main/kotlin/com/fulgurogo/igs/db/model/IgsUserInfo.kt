@@ -9,5 +9,5 @@ data class IgsUserInfo(
     val igsId: String? = null,
     val igsRank: String? = null,
     val updated: Date? = null,
-    val error: Date? = null
+    val error: Boolean = false
 )
