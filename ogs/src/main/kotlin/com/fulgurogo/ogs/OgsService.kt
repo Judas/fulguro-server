@@ -18,7 +18,7 @@ import com.fulgurogo.ogs.db.model.OgsUserInfo
 import java.time.ZonedDateTime
 import java.util.*
 
-class OgsService : PeriodicFlowService(0, 2) {
+class OgsService : PeriodicFlowService(0, 5) {
     private var processing = false
 
     override fun onTick() {

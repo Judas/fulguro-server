@@ -9,7 +9,7 @@ import com.fulgurogo.ffg.db.model.FfgUserInfo
 import org.jsoup.Jsoup
 import java.util.*
 
-class FfgService : PeriodicFlowService(0, 30) {
+class FfgService : PeriodicFlowService(0, 60) {
     private var processing = false
 
     override fun onTick() {

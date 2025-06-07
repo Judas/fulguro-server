@@ -5,6 +5,7 @@ import com.fulgurogo.common.db.ssh.SSHConnector
 import com.fulgurogo.discord.DiscordModule
 import com.fulgurogo.egf.EgfModule
 import com.fulgurogo.ffg.FfgModule
+import com.fulgurogo.fox.FoxModule
 import com.fulgurogo.igs.IgsModule
 import com.fulgurogo.kgs.KgsModule
 import com.fulgurogo.ogs.OgsModule
@@ -17,13 +18,15 @@ fun main() {
     // In dev we need to connect via SSH to the server for the MySQL access (only local connection allowed)
     if (isDebug) SSHConnector.connect()
 
+    // Data aggregator modules
     DiscordModule.init()
     KgsModule.init()
     OgsModule.init()
-    // TODO FoxModule
+    FoxModule.init()
     IgsModule.init()
     FfgModule.init()
     EgfModule.init()
+
     // TODO GoldTierModule (assign tier based on server ranks weights)
     // TODO FgcModule (level stability for FGC tournaments)
     // TODO CleanupModule (remove old users, users with failed linked accounts etc...)

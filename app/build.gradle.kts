@@ -33,6 +33,7 @@ dependencies {
 
     implementation(project(":kgs"))
     implementation(project(":ogs"))
+    implementation(project(":fox"))
     implementation(project(":igs"))
     implementation(project(":ffg"))
     implementation(project(":egf"))

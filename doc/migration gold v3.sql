@@ -102,7 +102,8 @@ DEFAULT CHARACTER SET = utf8mb4;
 DROP TABLE IF EXISTS `fox_user_info`;
 CREATE TABLE `fox_user_info` (
   `discord_id` VARCHAR(255) NOT NULL,
-  `fox_id` VARCHAR(255) NOT NULL,
+  `fox_id` INT(11) NOT NULL,
+  `fox_name` VARCHAR(255) NOT NULL,
   `fox_rank` VARCHAR(255) NOT NULL,
   `updated` DATETIME NULL,
   `error` DATETIME NULL,
@@ -112,18 +113,20 @@ ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8mb4;
 
 INSERT INTO `fox_user_info`
-  SELECT u.discord_id, u.fox_pseudo AS `fox_id`, "?" AS `fox_rank`, NULL AS `updated`, NULL AS `error`
+  SELECT u.discord_id, -1 AS `fox_id`, u.fox_pseudo AS `fox_name`, "?" AS `fox_rank`, NULL AS `updated`, NULL AS `error`
   FROM `users` AS u
   WHERE `fox_pseudo` IS NOT NULL;
 
 DROP TABLE IF EXISTS `fox_games`;
 CREATE TABLE `fox_games` (
   `gold_id` VARCHAR(255) NOT NULL,
-  `id` INT(11) NOT NULL,
+  `id` BIGINT(25) NOT NULL,
   `date` DATETIME NOT NULL,
-  `black_id` VARCHAR(255) NOT NULL,
+  `black_id` INT(11) NOT NULL,
+  `black_name` VARCHAR(255) NOT NULL,
   `black_rank` VARCHAR(255) NOT NULL,
-  `white_id` VARCHAR(255) NOT NULL,
+  `white_id` INT(11) NOT NULL,
+  `white_name` VARCHAR(255) NOT NULL,
   `white_rank` VARCHAR(255) NOT NULL,
   `size` INT(11) NOT NULL,
   `komi` DOUBLE NOT NULL,

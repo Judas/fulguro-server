@@ -8,7 +8,7 @@ import com.fulgurogo.igs.db.IgsDatabaseAccessor
 import com.fulgurogo.igs.db.model.IgsUserInfo
 import java.util.*
 
-class IgsService : PeriodicFlowService(0, 30) {
+class IgsService : PeriodicFlowService(0, 60) {
     private var processing = false
 
     override fun onTick() {

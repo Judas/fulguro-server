@@ -14,13 +14,11 @@ import com.fulgurogo.ogs.db.model.OgsGame
 import com.fulgurogo.ogs.websocket.OgsWsClient
 import com.fulgurogo.ogs.websocket.model.*
 import com.fulgurogo.ogs.websocket.model.GameListRequest.Companion.GAME_LIST_REQUEST_ID
-import com.google.gson.Gson
 
 class OgsRealTimeService : PeriodicFlowService(0, 10), OgsWsClient.Listener {
     private var processing = false
     private val webSocket = OgsWsClient(Config.get("ogs.websocket.url"), this)
     private var credentials: OgsAuthCredentials? = null
-    private val gson = Gson()
 
     override fun onTick() {
         if (processing) return
