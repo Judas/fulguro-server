@@ -1,5 +1,8 @@
 package com.fulgurogo.ffg
 
+/**
+ * This module fetches the FFG user profile by scraping the FFG website.
+ */
 object FfgModule {
     const val TAG = "FFG"
 

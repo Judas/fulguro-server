@@ -38,6 +38,8 @@ dependencies {
     implementation(project(":ffg"))
     implementation(project(":egf"))
 
+    implementation(project(":gold"))
+
     implementation(libs.commons.net)
     implementation(libs.gson)
     implementation(libs.hikari)

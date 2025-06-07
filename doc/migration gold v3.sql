@@ -197,3 +197,35 @@ INSERT INTO `egf_user_info`
   SELECT u.discord_id, u.egf_id, "" AS `egf_name`, "" AS `egf_rank`, NULL AS `updated`, NULL AS `error`
   FROM `users` AS u
   WHERE `egf_id` IS NOT NULL;
+
+-- GOLD
+
+DROP TABLE IF EXISTS `gold_tiers`;
+CREATE TABLE `gold_tiers` (
+  `rank` INT(11) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `min`INT(11) NOT NULL,
+  `max` INT(11) NOT NULL,
+  PRIMARY KEY (`rank`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO `gold_tiers`(`rank`,`name`,`min`, `max`)
+VALUES
+('1','Novice','0','1000'),
+('2','Initié','1000','1200'),
+('3','Adepte','1200','1400'),
+('4','Elite','1400','1600'),
+('5','Maître','1600','1800'),
+('6','Grand-Maître','1800','2000'),
+('7','Immortel','2000','2200'),
+('8','Légendaire','2200','3000');
+
+DROP TABLE IF EXISTS `gold_ratings`;
+CREATE TABLE `gold_ratings` (
+  `discord_id` VARCHAR(255) NOT NULL,
+  `rating` DOUBLE NOT NULL,
+  `tier_rank` INT(11) NOT NULL,
+  `updated` DATETIME NULL,
+  `error` DATETIME NULL,
+  PRIMARY KEY (`discord_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

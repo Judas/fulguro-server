@@ -6,6 +6,7 @@ import com.fulgurogo.discord.DiscordModule
 import com.fulgurogo.egf.EgfModule
 import com.fulgurogo.ffg.FfgModule
 import com.fulgurogo.fox.FoxModule
+import com.fulgurogo.gold.GoldModule
 import com.fulgurogo.igs.IgsModule
 import com.fulgurogo.kgs.KgsModule
 import com.fulgurogo.ogs.OgsModule
@@ -27,7 +28,8 @@ fun main() {
     FfgModule.init()
     EgfModule.init()
 
-    // TODO GoldTierModule (assign tier based on server ranks weights)
+    GoldModule.init()
+
     // TODO FgcModule (level stability for FGC tournaments)
     // TODO CleanupModule (remove old users, users with failed linked accounts etc...)
     // TODO API module

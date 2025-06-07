@@ -42,6 +42,8 @@ class IgsService : PeriodicFlowService(0, 60) {
                         .firstOrNull { it.startsWith("9 Rating:") }
                         ?.substring(9)?.trim()
                         ?.split(" ")[0]
+                        ?.replace("*", "")
+                        ?.replace("NR", "?")
                         ?: "?"
 
                     IgsDatabaseAccessor.updateUser(

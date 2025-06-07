@@ -143,7 +143,7 @@ class OgsRealTimeService : PeriodicFlowService(0, 10), OgsWsClient.Listener {
             Config.get("ogs.auth.password")
         )
         OgsApiClient.post(route, body, OgsAuthCredentials::class.java)
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         null
     }
 

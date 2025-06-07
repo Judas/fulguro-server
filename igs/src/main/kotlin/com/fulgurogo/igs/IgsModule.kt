@@ -1,5 +1,8 @@
 package com.fulgurogo.igs
 
+/**
+ * This module fetches the IGS user profile by using the telnet client.
+ */
 object IgsModule {
     const val TAG = "IGS"
 
