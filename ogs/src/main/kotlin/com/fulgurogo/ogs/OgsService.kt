@@ -143,7 +143,8 @@ class OgsService : PeriodicFlowService(0, 5) {
         DiscordModule.discordBot.sendMessageEmbeds(
             channelId = Config.get("bot.notification.channel.id"),
             message = game.description(),
-            title = title
+            title = title,
+            imageUrl = if (game.isFinished()) "" else Config.get("gold.ongoing.game.thumbnail")
         )
     }
 }
