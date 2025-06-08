@@ -39,6 +39,7 @@ dependencies {
     implementation(project(":egf"))
 
     implementation(project(":gold"))
+    implementation(project(":fgc"))
 
     implementation(libs.commons.net)
     implementation(libs.gson)

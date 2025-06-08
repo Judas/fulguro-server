@@ -237,3 +237,36 @@ INSERT INTO `gold_ratings`
   SELECT u.discord_id, 0 AS `rating`, 0 AS `tier_rank`, NULL AS `updated`, 0 AS `error`
   FROM `users` AS u
   WHERE `discord_id` IS NOT NULL;
+
+-- FGC
+
+DROP TABLE IF EXISTS `fgc_validity`;
+CREATE TABLE `fgc_validity` (
+  `discord_id` VARCHAR(255) NOT NULL,
+  `total_games` INT(11) NOT NULL,
+  `total_ranked_games` INT(11) NOT NULL,
+  `gold_games` INT(11) NOT NULL,
+  `gold_ranked_games` INT(11) NOT NULL,
+  `updated` DATETIME NULL,
+  `error` TINYINT(1) NOT NULL,
+  PRIMARY KEY (`discord_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO `fgc_validity`
+  SELECT u.discord_id, 0 AS `total_games`, 0 AS `total_ranked_games`,  0 AS `gold_games`, 0 AS `gold_ranked_games`, NULL AS `updated`, 0 AS `error`
+  FROM `users` AS u
+  WHERE `discord_id` IS NOT NULL;
+
+DROP VIEW IF EXISTS `fgc_validity_games`;
+CREATE VIEW `fgc_validity_games` AS
+  SELECT `game`.`gold_id`, `black`.`discord_id` AS `black_discord_id`, `white`.`discord_id` AS `white_discord_id`,`game`.`ranked`
+  FROM `ogs_games` AS `game`
+  LEFT JOIN `ogs_user_info` AS `black` ON `game`.`black_id` = `black`.`ogs_id`
+  LEFT JOIN `ogs_user_info` AS `white` ON `game`.`white_id` = `white`.`ogs_id`
+  WHERE DATEDIFF(NOW(), `date`) <= 30 AND `size` = 19 AND `handicap` = 0 AND `result` != "unfinished" AND 6 < `komi` AND `komi` < 9
+  UNION
+  SELECT `game`.`gold_id`, `black`.`discord_id` AS `black_discord_id`, `white`.`discord_id` AS `white_discord_id`, `game`.`ranked`
+  FROM `kgs_games` AS `game`
+  LEFT JOIN `kgs_user_info` AS `black` ON `game`.`black_id` = `black`.`kgs_id`
+  LEFT JOIN `kgs_user_info` AS `white` ON `game`.`white_id` = `white`.`kgs_id`
+  WHERE DATEDIFF(NOW(), `date`) <= 30 AND `size` = 19 AND `handicap` = 0 AND `result` != "unfinished" AND 6 < `komi` AND `komi` < 9;

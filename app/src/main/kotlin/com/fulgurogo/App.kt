@@ -5,6 +5,7 @@ import com.fulgurogo.common.db.ssh.SSHConnector
 import com.fulgurogo.discord.DiscordModule
 import com.fulgurogo.egf.EgfModule
 import com.fulgurogo.ffg.FfgModule
+import com.fulgurogo.fgc.FgcModule
 import com.fulgurogo.fox.FoxModule
 import com.fulgurogo.gold.GoldModule
 import com.fulgurogo.igs.IgsModule
@@ -28,17 +29,18 @@ fun main() {
     FfgModule.init()
     EgfModule.init()
 
+    // Community modules
     GoldModule.init()
-
+    FgcModule.init()
     // TODO FgcModule (level stability for FGC tournaments)
-    // TODO CleanupModule (remove old users, users with failed linked accounts etc...)
     // TODO API module
-    // TODO frontend ping module (every 14 minutes)
-
-    // TODO Manage users on error somehow
 
     // TODO HouseModule
     // TODO CardsModule
+
+    // Utility modules
+    // TODO CleanupModule (remove old users, users with failed linked accounts etc...)
+    // TODO frontend ping module (every 10 minutes)
 
 //    // Launching server API
 //    Javalin
@@ -65,6 +67,6 @@ fun main() {
 //            get("/gold/api/exam/titles", Api::examTitles)
 //            get("/gold/api/exam/history", Api::examHistory)
 //            get("/gold/api/exam/stats", Api::examStats)
-//            // TODO Ad api to list all players in error for each service
+//            // TODO Ad api to list all players in error for each service ?
 //        }
 }

@@ -86,14 +86,14 @@ object FoxDatabaseAccessor {
         val query = "INSERT INTO $GAME_TABLE( " +
                 " gold_id, id, date, " +
                 " black_id, black_name, black_rank, white_id, white_name, white_rank, " +
-                " size, komi, handicap, long_game, result, sgf) " +
+                " size, komi, handicap, ranked, long_game, result, sgf) " +
                 " VALUES (:goldId, :id, :date, " +
                 " :blackId, :blackName, :blackRank, :whiteId, :whiteName, :whiteRank, " +
-                " :size, :komi, :handicap, :longGame, :result, :sgf) "
+                " :size, :komi, :handicap, :ranked, :longGame, :result, :sgf) "
 
         log(TAG, "addGame [$query] ${game.id}")
 
-        connection
+            connection
             .createQuery(query)
             .addParameter("goldId", game.goldId)
             .addParameter("id", game.id)
@@ -107,6 +107,7 @@ object FoxDatabaseAccessor {
             .addParameter("size", game.size)
             .addParameter("komi", game.komi)
             .addParameter("handicap", game.handicap)
+            .addParameter("ranked", game.ranked)
             .addParameter("longGame", game.longGame)
             .addParameter("result", game.result)
             .addParameter("sgf", game.sgf)

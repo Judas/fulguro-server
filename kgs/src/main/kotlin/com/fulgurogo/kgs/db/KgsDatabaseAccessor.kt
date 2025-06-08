@@ -81,10 +81,10 @@ object KgsDatabaseAccessor {
         val query = "INSERT INTO $GAME_TABLE( " +
                 " gold_id, date, " +
                 " black_id, black_rank, white_id, white_rank, " +
-                " size, komi, handicap, long_game, result, sgf) " +
+                " size, komi, handicap, ranked, long_game, result, sgf) " +
                 " VALUES (:goldId, :date, " +
                 " :blackId, :blackRank, :whiteId, :whiteRank, " +
-                " :size, :komi, :handicap, :longGame, :result, :sgf) "
+                " :size, :komi, :handicap, :ranked, :longGame, :result, :sgf) "
 
         log(TAG, "addGame [$query] ${game.goldId}")
 
@@ -99,6 +99,7 @@ object KgsDatabaseAccessor {
             .addParameter("size", game.size)
             .addParameter("komi", game.komi)
             .addParameter("handicap", game.handicap)
+            .addParameter("ranked", game.ranked)
             .addParameter("longGame", game.longGame)
             .addParameter("result", game.result)
             .addParameter("sgf", game.sgf)
