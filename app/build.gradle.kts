@@ -41,6 +41,8 @@ dependencies {
     implementation(project(":gold"))
     implementation(project(":fgc"))
 
+    implementation(project(":ping"))
+
     implementation(libs.commons.net)
     implementation(libs.gson)
     implementation(libs.hikari)

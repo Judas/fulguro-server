@@ -8,5 +8,8 @@ include("fox")
 include("igs")
 include("ffg")
 include("egf")
+
 include("gold")
 include("fgc")
+
+include("ping")

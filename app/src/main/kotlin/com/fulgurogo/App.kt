@@ -11,6 +11,7 @@ import com.fulgurogo.gold.GoldModule
 import com.fulgurogo.igs.IgsModule
 import com.fulgurogo.kgs.KgsModule
 import com.fulgurogo.ogs.OgsModule
+import com.fulgurogo.ping.PingModule
 
 const val TAG = "OldAppModule"
 
@@ -32,15 +33,14 @@ fun main() {
     // Community modules
     GoldModule.init()
     FgcModule.init()
-    // TODO FgcModule (level stability for FGC tournaments)
     // TODO API module
 
     // TODO HouseModule
     // TODO CardsModule
 
     // Utility modules
+    PingModule.init()
     // TODO CleanupModule (remove old users, users with failed linked accounts etc...)
-    // TODO frontend ping module (every 10 minutes)
 
 //    // Launching server API
 //    Javalin
