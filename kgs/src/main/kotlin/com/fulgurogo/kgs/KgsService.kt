@@ -133,9 +133,10 @@ class KgsService : PeriodicFlowService(0, 2) {
 
             // Game type => skip wrong types
             // challenge, demonstration, review, rengo_review, teaching, simul, rengo, free, ranked, tournament
-            val gameType = columns[5].text().trim()
+            val gameType = columns[5].text().trim().lowercase()
             if (listOf("challenge", "demonstration", "review", "rengo_review", "teaching", "rengo").contains(gameType))
                 return@mapNotNull null
+            val ranked = gameType == "ranked"
 
             // SGF Link => Skip private games
             val sgfLink = columns[0].select("a").firstOrNull()?.attr("href")
@@ -171,6 +172,7 @@ class KgsService : PeriodicFlowService(0, 2) {
                 size = size,
                 komi = komi,
                 handicap = handicap,
+                ranked = ranked,
                 longGame = isLongGame,
                 result = result,
                 sgf = sgf

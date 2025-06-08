@@ -120,6 +120,7 @@ class OgsService : PeriodicFlowService(0, 5) {
                 size = it.width,
                 komi = it.komi.toDouble(),
                 handicap = it.handicap,
+                ranked = it.ranked,
                 longGame = it.isLongGame(),
                 result = result,
                 sgf = sgf

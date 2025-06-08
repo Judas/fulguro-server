@@ -14,6 +14,7 @@ data class OgsApiGame(
     val width: Int = 0,
     val height: Int = 0,
     val handicap: Int = 0,
+    val ranked: Boolean = false,
     val komi: String = "",
     val rengo: Boolean = false,
     val outcome: String = "",

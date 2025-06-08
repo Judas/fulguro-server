@@ -110,6 +110,7 @@ class OgsRealTimeService : PeriodicFlowService(0, 10), OgsWsClient.Listener {
             size = gameData.width,
             komi = gameData.komi.toDouble(),
             handicap = gameData.handicap,
+            ranked = gameData.ranked,
             longGame = gameData.isLongGame(),
             result = result,
             sgf = sgf

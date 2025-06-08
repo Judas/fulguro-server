@@ -18,6 +18,7 @@ data class FoxGame(
     val size: Int,
     val komi: Double,
     val handicap: Int,
+    val ranked: Boolean,
     val longGame: Boolean,
     val result: String, // black / white / jigo / unfinished
     val sgf: String

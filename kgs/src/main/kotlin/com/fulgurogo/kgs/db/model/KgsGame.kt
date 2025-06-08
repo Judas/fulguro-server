@@ -15,6 +15,7 @@ data class KgsGame(
     val size: Int,
     val komi: Float,
     val handicap: Int,
+    val ranked: Boolean,
     val longGame: Boolean,
     val result: String, // black / white / jigo / unfinished
     val sgf: String

@@ -111,6 +111,7 @@ class FoxService : PeriodicFlowService(0, 60) {
                 size = it.settings.size,
                 komi = it.settings.komi * 2, // Fox uses half komi...
                 handicap = it.settings.handicap,
+                ranked = false, // Everything is ranked on FOX but we exclude it from FGC validity
                 longGame = timeLimit >= 1200,
                 result = result,
                 sgf = sgf

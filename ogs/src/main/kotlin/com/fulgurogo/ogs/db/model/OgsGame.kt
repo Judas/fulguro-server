@@ -19,6 +19,7 @@ data class OgsGame(
     val komi: Double,
     val handicap: Int,
     val longGame: Boolean,
+    val ranked: Boolean,
     val result: String, // black / white / jigo / unfinished
     val sgf: String
 ) {
