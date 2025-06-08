@@ -13,7 +13,7 @@ ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8mb4;
 
 INSERT INTO `discord_user_info`
-  SELECT u.discord_id, u.name AS `discord_name`, u.avatar AS `discord_avatar`, NULL AS `updated`, NULL AS `error`
+  SELECT u.discord_id, u.name AS `discord_name`, u.avatar AS `discord_avatar`, NULL AS `updated`, 0 AS `error`
   FROM `users` AS u
   WHERE u.name IS NOT NULL AND u.avatar IS NOT NULL;
 
@@ -32,7 +32,7 @@ ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8mb4;
 
 INSERT INTO `kgs_user_info`
-  SELECT u.discord_id, u.kgs_id, "?" AS `kgs_rank`, NULL AS `updated`, NULL AS `error`
+  SELECT u.discord_id, u.kgs_id, "?" AS `kgs_rank`, NULL AS `updated`, 0 AS `error`
   FROM `users` AS u
   WHERE `kgs_id` IS NOT NULL;
 
@@ -71,7 +71,7 @@ ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8mb4;
 
 INSERT INTO `ogs_user_info`
-  SELECT u.discord_id, u.ogs_id, "" AS `ogs_name`, "?" AS `ogs_rank`, NULL AS `updated`, NULL AS `error`
+  SELECT u.discord_id, u.ogs_id, "" AS `ogs_name`, "?" AS `ogs_rank`, NULL AS `updated`, 0 AS `error`
   FROM `users` AS u
   WHERE `ogs_id` IS NOT NULL;
 
@@ -113,7 +113,7 @@ ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8mb4;
 
 INSERT INTO `fox_user_info`
-  SELECT u.discord_id, -1 AS `fox_id`, u.fox_pseudo AS `fox_name`, "?" AS `fox_rank`, NULL AS `updated`, NULL AS `error`
+  SELECT u.discord_id, -1 AS `fox_id`, u.fox_pseudo AS `fox_name`, "?" AS `fox_rank`, NULL AS `updated`, 0 AS `error`
   FROM `users` AS u
   WHERE `fox_pseudo` IS NOT NULL;
 
@@ -154,7 +154,7 @@ ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8mb4;
 
 INSERT INTO `igs_user_info`
-  SELECT u.discord_id, u.igs_id, "?" AS `igs_rank`, NULL AS `updated`, NULL AS `error`
+  SELECT u.discord_id, u.igs_id, "?" AS `igs_rank`, NULL AS `updated`, 0 AS `error`
   FROM `users` AS u
   WHERE `igs_id` IS NOT NULL;
 
@@ -174,7 +174,7 @@ ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8mb4;
 
 INSERT INTO `ffg_user_info`
-  SELECT u.discord_id, u.ffg_id, "" AS `ffg_name`, "" AS `ffg_rank`, NULL AS `updated`, NULL AS `error`
+  SELECT u.discord_id, u.ffg_id, "" AS `ffg_name`, "" AS `ffg_rank`, NULL AS `updated`, 0 AS `error`
   FROM `users` AS u
   WHERE `ffg_id` IS NOT NULL;
 
@@ -194,7 +194,7 @@ ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8mb4;
 
 INSERT INTO `egf_user_info`
-  SELECT u.discord_id, u.egf_id, "" AS `egf_name`, "" AS `egf_rank`, NULL AS `updated`, NULL AS `error`
+  SELECT u.discord_id, u.egf_id, "" AS `egf_name`, "" AS `egf_rank`, NULL AS `updated`, 0 AS `error`
   FROM `users` AS u
   WHERE `egf_id` IS NOT NULL;
 
@@ -231,6 +231,6 @@ CREATE TABLE `gold_ratings` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT INTO `gold_ratings`
-  SELECT u.discord_id, 0 AS `rating`, 0 AS `tier_rank`, NULL AS `updated`, NULL AS `error`
+  SELECT u.discord_id, 0 AS `rating`, 0 AS `tier_rank`, NULL AS `updated`, 0 AS `error`
   FROM `users` AS u
   WHERE `discord_id` IS NOT NULL;
