@@ -28,20 +28,21 @@ noArg {
 }
 
 dependencies {
-    implementation(project(":common"))
-    implementation(project(":discord"))
+    implementation(project(":modules:common"))
+    implementation(project(":modules:discord"))
 
-    implementation(project(":kgs"))
-    implementation(project(":ogs"))
-    implementation(project(":fox"))
-    implementation(project(":igs"))
-    implementation(project(":ffg"))
-    implementation(project(":egf"))
+    implementation(project(":modules:kgs"))
+    implementation(project(":modules:ogs"))
+    implementation(project(":modules:fox"))
+    implementation(project(":modules:igs"))
+    implementation(project(":modules:ffg"))
+    implementation(project(":modules:egf"))
 
-    implementation(project(":gold"))
-    implementation(project(":fgc"))
+    implementation(project(":modules:gold"))
+    implementation(project(":modules:fgc"))
 
-    implementation(project(":ping"))
+    implementation(project(":modules:ping"))
+    implementation(project(":modules:clean"))
 
     implementation(libs.commons.net)
     implementation(libs.gson)

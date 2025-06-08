@@ -1,5 +1,6 @@
 package com.fulgurogo
 
+import com.fulgurogo.clean.CleanModule
 import com.fulgurogo.common.config.Config
 import com.fulgurogo.common.db.ssh.SSHConnector
 import com.fulgurogo.discord.DiscordModule
@@ -40,7 +41,7 @@ fun main() {
 
     // Utility modules
     PingModule.init()
-    // TODO CleanupModule (remove old users, users with failed linked accounts etc...)
+    CleanModule.init()
 
 //    // Launching server API
 //    Javalin
