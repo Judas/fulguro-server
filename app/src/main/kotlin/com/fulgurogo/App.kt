@@ -15,8 +15,6 @@ import com.fulgurogo.kgs.KgsModule
 import com.fulgurogo.ogs.OgsModule
 import com.fulgurogo.ping.PingModule
 
-const val TAG = "OldAppModule"
-
 fun main() {
     val isDebug = Config.get("debug").toBoolean()
 
