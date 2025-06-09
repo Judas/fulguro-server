@@ -12,6 +12,7 @@ import org.sql2o.Sql2o
 object GoldDatabaseAccessor {
     private const val TIERS_TABLE = "gold_tiers"
     private const val RATINGS_TABLE = "gold_ratings"
+    private const val RANKS_VIEW = "gold_ranks"
 
     private val dao: Sql2o = DatabaseAccessor.dao().apply {
         // MySQL column name => POJO variable name
@@ -47,15 +48,7 @@ object GoldDatabaseAccessor {
     }
 
     fun userRanks(stale: GoldPlayer): UserRanks? = dao.open().use { connection ->
-        val query = "SELECT discord.discord_id, kgs_rank, ogs_rank, fox_rank, igs_rank, ffg_rank, egf_rank " +
-                " FROM discord_user_info AS discord " +
-                " LEFT JOIN kgs_user_info AS kgs ON discord.discord_id = kgs.discord_id " +
-                " LEFT JOIN ogs_user_info AS ogs ON discord.discord_id = ogs.discord_id " +
-                " LEFT JOIN fox_user_info AS fox ON discord.discord_id = fox.discord_id " +
-                " LEFT JOIN igs_user_info AS igs ON discord.discord_id = igs.discord_id " +
-                " LEFT JOIN ffg_user_info AS ffg ON discord.discord_id = ffg.discord_id " +
-                " LEFT JOIN egf_user_info AS egf ON discord.discord_id = egf.discord_id " +
-                " WHERE discord.discord_id = :discordId"
+        val query = "SELECT * FROM gold_ranks WHERE discord.discord_id = :discordId"
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)

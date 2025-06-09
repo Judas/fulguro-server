@@ -4,7 +4,7 @@ import com.fulgurogo.clean.db.CleanDatabaseAccessor
 import com.fulgurogo.common.service.PeriodicFlowService
 import com.fulgurogo.discord.db.DiscordDatabaseAccessor
 
-class CleanService : PeriodicFlowService(0, 600) {
+class CleanService : PeriodicFlowService(300, 600) {
     private var processing = false
 
     override fun onTick() {

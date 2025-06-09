@@ -238,6 +238,17 @@ INSERT INTO `gold_ratings`
   FROM `users` AS u
   WHERE `discord_id` IS NOT NULL;
 
+DROP VIEW IF EXISTS `gold_ranks`;
+CREATE VIEW `gold_ranks` AS
+  SELECT discord.discord_id, kgs_rank, ogs_rank, fox_rank, igs_rank, ffg_rank, egf_rank
+  FROM discord_user_info AS discord
+  LEFT JOIN kgs_user_info AS kgs ON discord.discord_id = kgs.discord_id
+  LEFT JOIN ogs_user_info AS ogs ON discord.discord_id = ogs.discord_id
+  LEFT JOIN fox_user_info AS fox ON discord.discord_id = fox.discord_id
+  LEFT JOIN igs_user_info AS igs ON discord.discord_id = igs.discord_id
+  LEFT JOIN ffg_user_info AS ffg ON discord.discord_id = ffg.discord_id
+  LEFT JOIN egf_user_info AS egf ON discord.discord_id = egf.discord_id
+
 -- FGC
 
 DROP TABLE IF EXISTS `fgc_validity`;
