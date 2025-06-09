@@ -1,10 +1,8 @@
 # Fulguro Server
 
-App hosting several services for the users of the FulguroGo Discord community.
-It includes a Discord bot allwing users to :
+This app hosts several services for the FulguroGo Discord community:
 
-- link their account to several go game servers
-- list their recent games
-- participate in community events
-
-The app also hosts the API for the Go Ladder for Discord (GOLD) project.
+- profile aggregator (KGS/OGS/FOX/IGS/FFG/EGF)
+- games aggregator (KGS/OGS/FOX)
+- rating evaluation to custom ladder tiers
+- API for the frontend website
