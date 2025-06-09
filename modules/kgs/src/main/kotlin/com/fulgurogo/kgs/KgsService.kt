@@ -114,11 +114,13 @@ class KgsService : PeriodicFlowService(0, 5) {
             val columns = row.select("td").asList()
             if (columns.size != 7) return@mapNotNull null
 
-            // Date
+            // Date => skip games older than 32 days
             val dateString = columns[4].text().trim()
             val sdf = SimpleDateFormat("M/d/y h:mm a")
             sdf.timeZone = TimeZone.getTimeZone("GMT")
             val date = sdf.parse(dateString, ParsePosition(0))
+            val now = ZonedDateTime.now(DATE_ZONE)
+            if (now.minusDays(32).toDate().after(date)) return@mapNotNull null
 
             // Game result => keep unfinished games to alert new games on Discord
             val resultString = columns[6].text().trim()

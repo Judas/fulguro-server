@@ -87,8 +87,10 @@ class FoxService : PeriodicFlowService(0, 60) {
             val result = it.result()
             if (result == null) return@mapNotNull null
 
-            // Date
+            // Date => skip games older than 32 days
             val date = it.date()
+            val now = ZonedDateTime.now(DATE_ZONE)
+            if (now.minusDays(32).toDate().after(date)) return@mapNotNull null
 
             // Fetch SGF
             val sgf = fetchSgf(it)
