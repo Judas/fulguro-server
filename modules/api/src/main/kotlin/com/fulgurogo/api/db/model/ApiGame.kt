@@ -1,21 +1,22 @@
 package com.fulgurogo.api.db.model
 
-import com.fulgurogo.common.utilities.GenerateNoArgConstructor
+import java.util.*
 
-@GenerateNoArgConstructor
 data class ApiGame(
-    val id: String,
-    val date: String,
-    val server: String,
+    val goldId: String,
+    val date: Date,
+    val black: ApiGameParticipant,
+    val white: ApiGameParticipant,
+    val result: String,
+    val sgf: String,
+    val gameLink: String
+)
 
-    val gameLink: String? = null,
-    val sgf: String? = null,
-
-    val handicap: Int? = null,
-    val komi: Double? = null,
-    val longGame: Boolean? = null,
-    val finished: Boolean,
-
-//    val black: ApiGameParticipant,
-//    val white: ApiGameParticipant
+data class ApiGameParticipant(
+    val discordId: String,
+    val discordName: String,
+    val discordAvatar: String,
+    val rating: Double,
+    val tierRank: Int,
+    val tierName: String
 )

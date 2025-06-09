@@ -1,8 +1,6 @@
 package com.fulgurogo.egf.db
 
 import com.fulgurogo.common.db.DatabaseAccessor
-import com.fulgurogo.common.logger.log
-import com.fulgurogo.egf.EgfModule.TAG
 import com.fulgurogo.egf.db.model.EgfUserInfo
 import org.sql2o.Connection
 import org.sql2o.Sql2o
@@ -26,6 +24,27 @@ object EgfDatabaseAccessor {
             .createQuery(query)
             .throwOnMappingFailure(false)
             .executeAndFetchFirst(EgfUserInfo::class.java)
+    }
+
+    fun user(egfId: Int): EgfUserInfo? = dao.open().use { connection ->
+        val query = "SELECT * FROM $USER_TABLE WHERE egf_id = :egfId LIMIT 1"
+        connection
+            .createQuery(query)
+            .throwOnMappingFailure(false)
+            .addParameter("egfId", egfId)
+            .executeAndFetchFirst(EgfUserInfo::class.java)
+    }
+
+    fun addUser(discordId: String, egfId: String): Connection = dao.open().use { connection ->
+        val query = "INSERT INTO ${USER_TABLE}(discord_id, egf_id, egf_name, egf_rank, updated, error) " +
+                " VALUES (:discordId, :egfId, '?', '?', 0, 0) "
+
+        connection
+            .createQuery(query)
+            .throwOnMappingFailure(false)
+            .addParameter("discordId", discordId)
+            .addParameter("egfId", egfId)
+            .executeUpdate()
     }
 
     fun markAsError(egfUserInfo: EgfUserInfo): Connection = dao.open().use { connection ->

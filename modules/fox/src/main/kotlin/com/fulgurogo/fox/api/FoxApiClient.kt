@@ -42,6 +42,7 @@ object FoxApiClient {
         } else {
             val error = Exception("GET FAILURE " + response.code)
             log(TAG, error.message!!, error)
+            response.close()
             throw error
         }
     }

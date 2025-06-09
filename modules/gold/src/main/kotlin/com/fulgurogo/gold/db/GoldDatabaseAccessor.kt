@@ -1,8 +1,6 @@
 package com.fulgurogo.gold.db
 
 import com.fulgurogo.common.db.DatabaseAccessor
-import com.fulgurogo.common.logger.log
-import com.fulgurogo.gold.GoldModule.TAG
 import com.fulgurogo.gold.db.model.GoldPlayer
 import com.fulgurogo.gold.db.model.GoldTier
 import com.fulgurogo.gold.db.model.UserRanks
@@ -55,6 +53,14 @@ object GoldDatabaseAccessor {
             .executeAndFetchFirst(UserRanks::class.java)
     }
 
+    fun tiers(): List<GoldTier> = dao.open().use { connection ->
+        val query = "SELECT * FROM $TIERS_TABLE"
+        connection
+            .createQuery(query)
+            .throwOnMappingFailure(false)
+            .executeAndFetch(GoldTier::class.java)
+    }
+
     fun tierFor(rating: Double): GoldTier = dao.open().use { connection ->
         val query = "SELECT * FROM $TIERS_TABLE " +
                 " WHERE (min <= :rating AND :rating < max) " +
@@ -64,6 +70,17 @@ object GoldDatabaseAccessor {
             .throwOnMappingFailure(false)
             .addParameter("rating", rating)
             .executeAndFetchFirst(GoldTier::class.java)
+    }
+
+    fun addPlayer(discordId: String): Connection = dao.open().use { connection ->
+        val query = "INSERT INTO ${RATINGS_TABLE}(discord_id, rating, tier_rank, updated, error) " +
+                " VALUES (:discordId, 0, 0, 0, 0) "
+
+        connection
+            .createQuery(query)
+            .throwOnMappingFailure(false)
+            .addParameter("discordId", discordId)
+            .executeUpdate()
     }
 
     fun updatePlayer(goldPlayer: GoldPlayer): Connection = dao.open().use { connection ->

@@ -39,6 +39,28 @@ object FoxDatabaseAccessor {
             .executeAndFetchFirst(FoxUserInfo::class.java)
     }
 
+    fun user(foxName: Int): FoxUserInfo? = dao.open().use { connection ->
+        val query = "SELECT * FROM $USER_TABLE WHERE fox_name = :foxName LIMIT 1"
+        connection
+            .createQuery(query)
+            .throwOnMappingFailure(false)
+            .addParameter("foxName", foxName)
+            .executeAndFetchFirst(FoxUserInfo::class.java)
+    }
+
+
+    fun addUser(discordId: String, foxName: String): Connection = dao.open().use { connection ->
+        val query = "INSERT INTO ${USER_TABLE}(discord_id, fox_id, fox_name, fox_rank, updated, error) " +
+                " VALUES (:discordId, '?', :foxName, '?', 0, 0) "
+
+        connection
+            .createQuery(query)
+            .throwOnMappingFailure(false)
+            .addParameter("discordId", discordId)
+            .addParameter("foxName", foxName)
+            .executeUpdate()
+    }
+
     fun stalestUser(): FoxUserInfo? = dao.open().use { connection ->
         val query = "SELECT * FROM $USER_TABLE ORDER BY updated"
         connection
@@ -92,7 +114,7 @@ object FoxDatabaseAccessor {
 
         log(TAG, "addGame [$query] ${game.id}")
 
-            connection
+        connection
             .createQuery(query)
             .addParameter("goldId", game.goldId)
             .addParameter("id", game.id)

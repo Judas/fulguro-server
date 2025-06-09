@@ -39,6 +39,18 @@ object OgsDatabaseAccessor {
             .executeAndFetchFirst(OgsUserInfo::class.java)
     }
 
+    fun addUser(discordId: String, ogsId: String): Connection = dao.open().use { connection ->
+        val query = "INSERT INTO ${USER_TABLE}(discord_id, ogs_id, ogs_name, ogs_rank, updated, error) " +
+                " VALUES (:discordId, :ogsId, '?', '?', 0, 0) "
+
+        connection
+            .createQuery(query)
+            .throwOnMappingFailure(false)
+            .addParameter("discordId", discordId)
+            .addParameter("ogsId", ogsId)
+            .executeUpdate()
+    }
+
     fun stalestUser(): OgsUserInfo? = dao.open().use { connection ->
         val query = "SELECT * FROM $USER_TABLE ORDER BY updated"
         connection
@@ -126,7 +138,7 @@ object OgsDatabaseAccessor {
                 " SET result = :result, sgf = :sgf " +
                 " WHERE gold_id = :goldId"
 
-        log(TAG, "finishGame [$query] ${game.id}")
+        log(TAG, "finishGame [$query] ${game.goldId}")
 
         connection
             .createQuery(query)

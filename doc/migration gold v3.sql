@@ -311,3 +311,53 @@ CREATE VIEW `api_accounts` AS
   LEFT JOIN `igs_user_info` AS `igs` ON `discord`.`discord_id` = `igs`.`discord_id`
   LEFT JOIN `ffg_user_info` AS `ffg` ON `discord`.`discord_id` = `ffg`.`discord_id`
   LEFT JOIN `egf_user_info` AS `egf` ON `discord`.`discord_id` = `egf`.`discord_id`
+
+DROP VIEW IF EXISTS `api_games`;
+CREATE VIEW `api_games` AS
+  SELECT `game`.`gold_id`, `game`.`date`, `game`.`result`, `game`.`sgf`,
+  `black_discord`.`discord_id` AS `black_discord_id`, `black_discord`.`discord_name` AS `black_discord_name`, `black_discord`.`discord_avatar` AS `black_discord_avatar`,
+  `black_gold`.`rating` AS `black_rating`, `black_gold`.`tier_rank` AS `black_tier_rank`, `black_tier`.`name` AS `black_tier_name`,
+  `white_discord`.`discord_id` AS `white_discord_id`, `white_discord`.`discord_name` AS `white_discord_name`, `white_discord`.`discord_avatar` AS `white_discord_avatar`,
+  `white_gold`.`rating` AS `white_rating`, `white_gold`.`tier_rank` AS `white_tier_rank`, `white_tier`.`name` AS `white_tier_name`
+  FROM `ogs_games` AS `game`
+  INNER JOIN `ogs_user_info` AS `black_ogs` ON `game`.`black_id` = `black_ogs`.`ogs_id`
+  INNER JOIN `discord_user_info` AS `black_discord` ON `black_ogs`.`discord_id` = `black_discord`.`discord_id`
+  INNER JOIN `gold_ratings` AS `black_gold` ON `black_discord`.`discord_id` = `black_gold`.`discord_id`
+  INNER JOIN `gold_tiers` AS `black_tier` ON `black_gold`.`tier_rank` = `black_tier`.`rank`
+  INNER JOIN `ogs_user_info` AS `white_ogs` ON `game`.`white_id` = `white_ogs`.`ogs_id`
+  INNER JOIN `discord_user_info` AS `white_discord` ON `white_ogs`.`discord_id` = `white_discord`.`discord_id`
+  INNER JOIN `gold_ratings` AS `white_gold` ON `white_discord`.`discord_id` = `white_gold`.`discord_id`
+  INNER JOIN `gold_tiers` AS `white_tier` ON `white_gold`.`tier_rank` = `white_tier`.`rank`
+  WHERE `result` != "unfinished"
+  UNION
+  SELECT `game`.`gold_id`, `game`.`date`, `game`.`result`, `game`.`sgf`,
+  `black_discord`.`discord_id` AS `black_discord_id`, `black_discord`.`discord_name` AS `black_discord_name`, `black_discord`.`discord_avatar` AS `black_discord_avatar`,
+  `black_gold`.`rating` AS `black_rating`, `black_gold`.`tier_rank` AS `black_tier_rank`, `black_tier`.`name` AS `black_tier_name`,
+  `white_discord`.`discord_id` AS `white_discord_id`, `white_discord`.`discord_name` AS `white_discord_name`, `white_discord`.`discord_avatar` AS `white_discord_avatar`,
+  `white_gold`.`rating` AS `white_rating`, `white_gold`.`tier_rank` AS `white_tier_rank`, `white_tier`.`name` AS `white_tier_name`
+  FROM `kgs_games` AS `game`
+  INNER JOIN `kgs_user_info` AS `black_kgs` ON `game`.`black_id` = `black_kgs`.`kgs_id`
+  INNER JOIN `discord_user_info` AS `black_discord` ON `black_kgs`.`discord_id` = `black_discord`.`discord_id`
+  INNER JOIN `gold_ratings` AS `black_gold` ON `black_discord`.`discord_id` = `black_gold`.`discord_id`
+  INNER JOIN `gold_tiers` AS `black_tier` ON `black_gold`.`tier_rank` = `black_tier`.`rank`
+  INNER JOIN `kgs_user_info` AS `white_kgs` ON `game`.`white_id` = `white_kgs`.`kgs_id`
+  INNER JOIN `discord_user_info` AS `white_discord` ON `white_kgs`.`discord_id` = `white_discord`.`discord_id`
+  INNER JOIN `gold_ratings` AS `white_gold` ON `white_discord`.`discord_id` = `white_gold`.`discord_id`
+  INNER JOIN `gold_tiers` AS `white_tier` ON `white_gold`.`tier_rank` = `white_tier`.`rank`
+  WHERE `result` != "unfinished"
+  UNION
+  SELECT `game`.`gold_id`, `game`.`date`, `game`.`result`, `game`.`sgf`,
+  `black_discord`.`discord_id` AS `black_discord_id`, `black_discord`.`discord_name` AS `black_discord_name`, `black_discord`.`discord_avatar` AS `black_discord_avatar`,
+  `black_gold`.`rating` AS `black_rating`, `black_gold`.`tier_rank` AS `black_tier_rank`, `black_tier`.`name` AS `black_tier_name`,
+  `white_discord`.`discord_id` AS `white_discord_id`, `white_discord`.`discord_name` AS `white_discord_name`, `white_discord`.`discord_avatar` AS `white_discord_avatar`,
+  `white_gold`.`rating` AS `white_rating`, `white_gold`.`tier_rank` AS `white_tier_rank`, `white_tier`.`name` AS `white_tier_name`
+  FROM `fox_games` AS `game`
+  INNER JOIN `fox_user_info` AS `black_fox` ON `game`.`black_id` = `black_fox`.`fox_id`
+  INNER JOIN `discord_user_info` AS `black_discord` ON `black_fox`.`discord_id` = `black_discord`.`discord_id`
+  INNER JOIN `gold_ratings` AS `black_gold` ON `black_discord`.`discord_id` = `black_gold`.`discord_id`
+  INNER JOIN `gold_tiers` AS `black_tier` ON `black_gold`.`tier_rank` = `black_tier`.`rank`
+  INNER JOIN `fox_user_info` AS `white_fox` ON `game`.`white_id` = `white_fox`.`fox_id`
+  INNER JOIN `discord_user_info` AS `white_discord` ON `white_fox`.`discord_id` = `white_discord`.`discord_id`
+  INNER JOIN `gold_ratings` AS `white_gold` ON `white_discord`.`discord_id` = `white_gold`.`discord_id`
+  INNER JOIN `gold_tiers` AS `white_tier` ON `white_gold`.`tier_rank` = `white_tier`.`rank`
+  WHERE `result` != "unfinished";

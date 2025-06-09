@@ -21,24 +21,24 @@ object ApiModule {
             }
             .start(Config.get("gold.api.port").toInt())
             .apply {
+                // Players
                 get("/gold/api/players", api::getPlayers)
                 get("/gold/api/player/{id}", api::getPlayerProfile)
-//                get("/gold/api/games", goldApi::getRecentGames)
-//                get("/gold/api/game/{id}", goldApi::getGame)
-//
-//                get("/gold/api/fgc/validation", goldApi::getFgcValidation)
-//                get("/gold/api/tiers", goldApi::getTiers)
-//                post("/gold/api/auth", goldApi::authenticateUser)
-//                get("/gold/api/auth/profile", goldApi::getAuthProfile)
-//                get("/gold/api/scan", goldApi::isScanning)
-//                get("/gold/api/accounts", goldApi::getAccounts)
-//                post("/gold/api/link", goldApi::link)
-//                delete("/gold/api/link", goldApi::unlink)
-//                get("/gold/api/exam/ranking", goldApi::examRanking)
-//                get("/gold/api/exam/titles", goldApi::examTitles)
-//                get("/gold/api/exam/history", goldApi::examHistory)
-//                get("/gold/api/exam/stats", goldApi::examStats)
-                // TODO Ad api to list all players in error for each service ?
+
+                // Games
+                get("/gold/api/games", api::getRecentGames)
+                get("/gold/api/game/{id}", api::getGame)
+
+                // Gold tiers
+                get("/gold/api/tiers", api::getTiers)
+
+                // Auth
+                post("/gold/api/auth", api::authenticateUser)
+                get("/gold/api/auth/profile", api::getAuthProfile)
+
+                // Accounts
+                get("/gold/api/accounts", api::getAccounts)
+                post("/gold/api/link", api::link)
             }
     }
 }

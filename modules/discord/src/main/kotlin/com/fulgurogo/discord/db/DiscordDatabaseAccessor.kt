@@ -42,6 +42,22 @@ object DiscordDatabaseAccessor {
             .executeUpdate()
     }
 
+    fun createUser(discordId: String, discordName: String, discordAvatar: String): Connection =
+        dao.open().use { connection ->
+            val query =
+                "INSERT INTO $USER_TABLE(discord_id, discord_name, discord_avatar, updated, error) " +
+                        " VALUES (:discordId, :discordName, :discordAvatar, NOW(), 0) " +
+                        " ON DUPLICATE KEY UPDATE " +
+                        " discord_name=VALUES(discord_name), " +
+                        " discord_avatar=VALUES(discord_avatar)"
+            connection
+                .createQuery(query)
+                .addParameter("discordId", discordId)
+                .addParameter("discordName", discordName)
+                .addParameter("discordAvatar", discordAvatar)
+                .executeUpdate()
+        }
+
     fun updateUser(discordUserInfo: DiscordUserInfo): Connection = dao.open().use { connection ->
         val query = "UPDATE $USER_TABLE SET " +
                 " discord_name = :discordName, " +

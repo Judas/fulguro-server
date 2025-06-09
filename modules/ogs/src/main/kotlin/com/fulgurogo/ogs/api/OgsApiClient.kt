@@ -52,6 +52,7 @@ object OgsApiClient {
         } else {
             val error = Exception("GET FAILURE " + response.code)
             log(TAG, error.message!!, error)
+            response.close()
             throw error
         }
     }
@@ -73,6 +74,7 @@ object OgsApiClient {
         } else {
             val error = Exception("POST FAILURE " + response.code)
             log(TAG, error.message!!, error)
+            response.close()
             throw error
         }
     }

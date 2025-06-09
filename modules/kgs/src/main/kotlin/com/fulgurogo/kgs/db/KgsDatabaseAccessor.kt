@@ -36,6 +36,18 @@ object KgsDatabaseAccessor {
             .executeAndFetchFirst(KgsUserInfo::class.java)
     }
 
+    fun addUser(discordId: String, kgsId: String): Connection = dao.open().use { connection ->
+        val query = "INSERT INTO $USER_TABLE(discord_id, kgs_id, kgs_rank, updated, error) " +
+                " VALUES (:discordId, :kgsId, '?', 0, 0) "
+
+        connection
+            .createQuery(query)
+            .throwOnMappingFailure(false)
+            .addParameter("discordId", discordId)
+            .addParameter("kgsId", kgsId)
+            .executeUpdate()
+    }
+
     fun stalestUser(): KgsUserInfo? = dao.open().use { connection ->
         val query = "SELECT * FROM $USER_TABLE ORDER BY updated"
         connection

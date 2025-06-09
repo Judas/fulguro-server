@@ -1,8 +1,6 @@
 package com.fulgurogo.ffg.db
 
 import com.fulgurogo.common.db.DatabaseAccessor
-import com.fulgurogo.common.logger.log
-import com.fulgurogo.ffg.FfgModule.TAG
 import com.fulgurogo.ffg.db.model.FfgUserInfo
 import org.sql2o.Connection
 import org.sql2o.Sql2o
@@ -26,6 +24,27 @@ object FfgDatabaseAccessor {
             .createQuery(query)
             .throwOnMappingFailure(false)
             .executeAndFetchFirst(FfgUserInfo::class.java)
+    }
+
+    fun user(ffgId: Int): FfgUserInfo? = dao.open().use { connection ->
+        val query = "SELECT * FROM $USER_TABLE WHERE ffg_id = :ffgId LIMIT 1"
+        connection
+            .createQuery(query)
+            .throwOnMappingFailure(false)
+            .addParameter("ffgId", ffgId)
+            .executeAndFetchFirst(FfgUserInfo::class.java)
+    }
+
+    fun addUser(discordId: String, ffgId: String): Connection = dao.open().use { connection ->
+        val query = "INSERT INTO ${USER_TABLE}(discord_id, ffg_id, ffg_name, ffg_rank, updated, error) " +
+                " VALUES (:discordId, :ffgId, '?', '?', 0, 0) "
+
+        connection
+            .createQuery(query)
+            .throwOnMappingFailure(false)
+            .addParameter("discordId", discordId)
+            .addParameter("ffgId", ffgId)
+            .executeUpdate()
     }
 
     fun markAsError(ffgUserInfo: FfgUserInfo): Connection = dao.open().use { connection ->

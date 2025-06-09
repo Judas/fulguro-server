@@ -1,8 +1,6 @@
 package com.fulgurogo.igs.db
 
 import com.fulgurogo.common.db.DatabaseAccessor
-import com.fulgurogo.common.logger.log
-import com.fulgurogo.igs.IgsModule.TAG
 import com.fulgurogo.igs.db.model.IgsUserInfo
 import org.sql2o.Connection
 import org.sql2o.Sql2o
@@ -25,6 +23,27 @@ object IgsDatabaseAccessor {
             .createQuery(query)
             .throwOnMappingFailure(false)
             .executeAndFetchFirst(IgsUserInfo::class.java)
+    }
+
+    fun user(igsId: Int): IgsUserInfo? = dao.open().use { connection ->
+        val query = "SELECT * FROM $USER_TABLE WHERE igs_id = :igsId LIMIT 1"
+        connection
+            .createQuery(query)
+            .throwOnMappingFailure(false)
+            .addParameter("igsId", igsId)
+            .executeAndFetchFirst(IgsUserInfo::class.java)
+    }
+
+    fun addUser(discordId: String, igsId: String): Connection = dao.open().use { connection ->
+        val query = "INSERT INTO ${USER_TABLE}(discord_id, igs_id, igs_rank, updated, error) " +
+                " VALUES (:discordId, :igsId, '?', 0, 0) "
+
+        connection
+            .createQuery(query)
+            .throwOnMappingFailure(false)
+            .addParameter("discordId", discordId)
+            .addParameter("igsId", igsId)
+            .executeUpdate()
     }
 
     fun markAsError(igsUserInfo: IgsUserInfo): Connection = dao.open().use { connection ->

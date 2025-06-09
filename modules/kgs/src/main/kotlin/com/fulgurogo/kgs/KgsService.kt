@@ -24,11 +24,12 @@ import java.time.ZonedDateTime
 import java.util.*
 import java.util.concurrent.TimeUnit
 
-class KgsService : PeriodicFlowService(0, 2) {
+class KgsService : PeriodicFlowService(0, 5) {
     private val okHttpClient: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(Config.get("global.read.timeout.ms").toLong(), TimeUnit.MILLISECONDS)
         .readTimeout(Config.get("global.read.timeout.ms").toLong(), TimeUnit.MILLISECONDS)
         .cookieJar(JavaNetCookieJar(CookieManager().apply { setCookiePolicy(CookiePolicy.ACCEPT_ALL) })).build()
+    private var lastNetworkCallTime: ZonedDateTime = ZonedDateTime.now(DATE_ZONE)
 
     private var processing = false
 
@@ -113,13 +114,11 @@ class KgsService : PeriodicFlowService(0, 2) {
             val columns = row.select("td").asList()
             if (columns.size != 7) return@mapNotNull null
 
-            // Date => skip games older than 6h
+            // Date
             val dateString = columns[4].text().trim()
             val sdf = SimpleDateFormat("M/d/y h:mm a")
             sdf.timeZone = TimeZone.getTimeZone("GMT")
             val date = sdf.parse(dateString, ParsePosition(0))
-            val now = ZonedDateTime.now(DATE_ZONE)
-            if (now.minusHours(6).toDate().after(date)) return@mapNotNull null
 
             // Game result => keep unfinished games to alert new games on Discord
             val resultString = columns[6].text().trim()
@@ -141,6 +140,7 @@ class KgsService : PeriodicFlowService(0, 2) {
             // SGF Link => Skip private games
             val sgfLink = columns[0].select("a").firstOrNull()?.attr("href")
             if (sgfLink.isNullOrBlank()) return@mapNotNull null
+            ensureSpamDelay()
 
             // Fetch SGF content from link
             val sgf = fetchSgf(sgfLink)
@@ -192,11 +192,13 @@ class KgsService : PeriodicFlowService(0, 2) {
             responseBody
         } else if (allowRetry) {
             // Retry once after delay
+            response.close()
             Thread.sleep(1000L)
             log(TAG, "Fetching SGF ERROR: Waiting then retrying")
             fetchSgf(sgfLink, false)
         } else {
             // Failed twice
+            response.close()
             log(TAG, "Fetching SGF FAILURE " + response.code)
             ""
         }
@@ -221,6 +223,14 @@ class KgsService : PeriodicFlowService(0, 2) {
         }
         (name to rank)
     } ?: ("" to "?")
+
+    private fun ensureSpamDelay() {
+        // Delay to avoid spamming OGS API: ensure between 500ms & 1500ms free time
+        val now = ZonedDateTime.now(DATE_ZONE)
+        if (lastNetworkCallTime.plusSeconds(1).isAfter(now))
+            Thread.sleep(500)
+        lastNetworkCallTime = ZonedDateTime.now(DATE_ZONE)
+    }
 
     private fun notifyGame(game: KgsGame) {
         // Do not notify if game started more than 4h ago
