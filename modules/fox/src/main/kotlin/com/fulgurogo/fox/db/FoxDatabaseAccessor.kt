@@ -50,7 +50,6 @@ object FoxDatabaseAccessor {
     fun markAsError(foxUserInfo: FoxUserInfo): Connection = dao.open().use { connection ->
         val query = "UPDATE $USER_TABLE SET updated = NOW(), error = 1 WHERE discord_id = :discordId "
 
-        log(TAG, "markAsError [$query] $foxUserInfo")
         connection
             .createQuery(query)
             .addParameter("discordId", foxUserInfo.discordId)

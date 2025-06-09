@@ -37,7 +37,6 @@ object FgcDatabaseAccessor {
     fun markAsError(fgcValidity: FgcValidity): Connection = dao.open().use { connection ->
         val query = "UPDATE $VALIDITY_TABLE SET updated = NOW(), error = 1 WHERE discord_id = :discordId "
 
-        log(TAG, "markAsError [$query] $fgcValidity")
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)

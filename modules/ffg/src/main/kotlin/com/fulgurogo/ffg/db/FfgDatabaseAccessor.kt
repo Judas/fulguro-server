@@ -31,7 +31,6 @@ object FfgDatabaseAccessor {
     fun markAsError(ffgUserInfo: FfgUserInfo): Connection = dao.open().use { connection ->
         val query = "UPDATE $USER_TABLE SET updated = NOW(), error = 1 WHERE discord_id = :discordId "
 
-        log(TAG, "markAsError [$query] $ffgUserInfo")
         connection
             .createQuery(query)
             .addParameter("discordId", ffgUserInfo.discordId)

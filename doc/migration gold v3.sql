@@ -240,14 +240,14 @@ INSERT INTO `gold_ratings`
 
 DROP VIEW IF EXISTS `gold_ranks`;
 CREATE VIEW `gold_ranks` AS
-  SELECT discord.discord_id, kgs_rank, ogs_rank, fox_rank, igs_rank, ffg_rank, egf_rank
-  FROM discord_user_info AS discord
-  LEFT JOIN kgs_user_info AS kgs ON discord.discord_id = kgs.discord_id
-  LEFT JOIN ogs_user_info AS ogs ON discord.discord_id = ogs.discord_id
-  LEFT JOIN fox_user_info AS fox ON discord.discord_id = fox.discord_id
-  LEFT JOIN igs_user_info AS igs ON discord.discord_id = igs.discord_id
-  LEFT JOIN ffg_user_info AS ffg ON discord.discord_id = ffg.discord_id
-  LEFT JOIN egf_user_info AS egf ON discord.discord_id = egf.discord_id
+  SELECT `discord`.`discord_id`, `kgs_rank`, `ogs_rank`, `fox_rank`, `igs_rank`, `ffg_rank`, `egf_rank`
+  FROM `discord_user_info` AS `discord`
+  LEFT JOIN `kgs_user_info` AS `kgs` ON `discord`.`discord_id` = `kgs`.`discord_id`
+  LEFT JOIN `ogs_user_info` AS `ogs` ON `discord`.`discord_id` = `ogs`.`discord_id`
+  LEFT JOIN `fox_user_info` AS `fox` ON `discord`.`discord_id` = `fox`.`discord_id`
+  LEFT JOIN `igs_user_info` AS `igs` ON `discord`.`discord_id` = `igs`.`discord_id`
+  LEFT JOIN `ffg_user_info` AS `ffg` ON `discord`.`discord_id` = `ffg`.`discord_id`
+  LEFT JOIN `egf_user_info` AS `egf` ON `discord`.`discord_id` = `egf`.`discord_id`;
 
 -- FGC
 
@@ -281,3 +281,33 @@ CREATE VIEW `fgc_validity_games` AS
   LEFT JOIN `kgs_user_info` AS `black` ON `game`.`black_id` = `black`.`kgs_id`
   LEFT JOIN `kgs_user_info` AS `white` ON `game`.`white_id` = `white`.`kgs_id`
   WHERE DATEDIFF(NOW(), `date`) <= 30 AND `size` = 19 AND `handicap` = 0 AND `result` != "unfinished" AND 6 < `komi` AND `komi` < 9;
+
+-- API
+
+DROP VIEW IF EXISTS `api_players`;
+CREATE VIEW `api_players` AS
+  SELECT
+  `discord`.`discord_id`, `discord`.`discord_name`, `discord`.`discord_avatar`,
+  `gold`.`rating`, `gold`.`tier_rank`, `tier`.`name` AS `tier_name`,
+  `fgc`.`total_ranked_games`, `fgc`.`gold_ranked_games`
+  FROM `discord_user_info` AS `discord`
+  LEFT JOIN `gold_ratings` AS `gold` ON `gold`.`discord_id` = `discord`.`discord_id`
+  LEFT JOIN `gold_tiers` AS `tier` ON `gold`.`tier_rank` = `tier`.`rank`
+  LEFT JOIN `fgc_validity` AS `fgc` ON `fgc`.`discord_id` = `discord`.`discord_id`;
+
+DROP VIEW IF EXISTS `api_accounts`;
+CREATE VIEW `api_accounts` AS
+  SELECT `discord`.`discord_id`,
+  `kgs_id`, `kgs_rank`, 
+  `ogs_id`, `ogs_name`, `ogs_rank`, 
+  `fox_id`, `fox_name`, `fox_rank`, 
+  `igs_id`, `igs_rank`, 
+  `ffg_id`, `ffg_name`, `ffg_rank`, 
+  `egf_id`, `egf_name`, `egf_rank`
+  FROM `discord_user_info` AS `discord`
+  LEFT JOIN `kgs_user_info` AS `kgs` ON `discord`.`discord_id` = `kgs`.`discord_id`
+  LEFT JOIN `ogs_user_info` AS `ogs` ON `discord`.`discord_id` = `ogs`.`discord_id`
+  LEFT JOIN `fox_user_info` AS `fox` ON `discord`.`discord_id` = `fox`.`discord_id`
+  LEFT JOIN `igs_user_info` AS `igs` ON `discord`.`discord_id` = `igs`.`discord_id`
+  LEFT JOIN `ffg_user_info` AS `ffg` ON `discord`.`discord_id` = `ffg`.`discord_id`
+  LEFT JOIN `egf_user_info` AS `egf` ON `discord`.`discord_id` = `egf`.`discord_id`

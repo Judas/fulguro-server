@@ -1,8 +1,6 @@
 package com.fulgurogo.discord.db
 
 import com.fulgurogo.common.db.DatabaseAccessor
-import com.fulgurogo.common.logger.log
-import com.fulgurogo.discord.DiscordModule.TAG
 import com.fulgurogo.discord.db.model.DiscordUserInfo
 import org.sql2o.Connection
 import org.sql2o.Sql2o
@@ -38,7 +36,6 @@ object DiscordDatabaseAccessor {
     fun markAsError(kgsUserInfo: DiscordUserInfo): Connection = dao.open().use { connection ->
         val query = "UPDATE $USER_TABLE SET updated = NOW(), error = 1 WHERE discord_id = :discordId "
 
-        log(TAG, "markAsError [$query] $kgsUserInfo")
         connection
             .createQuery(query)
             .addParameter("discordId", kgsUserInfo.discordId)

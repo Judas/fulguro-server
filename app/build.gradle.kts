@@ -40,6 +40,7 @@ dependencies {
 
     implementation(project(":modules:gold"))
     implementation(project(":modules:fgc"))
+    implementation(project(":modules:api"))
 
     implementation(project(":modules:ping"))
     implementation(project(":modules:clean"))

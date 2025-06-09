@@ -39,7 +39,6 @@ object GoldDatabaseAccessor {
     fun markAsError(goldPlayer: GoldPlayer): Connection = dao.open().use { connection ->
         val query = "UPDATE $RATINGS_TABLE SET updated = NOW(), error = 1 WHERE discord_id = :discordId "
 
-        log(TAG, "markAsError [$query] $goldPlayer")
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)
@@ -48,7 +47,7 @@ object GoldDatabaseAccessor {
     }
 
     fun userRanks(stale: GoldPlayer): UserRanks? = dao.open().use { connection ->
-        val query = "SELECT * FROM gold_ranks WHERE discord.discord_id = :discordId"
+        val query = "SELECT * FROM $RANKS_VIEW WHERE discord_id = :discordId"
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)

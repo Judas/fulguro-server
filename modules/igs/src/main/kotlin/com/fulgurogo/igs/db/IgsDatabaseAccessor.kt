@@ -30,7 +30,6 @@ object IgsDatabaseAccessor {
     fun markAsError(igsUserInfo: IgsUserInfo): Connection = dao.open().use { connection ->
         val query = "UPDATE $USER_TABLE SET updated = NOW(), error = 1 WHERE discord_id = :discordId "
 
-        log(TAG, "markAsError [$query] $igsUserInfo")
         connection
             .createQuery(query)
             .addParameter("discordId", igsUserInfo.discordId)
