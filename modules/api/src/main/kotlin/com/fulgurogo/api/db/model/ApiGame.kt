@@ -1,15 +1,12 @@
 package com.fulgurogo.api.db.model
 
-import java.util.*
-
 data class ApiGame(
     val goldId: String,
-    val date: Date,
+    val date: String,
     val black: ApiGameParticipant,
     val white: ApiGameParticipant,
     val result: String,
-    val sgf: String,
-    val gameLink: String
+    val sgf: String
 )
 
 data class ApiGameParticipant(

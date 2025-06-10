@@ -38,7 +38,7 @@ object KgsDatabaseAccessor {
 
     fun addUser(discordId: String, kgsId: String): Connection = dao.open().use { connection ->
         val query = "INSERT INTO $USER_TABLE(discord_id, kgs_id, kgs_rank, updated, error) " +
-                " VALUES (:discordId, :kgsId, '?', 0, 0) "
+                " VALUES (:discordId, :kgsId, '?', '2025-01-01 00:00:00', 0) "
 
         connection
             .createQuery(query)

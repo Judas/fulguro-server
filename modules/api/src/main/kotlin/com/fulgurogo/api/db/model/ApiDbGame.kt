@@ -1,6 +1,7 @@
 package com.fulgurogo.api.db.model
 
 import com.fulgurogo.common.utilities.GenerateNoArgConstructor
+import java.text.SimpleDateFormat
 import java.util.*
 
 @GenerateNoArgConstructor
@@ -24,10 +25,9 @@ data class ApiDbGame(
 ) {
     fun toApiGame() = ApiGame(
         goldId = goldId,
-        date = date,
+        date = SimpleDateFormat("d MMM").format(date),
         result = result,
         sgf = sgf,
-        gameLink = "TODO",
         black = ApiGameParticipant(
             discordId = blackDiscordId,
             discordName = blackDiscordName,

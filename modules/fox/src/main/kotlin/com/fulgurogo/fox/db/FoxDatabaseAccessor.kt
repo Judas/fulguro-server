@@ -51,7 +51,7 @@ object FoxDatabaseAccessor {
 
     fun addUser(discordId: String, foxName: String): Connection = dao.open().use { connection ->
         val query = "INSERT INTO ${USER_TABLE}(discord_id, fox_id, fox_name, fox_rank, updated, error) " +
-                " VALUES (:discordId, '?', :foxName, '?', 0, 0) "
+                " VALUES (:discordId, '?', :foxName, '?', '2025-01-01 00:00:00', 0) "
 
         connection
             .createQuery(query)

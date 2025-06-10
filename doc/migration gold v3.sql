@@ -234,7 +234,7 @@ CREATE TABLE `gold_ratings` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT INTO `gold_ratings`
-  SELECT u.discord_id, 0 AS `rating`, 0 AS `tier_rank`, NULL AS `updated`, 0 AS `error`
+  SELECT u.discord_id, 0 AS `rating`, 1 AS `tier_rank`, NULL AS `updated`, 0 AS `error`
   FROM `users` AS u
   WHERE `discord_id` IS NOT NULL;
 
@@ -288,29 +288,24 @@ DROP VIEW IF EXISTS `api_players`;
 CREATE VIEW `api_players` AS
   SELECT
   `discord`.`discord_id`, `discord`.`discord_name`, `discord`.`discord_avatar`,
-  `gold`.`rating`, `gold`.`tier_rank`, `tier`.`name` AS `tier_name`,
-  `fgc`.`total_ranked_games`, `fgc`.`gold_ranked_games`
-  FROM `discord_user_info` AS `discord`
-  LEFT JOIN `gold_ratings` AS `gold` ON `gold`.`discord_id` = `discord`.`discord_id`
-  LEFT JOIN `gold_tiers` AS `tier` ON `gold`.`tier_rank` = `tier`.`rank`
-  LEFT JOIN `fgc_validity` AS `fgc` ON `fgc`.`discord_id` = `discord`.`discord_id`;
-
-DROP VIEW IF EXISTS `api_accounts`;
-CREATE VIEW `api_accounts` AS
-  SELECT `discord`.`discord_id`,
   `kgs_id`, `kgs_rank`, 
   `ogs_id`, `ogs_name`, `ogs_rank`, 
   `fox_id`, `fox_name`, `fox_rank`, 
   `igs_id`, `igs_rank`, 
   `ffg_id`, `ffg_name`, `ffg_rank`, 
-  `egf_id`, `egf_name`, `egf_rank`
+  `egf_id`, `egf_name`, `egf_rank`,
+  `gold`.`rating`, `gold`.`tier_rank`, `tier`.`name` AS `tier_name`,
+  `fgc`.`total_ranked_games`, `fgc`.`gold_ranked_games`
   FROM `discord_user_info` AS `discord`
+  LEFT JOIN `gold_ratings` AS `gold` ON `gold`.`discord_id` = `discord`.`discord_id`
+  LEFT JOIN `gold_tiers` AS `tier` ON `gold`.`tier_rank` = `tier`.`rank`
+  LEFT JOIN `fgc_validity` AS `fgc` ON `fgc`.`discord_id` = `discord`.`discord_id`
   LEFT JOIN `kgs_user_info` AS `kgs` ON `discord`.`discord_id` = `kgs`.`discord_id`
   LEFT JOIN `ogs_user_info` AS `ogs` ON `discord`.`discord_id` = `ogs`.`discord_id`
   LEFT JOIN `fox_user_info` AS `fox` ON `discord`.`discord_id` = `fox`.`discord_id`
   LEFT JOIN `igs_user_info` AS `igs` ON `discord`.`discord_id` = `igs`.`discord_id`
   LEFT JOIN `ffg_user_info` AS `ffg` ON `discord`.`discord_id` = `ffg`.`discord_id`
-  LEFT JOIN `egf_user_info` AS `egf` ON `discord`.`discord_id` = `egf`.`discord_id`
+  LEFT JOIN `egf_user_info` AS `egf` ON `discord`.`discord_id` = `egf`.`discord_id`;
 
 DROP VIEW IF EXISTS `api_games`;
 CREATE VIEW `api_games` AS

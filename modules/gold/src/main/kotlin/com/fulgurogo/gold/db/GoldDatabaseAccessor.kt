@@ -74,8 +74,9 @@ object GoldDatabaseAccessor {
 
     fun addPlayer(discordId: String): Connection = dao.open().use { connection ->
         val query = "INSERT INTO ${RATINGS_TABLE}(discord_id, rating, tier_rank, updated, error) " +
-                " VALUES (:discordId, 0, 0, 0, 0) "
-
+                " VALUES (:discordId, 0, 1, '2025-01-01 00:00:00', 0) " +
+                " ON DUPLICATE KEY UPDATE " +
+                " updated='2025-01-01 00:00:00' "
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)

@@ -32,6 +32,7 @@ dependencies {
     implementation(project(":modules:ffg"))
     implementation(project(":modules:egf"))
     implementation(project(":modules:gold"))
+    implementation(project(":modules:fgc"))
 
     implementation(libs.gson)
     implementation(libs.javalin)

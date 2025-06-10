@@ -1,8 +1,6 @@
 package com.fulgurogo.fgc.db
 
 import com.fulgurogo.common.db.DatabaseAccessor
-import com.fulgurogo.common.logger.log
-import com.fulgurogo.fgc.FgcModule.TAG
 import com.fulgurogo.fgc.db.model.FgcValidity
 import com.fulgurogo.fgc.db.model.FgcValidityGame
 import org.sql2o.Connection
@@ -41,6 +39,20 @@ object FgcDatabaseAccessor {
             .createQuery(query)
             .throwOnMappingFailure(false)
             .addParameter("discordId", fgcValidity.discordId)
+            .executeUpdate()
+    }
+
+    fun addPlayer(discordId: String): Connection = dao.open().use { connection ->
+        val query = "INSERT INTO ${VALIDITY_TABLE}(discord_id, " +
+                " total_games, total_ranked_games, gold_games, gold_ranked_games, " +
+                " updated, error) " +
+                " VALUES (:discordId, 0, 0, 0, 0, '2025-01-01 00:00:00', 0) " +
+                " ON DUPLICATE KEY UPDATE " +
+                " updated='2025-01-01 00:00:00' "
+        connection
+            .createQuery(query)
+            .throwOnMappingFailure(false)
+            .addParameter("discordId", discordId)
             .executeUpdate()
     }
 

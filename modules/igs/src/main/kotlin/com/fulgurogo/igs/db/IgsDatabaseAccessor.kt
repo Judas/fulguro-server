@@ -36,7 +36,7 @@ object IgsDatabaseAccessor {
 
     fun addUser(discordId: String, igsId: String): Connection = dao.open().use { connection ->
         val query = "INSERT INTO ${USER_TABLE}(discord_id, igs_id, igs_rank, updated, error) " +
-                " VALUES (:discordId, :igsId, '?', 0, 0) "
+                " VALUES (:discordId, :igsId, '?', '2025-01-01 00:00:00', 0) "
 
         connection
             .createQuery(query)

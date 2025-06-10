@@ -15,6 +15,7 @@ import com.fulgurogo.discord.DiscordModule
 import com.fulgurogo.discord.db.DiscordDatabaseAccessor
 import com.fulgurogo.egf.db.EgfDatabaseAccessor
 import com.fulgurogo.ffg.db.FfgDatabaseAccessor
+import com.fulgurogo.fgc.db.FgcDatabaseAccessor
 import com.fulgurogo.fox.db.FoxDatabaseAccessor
 import com.fulgurogo.gold.db.GoldDatabaseAccessor
 import com.fulgurogo.igs.db.IgsDatabaseAccessor
@@ -55,8 +56,7 @@ class Api {
         val playerId = context.pathParam("id")
         val player = ApiDatabaseAccessor.apiPlayer(playerId)
         player?.let { p ->
-            p.accounts = ApiDatabaseAccessor.apiAccountsFor(playerId)
-            p.games = ApiDatabaseAccessor.apiGamesFor(p.discordId)
+            p.games = ApiDatabaseAccessor.apiGamesFor(playerId)
             context.standardResponse(p)
         } ?: context.notFoundError()
     } catch (e: Exception) {
@@ -284,8 +284,9 @@ class Api {
             else -> context.internalError()
         }
 
-        // Add in rating DB
+        // Add in others DB
         GoldDatabaseAccessor.addPlayer(body.discordId)
+        FgcDatabaseAccessor.addPlayer(body.discordId)
         context.standardResponse()
     }
 }

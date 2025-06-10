@@ -10,7 +10,6 @@ import java.time.ZonedDateTime
 
 object ApiDatabaseAccessor {
     private const val PLAYERS_VIEW = "api_players"
-    private const val ACCOUNTS_VIEW = "api_accounts"
     private const val GAMES_VIEW = "api_games"
 
     private val dao: Sql2o = DatabaseAccessor.dao().apply {
@@ -43,7 +42,7 @@ object ApiDatabaseAccessor {
             "black_discord_id" to "blackDiscordId",
             "black_discord_name" to "blackDiscordName",
             "black_discord_avatar" to "blackDiscordAvatar",
-            "black_rRating" to "blackRating",
+            "black_rating" to "blackRating",
             "black_tier_rank" to "blackTierRank",
             "black_tier_name" to "blackTierName",
             "white_discord_id" to "whiteDiscordId",
@@ -51,7 +50,11 @@ object ApiDatabaseAccessor {
             "white_discord_avatar" to "whiteDiscordAvatar",
             "white_rating" to "whiteRating",
             "white_tier_rank" to "whiteTierRank",
-            "white_tier_name" to "whiteTierName"
+            "white_tier_name" to "whiteTierName",
+            "access_token" to "accessToken",
+            "token_type" to "tokenType",
+            "refresh_token" to "refreshToken",
+            "expiration_date" to "expirationDate"
         )
     }
 
@@ -60,7 +63,9 @@ object ApiDatabaseAccessor {
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)
-            .executeAndFetch(ApiPlayer::class.java)
+            .executeAndFetch(ApiDbPlayer::class.java)
+            ?.map { it.toApiPlayer() }
+            ?: listOf()
     }
 
     fun apiPlayer(discordId: String): ApiPlayer? = dao.open().use { connection ->
@@ -69,22 +74,12 @@ object ApiDatabaseAccessor {
             .createQuery(query)
             .throwOnMappingFailure(false)
             .addParameter("discordId", discordId)
-            .executeAndFetchFirst(ApiPlayer::class.java)
-    }
-
-    fun apiAccountsFor(discordId: String): List<ApiPlayerAccount> = dao.open().use { connection ->
-        val query = "SELECT * FROM $ACCOUNTS_VIEW WHERE discord_id = :discordId"
-        connection
-            .createQuery(query)
-            .throwOnMappingFailure(false)
-            .addParameter("discordId", discordId)
-            .executeAndFetchFirst(ApiAccount::class.java)
-            ?.toApiPlayerAccounts()
-            ?: listOf()
+            .executeAndFetchFirst(ApiDbPlayer::class.java)
+            ?.toApiPlayer()
     }
 
     fun recentGames(): List<ApiGame> = dao.open().use { connection ->
-        val query = "SELECT * FROM $GAMES_VIEW LIMIT 20"
+        val query = "SELECT * FROM $GAMES_VIEW ORDER BY date DESC LIMIT 20"
         connection
             .createQuery(query)
             .throwOnMappingFailure(false)
