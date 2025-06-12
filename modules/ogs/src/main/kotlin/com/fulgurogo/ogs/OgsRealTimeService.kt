@@ -119,21 +119,11 @@ class OgsRealTimeService : PeriodicFlowService(0, 10), OgsWsClient.Listener {
 
         // Check corresponding game in DB
         val dbGame = OgsDatabaseAccessor.game(game)
-        val existsInDb = dbGame != null
-        val finishedInDb = dbGame != null && dbGame.isFinished()
-
-        if (gameData.isFinished() && !finishedInDb) {
-            // Update game in DB
-            if (existsInDb) OgsDatabaseAccessor.finishGame(game)
-            else OgsDatabaseAccessor.addGame(game)
-
-            // Notify on Discord
+        if (gameData.isFinished() && dbGame != null && !dbGame.isFinished()) {
+            OgsDatabaseAccessor.finishGame(game)
             notifyGame(game)
-        } else if (!game.isFinished() && !existsInDb) {
-            // Add game in DB
+        } else if (dbGame == null) {
             OgsDatabaseAccessor.addGame(game)
-
-            // Notify on Discord
             notifyGame(game)
         }
     }
