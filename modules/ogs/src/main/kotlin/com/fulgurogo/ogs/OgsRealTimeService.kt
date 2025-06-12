@@ -17,6 +17,7 @@ import com.fulgurogo.ogs.websocket.model.GameListRequest.Companion.GAME_LIST_REQ
 
 class OgsRealTimeService : PeriodicFlowService(0, 10), OgsWsClient.Listener {
     private var processing = false
+    private val ogsApiClient = OgsApiClient()
     private val webSocket = OgsWsClient(Config.get("ogs.websocket.url"), this)
     private var credentials: OgsAuthCredentials? = null
 
@@ -143,13 +144,13 @@ class OgsRealTimeService : PeriodicFlowService(0, 10), OgsWsClient.Listener {
             Config.get("ogs.auth.username"),
             Config.get("ogs.auth.password")
         )
-        OgsApiClient.post(route, body, OgsAuthCredentials::class.java)
+        ogsApiClient.post(route, body, OgsAuthCredentials::class.java)
     } catch (_: Exception) {
         null
     }
 
     private fun fetchSgf(id: Int): String = try {
-        OgsApiClient.get("${Config.get("ogs.api.url")}/games/$id/sgf")
+        ogsApiClient.get("${Config.get("ogs.api.url")}/games/$id/sgf")
     } catch (_: Exception) {
         ""
     }

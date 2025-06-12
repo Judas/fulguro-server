@@ -20,6 +20,7 @@ import java.util.*
 
 class OgsService : PeriodicFlowService(0, 5) {
     private var processing = false
+    private val ogsApiClient = OgsApiClient()
 
     override fun onTick() {
         if (processing) return
@@ -71,13 +72,13 @@ class OgsService : PeriodicFlowService(0, 5) {
 
     private fun fetchPlayerRating(stale: OgsUserInfo): OgsApiPlayerRating? {
         val route = "${Config.get("ogs.termination.api.url")}/player/${stale.ogsId}"
-        return OgsApiClient.get(route, OgsApiPlayerRating::class.java)
+        return ogsApiClient.get(route, OgsApiPlayerRating::class.java)
     }
 
     private fun fetchPlayerGames(stale: OgsUserInfo): List<OgsGame> {
         // Get last 10 games
         val route = "${Config.get("ogs.api.url")}/players/${stale.ogsId}/games?ordering=-ended"
-        val games = OgsApiClient.get(route, OgsApiGameList::class.java).results
+        val games = ogsApiClient.get(route, OgsApiGameList::class.java).results
 
         return games.mapNotNull {
             // Skip cancelled games
@@ -129,7 +130,7 @@ class OgsService : PeriodicFlowService(0, 5) {
     }
 
     private fun fetchSgf(game: OgsApiGame): String = try {
-        OgsApiClient.get("${Config.get("ogs.api.url")}/games/${game.id}/sgf")
+        ogsApiClient.get("${Config.get("ogs.api.url")}/games/${game.id}/sgf")
     } catch (_: Exception) {
         ""
     }

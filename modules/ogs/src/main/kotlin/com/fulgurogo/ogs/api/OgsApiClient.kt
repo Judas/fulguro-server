@@ -15,7 +15,7 @@ import java.net.CookiePolicy
 import java.time.ZonedDateTime
 import java.util.concurrent.TimeUnit
 
-object OgsApiClient {
+class OgsApiClient {
     private val gson: Gson = Gson()
     private val okHttpClient: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(Config.get("global.read.timeout.ms").toLong(), TimeUnit.MILLISECONDS)

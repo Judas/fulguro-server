@@ -35,6 +35,7 @@ import java.time.ZonedDateTime
 import java.util.concurrent.TimeUnit
 
 class Api {
+    private val ogsApiClient = OgsApiClient()
     private val gson: Gson = Gson()
     private val okHttpClient: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(Config.get("global.read.timeout.ms").toLong(), TimeUnit.MILLISECONDS)
@@ -234,7 +235,7 @@ class Api {
                 discordUser == null -> context.notFoundError()
                 body.account == "OGS" -> {
                     val url = "${Config.get("ogs.api.url")}/players?username=${body.accountId}"
-                    val userList = OgsApiClient.get(url, OgsUserList::class.java)
+                    val userList = ogsApiClient.get(url, OgsUserList::class.java)
                     userList.results.firstOrNull()?.id?.toString()?.let {
                         linkAccount(context, LinkRequestBody(body.discordId, "OGS", it))
                     }
