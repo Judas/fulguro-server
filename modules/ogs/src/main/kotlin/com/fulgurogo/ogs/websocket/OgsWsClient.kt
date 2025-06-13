@@ -9,7 +9,7 @@ import java.net.URI
 class OgsWsClient(val url: String, val listener: Listener) : WebSocketClient(URI(url)) {
     interface Listener {
         fun onOpened()
-        fun onClosed(reason: String?)
+        fun onClosed(code: Int, reason: String?, remote: Boolean)
         fun onError(e: Exception?)
         fun onGameListResponse(message: OgsWsMessage.GameList)
         fun onGameDataUpdate(message: OgsWsMessage.GameData)
@@ -24,7 +24,7 @@ class OgsWsClient(val url: String, val listener: Listener) : WebSocketClient(URI
     }
 
     override fun onClose(code: Int, reason: String?, remote: Boolean) {
-        listener.onClosed(reason)
+        listener.onClosed(code, reason, remote)
     }
 
     override fun onMessage(message: String?) {

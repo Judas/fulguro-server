@@ -17,7 +17,7 @@ import com.fulgurogo.ogs.websocket.model.GameListRequest.Companion.GAME_LIST_REQ
 
 class OgsRealTimeService : PeriodicFlowService(0, 10), OgsWsClient.Listener {
     private var processing = false
-    private val ogsApiClient = OgsApiClient()
+    private var ogsApiClient: OgsApiClient? = null
     private val webSocket = OgsWsClient(Config.get("ogs.websocket.url"), this)
     private var credentials: OgsAuthCredentials? = null
 
@@ -35,13 +35,19 @@ class OgsRealTimeService : PeriodicFlowService(0, 10), OgsWsClient.Listener {
             val data = GameListRequest(where = GameListRequest.Filters(players = ids))
             val games = Request("gamelist/query", data, GAME_LIST_REQUEST_ID)
             webSocket.send(games.toString())
+        } else if (credentials != null) {
+            // Connect using previous credentials
+            webSocket.connect()
         } else {
             // Login via HTTP API (we need a jwt to authenticate to the RT API later)
+            ogsApiClient = OgsApiClient()
             credentials = login()
-
-            // Connect to OGS web socket
-            if (credentials != null) webSocket.connect()
-            else log(TAG, "FAILURE - Cannot authenticate to OGS")
+            credentials?.let { webSocket.connect() }
+                ?: run {
+                    log(TAG, "FAILURE - Cannot authenticate to OGS")
+                    credentials = null
+                    ogsApiClient = null
+                }
         }
 
         processing = false
@@ -55,13 +61,13 @@ class OgsRealTimeService : PeriodicFlowService(0, 10), OgsWsClient.Listener {
             val auth = Request("authenticate", AuthRequest(it.jwt))
             webSocket.send(auth.toString())
         } ?: run {
-            log(TAG, "onOpened invalid credentials")
+            log(TAG, "onOpened empty credentials")
             webSocket.close()
         }
     }
 
-    override fun onClosed(reason: String?) {
-        log(TAG, "onClosed $reason")
+    override fun onClosed(code: Int, reason: String?, remote: Boolean) {
+        log(TAG, "onClosed code:$code reason:$reason remote:$remote")
     }
 
     override fun onError(e: Exception?) {
@@ -134,13 +140,13 @@ class OgsRealTimeService : PeriodicFlowService(0, 10), OgsWsClient.Listener {
             Config.get("ogs.auth.username"),
             Config.get("ogs.auth.password")
         )
-        ogsApiClient.post(route, body, OgsAuthCredentials::class.java)
+        ogsApiClient?.post(route, body, OgsAuthCredentials::class.java)
     } catch (_: Exception) {
         null
     }
 
     private fun fetchSgf(id: Int): String = try {
-        ogsApiClient.get("${Config.get("ogs.api.url")}/games/$id/sgf")
+        ogsApiClient?.get("${Config.get("ogs.api.url")}/games/$id/sgf") ?: ""
     } catch (_: Exception) {
         ""
     }
