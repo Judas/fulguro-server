@@ -132,6 +132,11 @@ class OgsRealTimeService : PeriodicFlowService(0, 10), OgsWsClient.Listener {
             OgsDatabaseAccessor.addGame(game)
             notifyGame(game)
         }
+
+        if (gameData.isFinished()) {
+            val disconnect = Request("game/disconnect", GameDisconnectRequest(gameData.id))
+            webSocket.send(disconnect.toString())
+        }
     }
 
     private fun login(): OgsAuthCredentials? = try {
