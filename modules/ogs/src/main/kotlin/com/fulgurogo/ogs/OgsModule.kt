@@ -6,6 +6,7 @@ package com.fulgurogo.ogs
  */
 object OgsModule {
     const val TAG = "OGS"
+    const val TAG_RT = "ORT"
 
     private val ogsService = OgsService()
     private val ogsRealTimeService = OgsRealTimeService()

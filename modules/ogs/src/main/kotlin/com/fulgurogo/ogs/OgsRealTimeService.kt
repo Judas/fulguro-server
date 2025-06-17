@@ -5,7 +5,7 @@ import com.fulgurogo.common.logger.log
 import com.fulgurogo.common.service.PeriodicFlowService
 import com.fulgurogo.common.utilities.rankToKyuDanString
 import com.fulgurogo.discord.DiscordModule
-import com.fulgurogo.ogs.OgsModule.TAG
+import com.fulgurogo.ogs.OgsModule.TAG_RT
 import com.fulgurogo.ogs.api.OgsApiClient
 import com.fulgurogo.ogs.api.model.OgsAuthCredentials
 import com.fulgurogo.ogs.api.model.OgsAuthPayload
@@ -52,7 +52,7 @@ class OgsRealTimeService : PeriodicFlowService(0, 10), OgsWsClient.Listener {
                     ogsApiClient = OgsApiClient()
                     credentials = login()
                     credentials?.let { ws.connect() } ?: run {
-                        log(TAG, "FAILURE - Cannot authenticate to OGS")
+                        log(TAG_RT, "FAILURE - Cannot authenticate to OGS")
                         credentials = null
                         ogsApiClient = null
                         webSocket = null
@@ -65,25 +65,25 @@ class OgsRealTimeService : PeriodicFlowService(0, 10), OgsWsClient.Listener {
     }
 
     override fun onOpened() {
-        log(TAG, "onOpened")
+        log(TAG_RT, "onOpened")
 
         credentials?.let {
             // Authenticate user via the WebSocket
             val auth = Request("authenticate", AuthRequest(it.jwt))
             webSocket?.send(auth.toString())
         } ?: run {
-            log(TAG, "onOpened empty credentials")
+            log(TAG_RT, "onOpened empty credentials")
             webSocket?.close()
         }
     }
 
     override fun onClosed(code: Int, reason: String?, remote: Boolean) {
-        log(TAG, "onClosed code:$code reason:$reason remote:$remote")
+        log(TAG_RT, "onClosed code:$code reason:$reason remote:$remote")
         webSocket = null
     }
 
     override fun onError(e: Exception?) {
-        log(TAG, "onError ${e?.message}")
+        log(TAG_RT, "onError ${e?.message}")
     }
 
     override fun onGameListResponse(message: OgsWsMessage.GameList) {

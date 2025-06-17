@@ -11,7 +11,7 @@ import net.dv8tion.jda.api.utils.MemberCachePolicy
  * The bot is also used by other modules to notify updates in the Discord server.
  */
 object DiscordModule {
-    const val TAG = "DISCORD"
+    const val TAG = "DSC"
 
     val discordBot = DiscordBot()
     private val discordService = DiscordService(discordBot)
