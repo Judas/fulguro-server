@@ -17,37 +17,48 @@ import com.fulgurogo.ogs.websocket.model.GameListRequest.Companion.GAME_LIST_REQ
 
 class OgsRealTimeService : PeriodicFlowService(0, 10), OgsWsClient.Listener {
     private var processing = false
+
+    private var webSocket: OgsWsClient? = null
     private var ogsApiClient: OgsApiClient? = null
-    private val webSocket = OgsWsClient(Config.get("ogs.websocket.url"), this)
     private var credentials: OgsAuthCredentials? = null
 
     override fun onTick() {
         if (processing) return
         processing = true
 
-        if (webSocket.isOpen) {
-            // Send ping to keep connection alive
-            val ping = Request("net/ping", PingRequest())
-            webSocket.send(ping.toString())
+        // No web socket, create one
+        if (webSocket == null) webSocket = OgsWsClient(Config.get("ogs.websocket.url"), this)
+        webSocket?.let { ws ->
+            when {
+                ws.isOpen -> {
+                    // Send ping to keep connection alive
+                    val ping = Request("net/ping", PingRequest())
+                    ws.send(ping.toString())
 
-            // Request live games from gold players
-            val ids = OgsDatabaseAccessor.allUserIds()
-            val data = GameListRequest(where = GameListRequest.Filters(players = ids))
-            val games = Request("gamelist/query", data, GAME_LIST_REQUEST_ID)
-            webSocket.send(games.toString())
-        } else if (credentials != null) {
-            // Connect using previous credentials
-            webSocket.connect()
-        } else {
-            // Login via HTTP API (we need a jwt to authenticate to the RT API later)
-            ogsApiClient = OgsApiClient()
-            credentials = login()
-            credentials?.let { webSocket.connect() }
-                ?: run {
-                    log(TAG, "FAILURE - Cannot authenticate to OGS")
-                    credentials = null
-                    ogsApiClient = null
+                    // Request live games from gold players
+                    val ids = OgsDatabaseAccessor.allUserIds()
+                    val data = GameListRequest(where = GameListRequest.Filters(players = ids))
+                    val games = Request("gamelist/query", data, GAME_LIST_REQUEST_ID)
+                    ws.send(games.toString())
                 }
+
+                credentials != null -> {
+                    // Connect using saved credentials
+                    ws.connect()
+                }
+
+                else -> {
+                    // No credentials, get some from REST API
+                    ogsApiClient = OgsApiClient()
+                    credentials = login()
+                    credentials?.let { ws.connect() } ?: run {
+                        log(TAG, "FAILURE - Cannot authenticate to OGS")
+                        credentials = null
+                        ogsApiClient = null
+                        webSocket = null
+                    }
+                }
+            }
         }
 
         processing = false
@@ -59,15 +70,16 @@ class OgsRealTimeService : PeriodicFlowService(0, 10), OgsWsClient.Listener {
         credentials?.let {
             // Authenticate user via the WebSocket
             val auth = Request("authenticate", AuthRequest(it.jwt))
-            webSocket.send(auth.toString())
+            webSocket?.send(auth.toString())
         } ?: run {
             log(TAG, "onOpened empty credentials")
-            webSocket.close()
+            webSocket?.close()
         }
     }
 
     override fun onClosed(code: Int, reason: String?, remote: Boolean) {
         log(TAG, "onClosed code:$code reason:$reason remote:$remote")
+        webSocket = null
     }
 
     override fun onError(e: Exception?) {
@@ -88,7 +100,7 @@ class OgsRealTimeService : PeriodicFlowService(0, 10), OgsWsClient.Listener {
             .forEach {
                 // Connect to the games to receive updates, we can connect multiple times
                 val connect = Request("game/connect", GameConnectRequest(it))
-                webSocket.send(connect.toString())
+                webSocket?.send(connect.toString())
                 // We should then receive a game/id/gamedata update with full game object
             }
     }
@@ -135,7 +147,7 @@ class OgsRealTimeService : PeriodicFlowService(0, 10), OgsWsClient.Listener {
 
         if (gameData.isFinished()) {
             val disconnect = Request("game/disconnect", GameDisconnectRequest(gameData.id))
-            webSocket.send(disconnect.toString())
+            webSocket?.send(disconnect.toString())
         }
     }
 
