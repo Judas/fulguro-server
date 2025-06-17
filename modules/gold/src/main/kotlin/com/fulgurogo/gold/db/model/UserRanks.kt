@@ -12,9 +12,12 @@ data class UserRanks(
     val foxRank: String?,
     val igsRank: String?,
     val ffgRank: String?,
-    val egfRank: String?
+    val egfRank: String?,
+    val error: Boolean
 ) {
     fun computeRating(): Double? {
+        if (error) return null
+
         // Translate ranks to rating with weight applied
         // KGS 0.8 - OGS 1.0 - FOX 0.1 - IGS 0.6 - FFG 0.7 - EGF 0.7
 

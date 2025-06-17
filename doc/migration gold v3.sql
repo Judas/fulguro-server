@@ -240,7 +240,8 @@ INSERT INTO `gold_ratings`
 
 DROP VIEW IF EXISTS `gold_ranks`;
 CREATE VIEW `gold_ranks` AS
-  SELECT `discord`.`discord_id`, `kgs_rank`, `ogs_rank`, `fox_rank`, `igs_rank`, `ffg_rank`, `egf_rank`
+  SELECT `discord`.`discord_id`, `kgs_rank`, `ogs_rank`, `fox_rank`, `igs_rank`, `ffg_rank`, `egf_rank`,
+  (IF(kgs.error IS NULL,0,kgs.error) + IF(ogs.error IS NULL,0,ogs.error) + IF(fox.error IS NULL,0,fox.error) + IF(igs.error IS NULL,0,igs.error) + IF(ffg.error IS NULL,0,ffg.error) + IF(egf.error IS NULL,0,egf.error)) AS error
   FROM `discord_user_info` AS `discord`
   LEFT JOIN `kgs_user_info` AS `kgs` ON `discord`.`discord_id` = `kgs`.`discord_id`
   LEFT JOIN `ogs_user_info` AS `ogs` ON `discord`.`discord_id` = `ogs`.`discord_id`
