@@ -37,6 +37,7 @@ class FfgService : PeriodicFlowService(0, 60) {
                         .map { it.text().trim() }
                         .firstOrNull { it.startsWith("Échelle principale : ") }
                         ?.substring(21)
+                        ?.replace("n/a", "?")
                         ?: "?"
 
                     FfgDatabaseAccessor.updateUser(
