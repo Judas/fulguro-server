@@ -3,7 +3,6 @@ package com.fulgurogo.clean.db
 import com.fulgurogo.clean.CleanModule.TAG
 import com.fulgurogo.common.db.DatabaseAccessor
 import com.fulgurogo.common.logger.log
-import org.sql2o.Connection
 import org.sql2o.Sql2o
 
 object CleanDatabaseAccessor {
@@ -43,16 +42,16 @@ object CleanDatabaseAccessor {
         }
     }
 
-    fun removeDeletedAccounts(): Connection = dao.open().use { connection ->
+    fun removeDeletedAccounts() = dao.open().use { connection ->
         log(TAG, "removeDeletedAccounts")
 
-        val ffgQuery = "DELETE FROM ffg_user_info WHERE error = 1 AND ffg_name = ''"
-        connection.createQuery(ffgQuery).executeUpdate()
-
-        val egfQuery = "DELETE FROM egf_user_info WHERE error = 1 AND egf_name = ''"
-        connection.createQuery(egfQuery).executeUpdate()
-
-        val ogsQuery = "DELETE FROM ogs_user_info WHERE ogs_name LIKE 'deleted-%'"
-        connection.createQuery(ogsQuery).executeUpdate()
+        listOf(
+            "DELETE FROM igs_user_info WHERE error = 1 AND igs_rank = '?'",
+            "DELETE FROM ffg_user_info WHERE error = 1 AND ffg_name = ''",
+            "DELETE FROM egf_user_info WHERE error = 1 AND egf_name = ''",
+            "DELETE FROM ogs_user_info WHERE ogs_name LIKE 'deleted-%'"
+        ).forEach {
+            connection.createQuery(it).executeUpdate()
+        }
     }
 }
