@@ -49,16 +49,16 @@ class OgsService : PeriodicFlowService(0, 5) {
                 // Add games in DB
                 val games = fetchPlayerGames(stale)
                 games.forEach { game ->
-                    val oldGame = OgsDatabaseAccessor.game(game)
+                    // Check corresponding game in DB
+                    val dbGame = OgsDatabaseAccessor.game(game)
                     val blackDiscordUser = OgsDatabaseAccessor.user(game.blackId)
                     val whiteDiscordUser = OgsDatabaseAccessor.user(game.whiteId)
                     val isGoldGame = blackDiscordUser != null && whiteDiscordUser != null
-                    if (oldGame == null) {
-                        OgsDatabaseAccessor.addGame(game)
-                        if (isGoldGame) notifyGame(game)
-                    } else if (!oldGame.isFinished() && game.isFinished()) {
-                        // Game previously saved as "unfinished" is now finished
+                    if (game.isFinished() && dbGame != null && !dbGame.isFinished()) {
                         OgsDatabaseAccessor.finishGame(game)
+                        if (isGoldGame) notifyGame(game)
+                    } else if (dbGame == null) {
+                        OgsDatabaseAccessor.addGame(game)
                         if (isGoldGame) notifyGame(game)
                     }
                 }
