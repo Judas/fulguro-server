@@ -90,7 +90,7 @@ class KgsService : PeriodicFlowService(0, 5) {
         games.addAll(scrapMonthlyGames(stale.kgsId, lastMonth.year, lastMonth.monthValue))
 
         games
-    } ?: listOf()
+    } ?: throw Exception("Invalid KGS id")
 
     private fun scrapMonthlyGames(kgsId: String?, year: Int, month: Int): MutableList<KgsGame> = try {
         val route = "${Config.get("kgs.archives.url")}?user=$kgsId&year=$year&month=$month"
@@ -104,7 +104,7 @@ class KgsService : PeriodicFlowService(0, 5) {
         if (tables.size == 2) extractGamesFrom(tables[0]) else mutableListOf()
     } catch (e: IOException) {
         log(TAG, "scrapMonthlyGames FAILURE ${e.message}")
-        mutableListOf()
+        throw Exception(e)
     }
 
     private fun extractGamesFrom(gameTable: Element): MutableList<KgsGame> {
