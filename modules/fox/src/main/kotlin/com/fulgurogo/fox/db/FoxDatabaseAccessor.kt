@@ -12,7 +12,7 @@ object FoxDatabaseAccessor {
     private const val USER_TABLE = "fox_user_info"
     private const val GAME_TABLE = "fox_games"
 
-    private val dao: Sql2o = DatabaseAccessor.dao().apply {
+    private fun dao(): Sql2o = DatabaseAccessor.dao().apply {
         // MySQL column name => POJO variable name
         defaultColumnMappings = mapOf(
             "discord_id" to "discordId",
@@ -30,7 +30,7 @@ object FoxDatabaseAccessor {
         )
     }
 
-    fun userById(foxId: Int): FoxUserInfo? = dao.open().use { connection ->
+    fun userById(foxId: Int): FoxUserInfo? = dao().open().use { connection ->
         val query = "SELECT * FROM $USER_TABLE WHERE fox_id = :foxId LIMIT 1"
         connection
             .createQuery(query)
@@ -39,7 +39,7 @@ object FoxDatabaseAccessor {
             .executeAndFetchFirst(FoxUserInfo::class.java)
     }
 
-    fun user(foxName: Int): FoxUserInfo? = dao.open().use { connection ->
+    fun user(foxName: Int): FoxUserInfo? = dao().open().use { connection ->
         val query = "SELECT * FROM $USER_TABLE WHERE fox_name = :foxName LIMIT 1"
         connection
             .createQuery(query)
@@ -49,7 +49,7 @@ object FoxDatabaseAccessor {
     }
 
 
-    fun addUser(discordId: String, foxName: String): Connection = dao.open().use { connection ->
+    fun addUser(discordId: String, foxName: String): Connection = dao().open().use { connection ->
         val query = "INSERT INTO ${USER_TABLE}(discord_id, fox_id, fox_name, fox_rank, updated, error) " +
                 " VALUES (:discordId, '?', :foxName, '?', '2025-01-01 00:00:00', 0) "
 
@@ -61,7 +61,7 @@ object FoxDatabaseAccessor {
             .executeUpdate()
     }
 
-    fun stalestUser(): FoxUserInfo? = dao.open().use { connection ->
+    fun stalestUser(): FoxUserInfo? = dao().open().use { connection ->
         val query = "SELECT * FROM $USER_TABLE ORDER BY updated"
         connection
             .createQuery(query)
@@ -69,7 +69,7 @@ object FoxDatabaseAccessor {
             .executeAndFetchFirst(FoxUserInfo::class.java)
     }
 
-    fun markAsError(foxUserInfo: FoxUserInfo): Connection = dao.open().use { connection ->
+    fun markAsError(foxUserInfo: FoxUserInfo): Connection = dao().open().use { connection ->
         val query = "UPDATE $USER_TABLE SET updated = NOW(), error = 1 WHERE discord_id = :discordId "
 
         connection
@@ -78,7 +78,7 @@ object FoxDatabaseAccessor {
             .executeUpdate()
     }
 
-    fun updateUser(foxUserInfo: FoxUserInfo): Connection = dao.open().use { connection ->
+    fun updateUser(foxUserInfo: FoxUserInfo): Connection = dao().open().use { connection ->
         val query = "UPDATE $USER_TABLE SET " +
                 " fox_id = :foxId, " +
                 " fox_rank = :foxRank, " +
@@ -95,7 +95,7 @@ object FoxDatabaseAccessor {
             .executeUpdate()
     }
 
-    fun game(game: FoxGame): FoxGame? = dao.open().use { connection ->
+    fun game(game: FoxGame): FoxGame? = dao().open().use { connection ->
         val query = " SELECT * FROM $GAME_TABLE WHERE gold_id = :goldId LIMIT 1 "
         connection
             .createQuery(query)
@@ -103,7 +103,7 @@ object FoxDatabaseAccessor {
             .executeAndFetchFirst(FoxGame::class.java)
     }
 
-    fun addGame(game: FoxGame): Connection = dao.open().use { connection ->
+    fun addGame(game: FoxGame): Connection = dao().open().use { connection ->
         val query = "INSERT INTO $GAME_TABLE( " +
                 " gold_id, id, date, " +
                 " black_id, black_name, black_rank, white_id, white_name, white_rank, " +
@@ -135,7 +135,7 @@ object FoxDatabaseAccessor {
             .executeUpdate()
     }
 
-    fun finishGame(game: FoxGame): Connection = dao.open().use { connection ->
+    fun finishGame(game: FoxGame): Connection = dao().open().use { connection ->
         val query = "UPDATE $GAME_TABLE " +
                 " SET result = :result, sgf = :sgf " +
                 " WHERE gold_id = :goldId"

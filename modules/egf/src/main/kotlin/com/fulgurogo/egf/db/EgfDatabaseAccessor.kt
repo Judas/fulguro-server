@@ -8,7 +8,7 @@ import org.sql2o.Sql2o
 object EgfDatabaseAccessor {
     private const val USER_TABLE = "egf_user_info"
 
-    private val dao: Sql2o = DatabaseAccessor.dao().apply {
+    private fun dao(): Sql2o = DatabaseAccessor.dao().apply {
         // MySQL column name => POJO variable name
         defaultColumnMappings = mapOf(
             "discord_id" to "discordId",
@@ -18,7 +18,7 @@ object EgfDatabaseAccessor {
         )
     }
 
-    fun stalestUser(): EgfUserInfo? = dao.open().use { connection ->
+    fun stalestUser(): EgfUserInfo? = dao().open().use { connection ->
         val query = "SELECT * FROM $USER_TABLE ORDER BY updated"
         connection
             .createQuery(query)
@@ -26,7 +26,7 @@ object EgfDatabaseAccessor {
             .executeAndFetchFirst(EgfUserInfo::class.java)
     }
 
-    fun user(egfId: Int): EgfUserInfo? = dao.open().use { connection ->
+    fun user(egfId: Int): EgfUserInfo? = dao().open().use { connection ->
         val query = "SELECT * FROM $USER_TABLE WHERE egf_id = :egfId LIMIT 1"
         connection
             .createQuery(query)
@@ -35,7 +35,7 @@ object EgfDatabaseAccessor {
             .executeAndFetchFirst(EgfUserInfo::class.java)
     }
 
-    fun addUser(discordId: String, egfId: String): Connection = dao.open().use { connection ->
+    fun addUser(discordId: String, egfId: String): Connection = dao().open().use { connection ->
         val query = "INSERT INTO ${USER_TABLE}(discord_id, egf_id, egf_name, egf_rank, updated, error) " +
                 " VALUES (:discordId, :egfId, '?', '?', '2025-01-01 00:00:00', 0) "
 
@@ -47,7 +47,7 @@ object EgfDatabaseAccessor {
             .executeUpdate()
     }
 
-    fun markAsError(egfUserInfo: EgfUserInfo): Connection = dao.open().use { connection ->
+    fun markAsError(egfUserInfo: EgfUserInfo): Connection = dao().open().use { connection ->
         val query = "UPDATE $USER_TABLE SET updated = NOW(), error = 1 WHERE discord_id = :discordId "
 
         connection
@@ -56,7 +56,7 @@ object EgfDatabaseAccessor {
             .executeUpdate()
     }
 
-    fun updateUser(egfUserInfo: EgfUserInfo): Connection = dao.open().use { connection ->
+    fun updateUser(egfUserInfo: EgfUserInfo): Connection = dao().open().use { connection ->
         val query = "UPDATE $USER_TABLE SET " +
                 " egf_name = :egfName, " +
                 " egf_rank = :egfRank, " +

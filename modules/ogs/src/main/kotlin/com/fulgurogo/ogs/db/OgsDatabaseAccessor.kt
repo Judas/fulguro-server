@@ -12,7 +12,7 @@ object OgsDatabaseAccessor {
     private const val USER_TABLE = "ogs_user_info"
     private const val GAME_TABLE = "ogs_games"
 
-    private val dao: Sql2o = DatabaseAccessor.dao().apply {
+    private fun dao(): Sql2o = DatabaseAccessor.dao().apply {
         // MySQL column name => POJO variable name
         defaultColumnMappings = mapOf(
             "discord_id" to "discordId",
@@ -30,7 +30,7 @@ object OgsDatabaseAccessor {
         )
     }
 
-    fun user(ogsId: Int): OgsUserInfo? = dao.open().use { connection ->
+    fun user(ogsId: Int): OgsUserInfo? = dao().open().use { connection ->
         val query = "SELECT * FROM $USER_TABLE WHERE ogs_id = :ogsId LIMIT 1"
         connection
             .createQuery(query)
@@ -39,7 +39,7 @@ object OgsDatabaseAccessor {
             .executeAndFetchFirst(OgsUserInfo::class.java)
     }
 
-    fun addUser(discordId: String, ogsId: String): Connection = dao.open().use { connection ->
+    fun addUser(discordId: String, ogsId: String): Connection = dao().open().use { connection ->
         val query = "INSERT INTO ${USER_TABLE}(discord_id, ogs_id, ogs_name, ogs_rank, updated, error) " +
                 " VALUES (:discordId, :ogsId, '?', '?', '2025-01-01 00:00:00', 0) "
 
@@ -51,7 +51,7 @@ object OgsDatabaseAccessor {
             .executeUpdate()
     }
 
-    fun stalestUser(): OgsUserInfo? = dao.open().use { connection ->
+    fun stalestUser(): OgsUserInfo? = dao().open().use { connection ->
         val query = "SELECT * FROM $USER_TABLE ORDER BY updated"
         connection
             .createQuery(query)
@@ -59,7 +59,7 @@ object OgsDatabaseAccessor {
             .executeAndFetchFirst(OgsUserInfo::class.java)
     }
 
-    fun markAsError(ogsUserInfo: OgsUserInfo): Connection = dao.open().use { connection ->
+    fun markAsError(ogsUserInfo: OgsUserInfo): Connection = dao().open().use { connection ->
         val query = "UPDATE $USER_TABLE SET updated = NOW(), error = 1 WHERE discord_id = :discordId "
 
         connection
@@ -68,7 +68,7 @@ object OgsDatabaseAccessor {
             .executeUpdate()
     }
 
-    fun updateUser(ogsUserInfo: OgsUserInfo): Connection = dao.open().use { connection ->
+    fun updateUser(ogsUserInfo: OgsUserInfo): Connection = dao().open().use { connection ->
         val query = "UPDATE $USER_TABLE SET " +
                 " ogs_name = :ogsName, " +
                 " ogs_rank = :ogsRank, " +
@@ -85,7 +85,7 @@ object OgsDatabaseAccessor {
             .executeUpdate()
     }
 
-    fun allUserIds(): List<Int> = dao.open().use { connection ->
+    fun allUserIds(): List<Int> = dao().open().use { connection ->
         val query = "SELECT ogs_id FROM $USER_TABLE"
         connection
             .createQuery(query)
@@ -93,7 +93,7 @@ object OgsDatabaseAccessor {
             .executeAndFetch(Int::class.java)
     }
 
-    fun game(game: OgsGame): OgsGame? = dao.open().use { connection ->
+    fun game(game: OgsGame): OgsGame? = dao().open().use { connection ->
         val query = " SELECT * FROM $GAME_TABLE WHERE gold_id = :goldId LIMIT 1 "
         connection
             .createQuery(query)
@@ -101,7 +101,7 @@ object OgsDatabaseAccessor {
             .executeAndFetchFirst(OgsGame::class.java)
     }
 
-    fun addGame(game: OgsGame): Connection = dao.open().use { connection ->
+    fun addGame(game: OgsGame): Connection = dao().open().use { connection ->
         val query = "INSERT INTO $GAME_TABLE( " +
                 " gold_id, id, date, " +
                 " black_id, black_name, black_rank, white_id, white_name, white_rank, " +
@@ -133,7 +133,7 @@ object OgsDatabaseAccessor {
             .executeUpdate()
     }
 
-    fun finishGame(game: OgsGame): Connection = dao.open().use { connection ->
+    fun finishGame(game: OgsGame): Connection = dao().open().use { connection ->
         val query = "UPDATE $GAME_TABLE " +
                 " SET result = :result, sgf = :sgf " +
                 " WHERE gold_id = :goldId"

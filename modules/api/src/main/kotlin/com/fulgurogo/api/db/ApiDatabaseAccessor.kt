@@ -12,7 +12,7 @@ object ApiDatabaseAccessor {
     private const val PLAYERS_VIEW = "api_players"
     private const val GAMES_VIEW = "api_games"
 
-    private val dao: Sql2o = DatabaseAccessor.dao().apply {
+    private fun dao(): Sql2o = DatabaseAccessor.dao().apply {
         // MySQL column name => POJO variable name
         defaultColumnMappings = mapOf(
             "discord_id" to "discordId",
@@ -58,7 +58,7 @@ object ApiDatabaseAccessor {
         )
     }
 
-    fun apiPlayers(): List<ApiPlayer> = dao.open().use { connection ->
+    fun apiPlayers(): List<ApiPlayer> = dao().open().use { connection ->
         val query = "SELECT * FROM $PLAYERS_VIEW WHERE rating > 0 ORDER by rating DESC"
         connection
             .createQuery(query)
@@ -68,7 +68,7 @@ object ApiDatabaseAccessor {
             ?: listOf()
     }
 
-    fun apiPlayer(discordId: String): ApiPlayer? = dao.open().use { connection ->
+    fun apiPlayer(discordId: String): ApiPlayer? = dao().open().use { connection ->
         val query = "SELECT * FROM $PLAYERS_VIEW WHERE discord_id = :discordId"
         connection
             .createQuery(query)
@@ -78,7 +78,7 @@ object ApiDatabaseAccessor {
             ?.toApiPlayer()
     }
 
-    fun recentGames(): List<ApiGame> = dao.open().use { connection ->
+    fun recentGames(): List<ApiGame> = dao().open().use { connection ->
         val query = "SELECT * FROM $GAMES_VIEW ORDER BY date DESC LIMIT 20"
         connection
             .createQuery(query)
@@ -88,7 +88,7 @@ object ApiDatabaseAccessor {
             ?: listOf()
     }
 
-    fun apiGamesFor(discordId: String): List<ApiGame> = dao.open().use { connection ->
+    fun apiGamesFor(discordId: String): List<ApiGame> = dao().open().use { connection ->
         val query = "SELECT * FROM $GAMES_VIEW " +
                 " WHERE black_discord_id = :discordId OR white_discord_id = :discordId " +
                 " ORDER BY date DESC"
@@ -101,7 +101,7 @@ object ApiDatabaseAccessor {
             ?: listOf()
     }
 
-    fun apiGame(goldId: String): ApiGame? = dao.open().use { connection ->
+    fun apiGame(goldId: String): ApiGame? = dao().open().use { connection ->
         val query = "SELECT * FROM $GAMES_VIEW WHERE gold_id = :goldId LIMIT 1"
         connection
             .createQuery(query)
@@ -112,7 +112,7 @@ object ApiDatabaseAccessor {
     }
 
     fun saveAuthCredentials(goldId: String, authCredentials: AuthRequestResponse): Connection =
-        dao.open().use { connection ->
+        dao().open().use { connection ->
             val query =
                 "INSERT INTO auth_credentials(gold_id, access_token, token_type, refresh_token, expiration_date) " +
                         " VALUES (:gold_id, :access_token, :token_type, :refresh_token, :expiration_date) " +
@@ -134,7 +134,7 @@ object ApiDatabaseAccessor {
                 .executeUpdate()
         }
 
-    fun getAuthCredentials(goldId: String): AuthCredentials? = dao.open().use { connection ->
+    fun getAuthCredentials(goldId: String): AuthCredentials? = dao().open().use { connection ->
         val query = " SELECT * FROM auth_credentials WHERE gold_id = :goldId"
         connection
             .createQuery(query)

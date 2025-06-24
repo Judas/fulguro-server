@@ -8,7 +8,7 @@ import org.sql2o.Sql2o
 object DiscordDatabaseAccessor {
     private const val USER_TABLE = "discord_user_info"
 
-    private val dao: Sql2o = DatabaseAccessor.dao().apply {
+    private fun dao(): Sql2o = DatabaseAccessor.dao().apply {
         // MySQL column name => POJO variable name
         defaultColumnMappings = mapOf(
             "discord_id" to "discordId",
@@ -17,7 +17,7 @@ object DiscordDatabaseAccessor {
         )
     }
 
-    fun stalestUser(): DiscordUserInfo? = dao.open().use { connection ->
+    fun stalestUser(): DiscordUserInfo? = dao().open().use { connection ->
         val query = "SELECT * FROM $USER_TABLE ORDER BY updated"
         connection
             .createQuery(query)
@@ -25,7 +25,7 @@ object DiscordDatabaseAccessor {
             .executeAndFetchFirst(DiscordUserInfo::class.java)
     }
 
-    fun user(discordId: String): DiscordUserInfo? = dao.open().use { connection ->
+    fun user(discordId: String): DiscordUserInfo? = dao().open().use { connection ->
         val query = "SELECT * FROM $USER_TABLE WHERE discord_id = :discordId"
         connection
             .createQuery(query)
@@ -33,7 +33,7 @@ object DiscordDatabaseAccessor {
             .executeAndFetchFirst(DiscordUserInfo::class.java)
     }
 
-    fun markAsError(kgsUserInfo: DiscordUserInfo): Connection = dao.open().use { connection ->
+    fun markAsError(kgsUserInfo: DiscordUserInfo): Connection = dao().open().use { connection ->
         val query = "UPDATE $USER_TABLE SET updated = NOW(), error = 1 WHERE discord_id = :discordId "
 
         connection
@@ -43,7 +43,7 @@ object DiscordDatabaseAccessor {
     }
 
     fun createUser(discordId: String, discordName: String, discordAvatar: String): Connection =
-        dao.open().use { connection ->
+        dao().open().use { connection ->
             val query =
                 "INSERT INTO $USER_TABLE(discord_id, discord_name, discord_avatar, updated, error) " +
                         " VALUES (:discordId, :discordName, :discordAvatar, NOW(), 0) " +
@@ -58,7 +58,7 @@ object DiscordDatabaseAccessor {
                 .executeUpdate()
         }
 
-    fun updateUser(discordUserInfo: DiscordUserInfo): Connection = dao.open().use { connection ->
+    fun updateUser(discordUserInfo: DiscordUserInfo): Connection = dao().open().use { connection ->
         val query = "UPDATE $USER_TABLE SET " +
                 " discord_name = :discordName, " +
                 " discord_avatar = :discordAvatar, " +
@@ -75,7 +75,7 @@ object DiscordDatabaseAccessor {
             .executeUpdate()
     }
 
-    fun phantomUsers(): List<DiscordUserInfo> = dao.open().use { connection ->
+    fun phantomUsers(): List<DiscordUserInfo> = dao().open().use { connection ->
         val query = "SELECT * FROM $USER_TABLE WHERE discord_id = discord_name"
         connection
             .createQuery(query)

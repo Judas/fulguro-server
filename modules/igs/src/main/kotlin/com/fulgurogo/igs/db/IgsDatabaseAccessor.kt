@@ -8,7 +8,7 @@ import org.sql2o.Sql2o
 object IgsDatabaseAccessor {
     private const val USER_TABLE = "igs_user_info"
 
-    private val dao: Sql2o = DatabaseAccessor.dao().apply {
+    private fun dao(): Sql2o = DatabaseAccessor.dao().apply {
         // MySQL column name => POJO variable name
         defaultColumnMappings = mapOf(
             "discord_id" to "discordId",
@@ -17,7 +17,7 @@ object IgsDatabaseAccessor {
         )
     }
 
-    fun stalestUser(): IgsUserInfo? = dao.open().use { connection ->
+    fun stalestUser(): IgsUserInfo? = dao().open().use { connection ->
         val query = "SELECT * FROM $USER_TABLE ORDER BY updated"
         connection
             .createQuery(query)
@@ -25,7 +25,7 @@ object IgsDatabaseAccessor {
             .executeAndFetchFirst(IgsUserInfo::class.java)
     }
 
-    fun user(igsId: Int): IgsUserInfo? = dao.open().use { connection ->
+    fun user(igsId: Int): IgsUserInfo? = dao().open().use { connection ->
         val query = "SELECT * FROM $USER_TABLE WHERE igs_id = :igsId LIMIT 1"
         connection
             .createQuery(query)
@@ -34,7 +34,7 @@ object IgsDatabaseAccessor {
             .executeAndFetchFirst(IgsUserInfo::class.java)
     }
 
-    fun addUser(discordId: String, igsId: String): Connection = dao.open().use { connection ->
+    fun addUser(discordId: String, igsId: String): Connection = dao().open().use { connection ->
         val query = "INSERT INTO ${USER_TABLE}(discord_id, igs_id, igs_rank, updated, error) " +
                 " VALUES (:discordId, :igsId, '?', '2025-01-01 00:00:00', 0) "
 
@@ -46,7 +46,7 @@ object IgsDatabaseAccessor {
             .executeUpdate()
     }
 
-    fun markAsError(igsUserInfo: IgsUserInfo): Connection = dao.open().use { connection ->
+    fun markAsError(igsUserInfo: IgsUserInfo): Connection = dao().open().use { connection ->
         val query = "UPDATE $USER_TABLE SET updated = NOW(), error = 1 WHERE discord_id = :discordId "
 
         connection
@@ -55,7 +55,7 @@ object IgsDatabaseAccessor {
             .executeUpdate()
     }
 
-    fun updateUser(igsUserInfo: IgsUserInfo): Connection = dao.open().use { connection ->
+    fun updateUser(igsUserInfo: IgsUserInfo): Connection = dao().open().use { connection ->
         val query = "UPDATE $USER_TABLE SET " +
                 " igs_rank = :igsRank, " +
                 " updated = :updated, " +

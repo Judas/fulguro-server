@@ -6,14 +6,14 @@ import com.fulgurogo.common.logger.log
 import org.sql2o.Sql2o
 
 object CleanDatabaseAccessor {
-    private val dao: Sql2o = DatabaseAccessor.dao().apply {
+    private fun dao(): Sql2o = DatabaseAccessor.dao().apply {
 //        // MySQL column name => POJO variable name
 //        defaultColumnMappings = mapOf(
 //            "discord_id" to "discordId"
 //        )
     }
 
-    fun removeAllFrom(phantomUsersIds: List<String>) = dao.open().use { connection ->
+    fun removeAllFrom(phantomUsersIds: List<String>) = dao().open().use { connection ->
         log(TAG, "removeAllFrom $phantomUsersIds")
 
         listOf(
@@ -30,7 +30,7 @@ object CleanDatabaseAccessor {
         }
     }
 
-    fun removeOldGames(days: Int) = dao.open().use { connection ->
+    fun removeOldGames(days: Int) = dao().open().use { connection ->
         log(TAG, "removeOldGames $days")
 
         listOf("kgs_games", "ogs_games", "fox_games").forEach { table ->
@@ -42,7 +42,7 @@ object CleanDatabaseAccessor {
         }
     }
 
-    fun removeDeletedAccounts() = dao.open().use { connection ->
+    fun removeDeletedAccounts() = dao().open().use { connection ->
         log(TAG, "removeDeletedAccounts")
 
         listOf(

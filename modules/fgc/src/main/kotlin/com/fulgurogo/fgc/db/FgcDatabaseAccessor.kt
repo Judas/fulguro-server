@@ -10,7 +10,7 @@ object FgcDatabaseAccessor {
     private const val VALIDITY_TABLE = "fgc_validity"
     private const val VALIDITY_GAMES_VIEW = "fgc_validity_games"
 
-    private val dao: Sql2o = DatabaseAccessor.dao().apply {
+    private fun dao(): Sql2o = DatabaseAccessor.dao().apply {
         // MySQL column name => POJO variable name
         defaultColumnMappings = mapOf(
             "discord_id" to "discordId",
@@ -24,7 +24,7 @@ object FgcDatabaseAccessor {
         )
     }
 
-    fun stalestUser(): FgcValidity? = dao.open().use { connection ->
+    fun stalestUser(): FgcValidity? = dao().open().use { connection ->
         val query = "SELECT * FROM $VALIDITY_TABLE ORDER BY updated"
         connection
             .createQuery(query)
@@ -32,7 +32,7 @@ object FgcDatabaseAccessor {
             .executeAndFetchFirst(FgcValidity::class.java)
     }
 
-    fun markAsError(fgcValidity: FgcValidity): Connection = dao.open().use { connection ->
+    fun markAsError(fgcValidity: FgcValidity): Connection = dao().open().use { connection ->
         val query = "UPDATE $VALIDITY_TABLE SET updated = NOW(), error = 1 WHERE discord_id = :discordId "
 
         connection
@@ -42,7 +42,7 @@ object FgcDatabaseAccessor {
             .executeUpdate()
     }
 
-    fun addPlayer(discordId: String): Connection = dao.open().use { connection ->
+    fun addPlayer(discordId: String): Connection = dao().open().use { connection ->
         val query = "INSERT INTO ${VALIDITY_TABLE}(discord_id, " +
                 " total_games, total_ranked_games, gold_games, gold_ranked_games, " +
                 " updated, error) " +
@@ -56,7 +56,7 @@ object FgcDatabaseAccessor {
             .executeUpdate()
     }
 
-    fun validityGames(fgcValidity: FgcValidity): List<FgcValidityGame> = dao.open().use { connection ->
+    fun validityGames(fgcValidity: FgcValidity): List<FgcValidityGame> = dao().open().use { connection ->
         val query = "SELECT * FROM $VALIDITY_GAMES_VIEW " +
                 " WHERE black_discord_id = :discordId OR white_discord_id = :discordId "
 
@@ -66,7 +66,7 @@ object FgcDatabaseAccessor {
             .executeAndFetch(FgcValidityGame::class.java)
     }
 
-    fun updateValidity(fgcValidity: FgcValidity): Connection = dao.open().use { connection ->
+    fun updateValidity(fgcValidity: FgcValidity): Connection = dao().open().use { connection ->
         val query = "UPDATE $VALIDITY_TABLE SET " +
                 " total_games = :totalGames, " +
                 " total_ranked_games = :totalRankedGames, " +

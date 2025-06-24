@@ -12,7 +12,7 @@ object KgsDatabaseAccessor {
     private const val USER_TABLE = "kgs_user_info"
     private const val GAME_TABLE = "kgs_games"
 
-    private val dao: Sql2o = DatabaseAccessor.dao().apply {
+    private fun dao(): Sql2o = DatabaseAccessor.dao().apply {
         // MySQL column name => POJO variable name
         defaultColumnMappings = mapOf(
             "discord_id" to "discordId",
@@ -27,7 +27,7 @@ object KgsDatabaseAccessor {
         )
     }
 
-    fun user(kgsId: String): KgsUserInfo? = dao.open().use { connection ->
+    fun user(kgsId: String): KgsUserInfo? = dao().open().use { connection ->
         val query = "SELECT * FROM $USER_TABLE WHERE kgs_id = :kgsId LIMIT 1"
         connection
             .createQuery(query)
@@ -36,7 +36,7 @@ object KgsDatabaseAccessor {
             .executeAndFetchFirst(KgsUserInfo::class.java)
     }
 
-    fun addUser(discordId: String, kgsId: String): Connection = dao.open().use { connection ->
+    fun addUser(discordId: String, kgsId: String): Connection = dao().open().use { connection ->
         val query = "INSERT INTO $USER_TABLE(discord_id, kgs_id, kgs_rank, updated, error) " +
                 " VALUES (:discordId, :kgsId, '?', '2025-01-01 00:00:00', 0) "
 
@@ -48,7 +48,7 @@ object KgsDatabaseAccessor {
             .executeUpdate()
     }
 
-    fun stalestUser(): KgsUserInfo? = dao.open().use { connection ->
+    fun stalestUser(): KgsUserInfo? = dao().open().use { connection ->
         val query = "SELECT * FROM $USER_TABLE ORDER BY updated"
         connection
             .createQuery(query)
@@ -56,7 +56,7 @@ object KgsDatabaseAccessor {
             .executeAndFetchFirst(KgsUserInfo::class.java)
     }
 
-    fun markAsError(kgsUserInfo: KgsUserInfo): Connection = dao.open().use { connection ->
+    fun markAsError(kgsUserInfo: KgsUserInfo): Connection = dao().open().use { connection ->
         val query = "UPDATE $USER_TABLE SET updated = NOW(), error = 1 WHERE discord_id = :discordId "
 
         connection
@@ -65,7 +65,7 @@ object KgsDatabaseAccessor {
             .executeUpdate()
     }
 
-    fun updateUser(kgsUserInfo: KgsUserInfo): Connection = dao.open().use { connection ->
+    fun updateUser(kgsUserInfo: KgsUserInfo): Connection = dao().open().use { connection ->
         val query = "UPDATE $USER_TABLE SET " +
                 " kgs_rank = :kgsRank, " +
                 " updated = :updated, " +
@@ -80,7 +80,7 @@ object KgsDatabaseAccessor {
             .executeUpdate()
     }
 
-    fun game(game: KgsGame): KgsGame? = dao.open().use { connection ->
+    fun game(game: KgsGame): KgsGame? = dao().open().use { connection ->
         val query = " SELECT * FROM $GAME_TABLE WHERE gold_id = :goldId LIMIT 1 "
         connection
             .createQuery(query)
@@ -88,7 +88,7 @@ object KgsDatabaseAccessor {
             .executeAndFetchFirst(KgsGame::class.java)
     }
 
-    fun addGame(game: KgsGame): Connection = dao.open().use { connection ->
+    fun addGame(game: KgsGame): Connection = dao().open().use { connection ->
         val query = "INSERT INTO $GAME_TABLE( " +
                 " gold_id, date, " +
                 " black_id, black_rank, white_id, white_rank, " +
@@ -117,7 +117,7 @@ object KgsDatabaseAccessor {
             .executeUpdate()
     }
 
-    fun finishGame(game: KgsGame): Connection = dao.open().use { connection ->
+    fun finishGame(game: KgsGame): Connection = dao().open().use { connection ->
         val query = "UPDATE $GAME_TABLE " +
                 " SET result = :result, sgf = :sgf " +
                 " WHERE gold_id = :goldId"
