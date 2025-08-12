@@ -10,6 +10,7 @@ import com.fulgurogo.ffg.FfgModule
 import com.fulgurogo.fgc.FgcModule
 import com.fulgurogo.fox.FoxModule
 import com.fulgurogo.gold.GoldModule
+import com.fulgurogo.houses.HousesModule
 import com.fulgurogo.igs.IgsModule
 import com.fulgurogo.kgs.KgsModule
 import com.fulgurogo.ogs.OgsModule
@@ -34,8 +35,7 @@ fun main() {
     GoldModule.init()
     FgcModule.init()
     ApiModule.init(isDebug)
-
-    // TODO HouseModule
+    HousesModule.init()
     // TODO CardsModule
 
     // Utility modules

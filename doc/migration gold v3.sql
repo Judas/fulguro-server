@@ -357,3 +357,110 @@ CREATE VIEW `api_games` AS
   INNER JOIN `gold_ratings` AS `white_gold` ON `white_discord`.`discord_id` = `white_gold`.`discord_id`
   INNER JOIN `gold_tiers` AS `white_tier` ON `white_gold`.`tier_rank` = `white_tier`.`rank`
   WHERE `result` != "unfinished";
+
+-- HOUSES
+
+DROP TABLE IF EXISTS `fgo_houses`;
+CREATE TABLE `fgo_houses` (
+  `id` INT(11) NOT NULL,
+  `color` VARCHAR(255) NOT NULL,
+  `name` VARCHAR(255) NOT NULL,
+  `headline` VARCHAR(255) NOT NULL,
+  `welcome` VARCHAR(255) NOT NULL,
+  `description` TEXT NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO `fgo_houses`(`id`,`color`,`name`,`headline`,`welcome`,`description`)
+VALUES
+('1','#740001','Fils du Froid','Le meilleur coup est celui qui brise.', 'Nous jouons comme nous vivons : en conquérants.', "Nés sous les vents du nord, les membres des Fils du Froid embrassent le feu du combat. Chaque pierre posée est une déclaration de guerre. Pour eux, le plateau est un champ de bataille, et la victoire ne s'offre qu'aux plus audacieux. Aucun territoire n'est défendu s'il peut être conquis. Leur style est impétueux, leur esprit, indomptable."),
+('2','#7DFFFC','Nexus Alpha','Chaque coup est une équation.', 'Nous ne jouons pas : nous calculons la victoire.', "Nexus Alpha analyse, anticipe, optimise. Ici, l’intuition est assistée par la froideur mathématique. Chaque partie est une simulation, chaque mouvement calculé pour tendre vers l'efficacité maximale. Ils cherchent la ligne idéale dans le chaos apparent, convaincus que la vérité du Go réside dans la logique pure et la maîtrise des séquences."),
+('3','#1A472A','Sabre Silencieux','Un coup, un destin !', 'Plutôt la capture que le déshonneur.', "Fidèles au bushido, les membres du Sabre Silencieux considèrent le Go comme un art martial spirituel. La beauté d’un joseki maîtrisé vaut mieux qu’un triomphe désordonné. Ils ne trahissent jamais leurs principes : respect de l’adversaire, discipline du jeu, et harmonie dans les formes. Leur calme est leur plus puissante arme."),
+('4','#B85209',"Lunaires d'Æther",'Pourquoi jouer comme hier ?', 'Le génie est une séquence hasardeuse qui réussit.', "Curieux, imprévisibles, parfois déconcertants, les Lunaires d’Æther refusent la voie tracée. Leurs coups sont des inventions, leurs ouvertures, des prototypes. Ils collectionnent les formes étranges et les variations absurdes qui finissent, parfois, par fonctionner. Chaque partie est un laboratoire, chaque joueur, un inventeur de l’impossible.");
+
+DROP TABLE IF EXISTS `fgo_house_points`;
+CREATE TABLE `fgo_house_points` (
+  `discord_id` VARCHAR(255) NOT NULL,
+  `house_id` INT(11) NOT NULL,
+  `played` INT(11) NOT NULL,
+  `gold` INT(11) NOT NULL,
+  `house` INT(11) NOT NULL,
+  `win` INT(11) NOT NULL,
+  `long` INT(11) NOT NULL,
+  `balanced` INT(11) NOT NULL,
+  `ranked` INT(11) NOT NULL,
+  `fgc` INT(11) NOT NULL,
+  `check_date` DATETIME NULL,
+  `updated` DATETIME NULL,
+  `error` TINYINT(1) NOT NULL,
+  PRIMARY KEY (`discord_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+DROP TABLE IF EXISTS `backup_houses_points`;
+CREATE TABLE `backup_houses_points` (
+  `date` DATETIME NOT NULL,
+  `discord_id` VARCHAR(255) NOT NULL,
+  `house_id` INT(11) NOT NULL,
+  `played` INT(11) NOT NULL,
+  `gold` INT(11) NOT NULL,
+  `house` INT(11) NOT NULL,
+  `win` INT(11) NOT NULL,
+  `long` INT(11) NOT NULL,
+  `balanced` INT(11) NOT NULL,
+  `ranked` INT(11) NOT NULL,
+  `fgc` INT(11) NOT NULL,
+  `check_date` DATETIME NULL,
+  `updated` DATETIME NULL,
+  `error` TINYINT(1) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+DROP EVENT IF EXISTS `backup_houses_points_event`;
+DELIMITER |
+CREATE EVENT `backup_houses_points_event`
+    ON SCHEDULE
+      EVERY 1 DAY
+    DO
+      BEGIN
+        INSERT INTO `backup_houses_points`
+          SELECT NOW() AS `date`, points.* FROM `fgo_house_points` AS points;
+        DELETE FROM `backup_houses_points` WHERE DATEDIFF(NOW(), date) > 15;
+      END |
+DELIMITER ;
+
+DROP VIEW IF EXISTS `fgo_houses_games`;
+CREATE VIEW `fgo_houses_games` AS
+  SELECT `game`.`gold_id`, `game`.`date`, `game`.`result`, `game`.`long_game`, `game`.`handicap`, `game`.`komi`, `game`.`ranked`,
+  `black_discord`.`discord_id` AS `black_discord_id`, `black_house`.`house_id` AS `black_house_id`,
+  `white_discord`.`discord_id` AS `white_discord_id`, `white_house`.`house_id` AS `white_house_id`
+  FROM `ogs_games` AS `game`
+  LEFT JOIN `ogs_user_info` AS `black_ogs` ON `game`.`black_id` = `black_ogs`.`ogs_id`
+  LEFT JOIN `discord_user_info` AS `black_discord` ON `black_ogs`.`discord_id` = `black_discord`.`discord_id`
+  LEFT JOIN `fgo_house_points` AS `black_house` ON `black_ogs`.`discord_id` = `black_house`.`discord_id`
+  LEFT JOIN `ogs_user_info` AS `white_ogs` ON `game`.`white_id` = `white_ogs`.`ogs_id`
+  LEFT JOIN `discord_user_info` AS `white_discord` ON `white_ogs`.`discord_id` = `white_discord`.`discord_id`
+  LEFT JOIN `fgo_house_points` AS `white_house` ON `white_ogs`.`discord_id` = `white_house`.`discord_id`
+  WHERE `result` != "unfinished"
+  UNION
+  SELECT `game`.`gold_id`, `game`.`date`, `game`.`result`, `game`.`long_game`, `game`.`handicap`, `game`.`komi`, `game`.`ranked`,
+  `black_discord`.`discord_id` AS `black_discord_id`, `black_house`.`house_id` AS `black_house_id`,
+  `white_discord`.`discord_id` AS `white_discord_id`, `white_house`.`house_id` AS `white_house_id`
+  FROM `ogs_games` AS `game`
+  LEFT JOIN `kgs_user_info` AS `black_kgs` ON `game`.`black_id` = `black_kgs`.`kgs_id`
+  LEFT JOIN `discord_user_info` AS `black_discord` ON `black_kgs`.`discord_id` = `black_discord`.`discord_id`
+  LEFT JOIN `fgo_house_points` AS `black_house` ON `black_kgs`.`discord_id` = `black_house`.`discord_id`
+  LEFT JOIN `kgs_user_info` AS `white_kgs` ON `game`.`white_id` = `white_kgs`.`kgs_id`
+  LEFT JOIN `discord_user_info` AS `white_discord` ON `white_kgs`.`discord_id` = `white_discord`.`discord_id`
+  LEFT JOIN `fgo_house_points` AS `white_house` ON `white_kgs`.`discord_id` = `white_house`.`discord_id`
+  WHERE `result` != "unfinished"
+  UNION
+  SELECT `game`.`gold_id`, `game`.`date`, `game`.`result`, `game`.`long_game`, `game`.`handicap`, `game`.`komi`, `game`.`ranked`,
+  `black_discord`.`discord_id` AS `black_discord_id`, `black_house`.`house_id` AS `black_house_id`,
+  `white_discord`.`discord_id` AS `white_discord_id`, `white_house`.`house_id` AS `white_house_id`
+  FROM `ogs_games` AS `game`
+  LEFT JOIN `fox_user_info` AS `black_fox` ON `game`.`black_id` = `black_fox`.`fox_id`
+  LEFT JOIN `discord_user_info` AS `black_discord` ON `black_fox`.`discord_id` = `black_discord`.`discord_id`
+  LEFT JOIN `fgo_house_points` AS `black_house` ON `black_fox`.`discord_id` = `black_house`.`discord_id`
+  LEFT JOIN `fox_user_info` AS `white_fox` ON `game`.`white_id` = `white_fox`.`fox_id`
+  LEFT JOIN `discord_user_info` AS `white_discord` ON `white_fox`.`discord_id` = `white_discord`.`discord_id`
+  LEFT JOIN `fgo_house_points` AS `white_house` ON `white_fox`.`discord_id` = `white_house`.`discord_id`
+  WHERE `result` != "unfinished"

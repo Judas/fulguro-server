@@ -12,6 +12,7 @@ include(":modules:egf")
 include(":modules:gold")
 include(":modules:fgc")
 include(":modules:api")
+include(":modules:houses")
 
 include(":modules:ping")
 include(":modules:clean")
