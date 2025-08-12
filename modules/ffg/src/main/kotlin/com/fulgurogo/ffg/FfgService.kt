@@ -3,10 +3,10 @@ package com.fulgurogo.ffg
 import com.fulgurogo.common.config.Config
 import com.fulgurogo.common.logger.log
 import com.fulgurogo.common.service.PeriodicFlowService
+import com.fulgurogo.common.utilities.scrap
 import com.fulgurogo.ffg.FfgModule.TAG
 import com.fulgurogo.ffg.db.FfgDatabaseAccessor
 import com.fulgurogo.ffg.db.model.FfgUserInfo
-import org.jsoup.Jsoup
 import java.util.*
 
 class FfgService : PeriodicFlowService(0, 120) {
@@ -21,10 +21,7 @@ class FfgService : PeriodicFlowService(0, 120) {
             try {
                 // Scrap profile page
                 val route = "${Config.get("ffg.website.url")}/php/affichePersonne.php?id=${stale.ffgId}"
-                val html = Jsoup.connect(route)
-                    .userAgent(Config.get("user.agent"))
-                    .timeout(Config.get("global.read.timeout.ms").toInt())
-                    .get()
+                val html = scrap(route)
 
                 // Get name
                 val name = html.select("#ffg_main_content > h3").asList().firstOrNull()?.text()?.trim()

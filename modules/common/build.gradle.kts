@@ -26,6 +26,7 @@ noArg {
 dependencies {
     api(libs.hikari)
     api(libs.jsch)
+    api(libs.jsoup)
     api(platform(libs.kotlin.bom))
     api(libs.kotlinx.coroutines)
     api(libs.kotlin.stdlib)

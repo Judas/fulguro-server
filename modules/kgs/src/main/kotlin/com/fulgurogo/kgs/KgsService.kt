@@ -5,6 +5,7 @@ import com.fulgurogo.common.logger.log
 import com.fulgurogo.common.service.PeriodicFlowService
 import com.fulgurogo.common.utilities.DATE_ZONE
 import com.fulgurogo.common.utilities.okHttpClient
+import com.fulgurogo.common.utilities.scrap
 import com.fulgurogo.common.utilities.toDate
 import com.fulgurogo.discord.DiscordModule
 import com.fulgurogo.kgs.KgsModule.TAG
@@ -13,7 +14,6 @@ import com.fulgurogo.kgs.db.model.KgsGame
 import com.fulgurogo.kgs.db.model.KgsUserInfo
 import okhttp3.Request
 import okio.IOException
-import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import java.text.ParsePosition
 import java.text.SimpleDateFormat
@@ -86,10 +86,7 @@ class KgsService : PeriodicFlowService(0, 15) {
 
     private fun scrapMonthlyGames(kgsId: String?, year: Int, month: Int): MutableList<KgsGame> = try {
         val route = "${Config.get("kgs.archives.url")}?user=$kgsId&year=$year&month=$month"
-        val html = Jsoup.connect(route)
-            .userAgent(Config.get("user.agent"))
-            .timeout(Config.get("global.read.timeout.ms").toInt())
-            .get()
+        val html = scrap(route)
 
         // Get the tables, there might be 0 (no games at all), 1 (no games this month) or 2 (games, yay !)
         val tables = html.select("table.grid").asList()

@@ -3,10 +3,10 @@ package com.fulgurogo.egf
 import com.fulgurogo.common.config.Config
 import com.fulgurogo.common.logger.log
 import com.fulgurogo.common.service.PeriodicFlowService
+import com.fulgurogo.common.utilities.scrap
 import com.fulgurogo.egf.EgfModule.TAG
 import com.fulgurogo.egf.db.EgfDatabaseAccessor
 import com.fulgurogo.egf.db.model.EgfUserInfo
-import org.jsoup.Jsoup
 import java.util.*
 
 class EgfService : PeriodicFlowService(0, 120) {
@@ -21,10 +21,7 @@ class EgfService : PeriodicFlowService(0, 120) {
             try {
                 // Scrap profile page
                 val route = "${Config.get("egf.website.url")}?key=${stale.egfId}"
-                val html = Jsoup.connect(route)
-                    .userAgent(Config.get("user.agent"))
-                    .timeout(Config.get("global.read.timeout.ms").toInt())
-                    .get()
+                val html = scrap(route)
 
                 // Get name
                 val name = html.select("span.plain5").asList().firstOrNull()?.text()?.trim()
