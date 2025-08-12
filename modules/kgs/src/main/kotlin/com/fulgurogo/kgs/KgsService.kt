@@ -4,31 +4,23 @@ import com.fulgurogo.common.config.Config
 import com.fulgurogo.common.logger.log
 import com.fulgurogo.common.service.PeriodicFlowService
 import com.fulgurogo.common.utilities.DATE_ZONE
+import com.fulgurogo.common.utilities.okHttpClient
 import com.fulgurogo.common.utilities.toDate
 import com.fulgurogo.discord.DiscordModule
 import com.fulgurogo.kgs.KgsModule.TAG
 import com.fulgurogo.kgs.db.KgsDatabaseAccessor
 import com.fulgurogo.kgs.db.model.KgsGame
 import com.fulgurogo.kgs.db.model.KgsUserInfo
-import okhttp3.JavaNetCookieJar
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import okio.IOException
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import java.net.CookieManager
-import java.net.CookiePolicy
 import java.text.ParsePosition
 import java.text.SimpleDateFormat
 import java.time.ZonedDateTime
 import java.util.*
-import java.util.concurrent.TimeUnit
 
-class KgsService : PeriodicFlowService(0, 5) {
-    private val okHttpClient: OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(Config.get("global.read.timeout.ms").toLong(), TimeUnit.MILLISECONDS)
-        .readTimeout(Config.get("global.read.timeout.ms").toLong(), TimeUnit.MILLISECONDS)
-        .cookieJar(JavaNetCookieJar(CookieManager().apply { setCookiePolicy(CookiePolicy.ACCEPT_ALL) })).build()
+class KgsService : PeriodicFlowService(0, 15) {
     private var lastNetworkCallTime: ZonedDateTime = ZonedDateTime.now(DATE_ZONE)
 
     private var processing = false
@@ -187,7 +179,7 @@ class KgsService : PeriodicFlowService(0, 5) {
             .url(sgfLink)
             .header("User-Agent", Config.get("user.agent"))
             .get().build()
-        val response = okHttpClient.newCall(request).execute()
+        val response = okHttpClient().newCall(request).execute()
         return if (response.isSuccessful) {
             val responseBody = response.body!!.string().replace("\n", "")
             response.close()

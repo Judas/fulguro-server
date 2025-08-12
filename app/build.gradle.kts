@@ -54,9 +54,6 @@ dependencies {
     implementation(libs.kotlin.stdlib)
     implementation(libs.kotlinx.coroutines)
     implementation(libs.mysql.connector)
-    implementation(platform(libs.okhttp.bom))
-    implementation(libs.okhttp)
-    implementation(libs.okhttp.urlconnection)
     implementation(libs.sl4j)
     implementation(libs.sql2o)
 }

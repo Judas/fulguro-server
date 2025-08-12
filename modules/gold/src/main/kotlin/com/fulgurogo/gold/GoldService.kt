@@ -11,7 +11,7 @@ import com.fulgurogo.gold.db.GoldDatabaseAccessor
 import com.fulgurogo.gold.db.model.GoldPlayer
 import java.util.*
 
-class GoldService : PeriodicFlowService(60, 5) {
+class GoldService : PeriodicFlowService(60, 15) {
     private var processing = false
 
     override fun onTick() {

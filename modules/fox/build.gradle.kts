@@ -26,7 +26,4 @@ noArg {
 dependencies {
     implementation(project(":modules:discord"))
     implementation(libs.gson)
-    implementation(platform(libs.okhttp.bom))
-    implementation(libs.okhttp)
-    implementation(libs.okhttp.urlconnection)
 }

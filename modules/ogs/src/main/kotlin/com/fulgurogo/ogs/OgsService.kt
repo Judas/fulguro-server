@@ -18,7 +18,7 @@ import com.fulgurogo.ogs.db.model.OgsUserInfo
 import java.time.ZonedDateTime
 import java.util.*
 
-class OgsService : PeriodicFlowService(0, 5) {
+class OgsService : PeriodicFlowService(0, 15) {
     private var processing = false
     private val ogsApiClient = OgsApiClient()
 
@@ -54,6 +54,12 @@ class OgsService : PeriodicFlowService(0, 5) {
                     val blackDiscordUser = OgsDatabaseAccessor.user(game.blackId)
                     val whiteDiscordUser = OgsDatabaseAccessor.user(game.whiteId)
                     val isGoldGame = blackDiscordUser != null && whiteDiscordUser != null
+                    if (game.goldId to game.result != dbGame?.goldId to dbGame?.result) {
+                        log(
+                            TAG,
+                            "localGame [${game.goldId} | ${game.result}] - dbGame [${dbGame?.goldId} | ${dbGame?.result}]}"
+                        )
+                    }
                     if (game.isFinished() && dbGame != null && !dbGame.isFinished()) {
                         OgsDatabaseAccessor.finishGame(game)
                         if (isGoldGame) notifyGame(game)

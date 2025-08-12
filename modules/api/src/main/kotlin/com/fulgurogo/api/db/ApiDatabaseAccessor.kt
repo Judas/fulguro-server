@@ -4,61 +4,13 @@ import com.fulgurogo.api.db.model.*
 import com.fulgurogo.common.db.DatabaseAccessor
 import com.fulgurogo.common.utilities.DATE_ZONE
 import com.fulgurogo.common.utilities.toDate
-import org.sql2o.Connection
-import org.sql2o.Sql2o
 import java.time.ZonedDateTime
 
 object ApiDatabaseAccessor {
     private const val PLAYERS_VIEW = "api_players"
     private const val GAMES_VIEW = "api_games"
 
-    private fun dao(): Sql2o = DatabaseAccessor.dao().apply {
-        // MySQL column name => POJO variable name
-        defaultColumnMappings = mapOf(
-            "discord_id" to "discordId",
-            "discord_name" to "discordName",
-            "discord_avatar" to "discordAvatar",
-            "kgs_id" to "kgsId",
-            "kgs_rank" to "kgsRank",
-            "ogs_id" to "ogsId",
-            "ogs_name" to "ogsName",
-            "ogs_rank" to "ogsRank",
-            "fox_id" to "foxId",
-            "fox_name" to "foxName",
-            "fox_rank" to "foxRank",
-            "igs_id" to "igsId",
-            "igs_rank" to "igsRank",
-            "ffg_id" to "ffgId",
-            "ffg_name" to "ffgName",
-            "ffg_rank" to "ffgRank",
-            "egf_id" to "egfId",
-            "egf_name" to "egfName",
-            "egf_rank" to "egfRank",
-            "tier_rank" to "tierRank",
-            "tier_name" to "tierName",
-            "total_ranked_games" to "totalRankedGames",
-            "gold_ranked_games" to "goldRankedGames",
-            "gold_id" to "goldId",
-            "black_discord_id" to "blackDiscordId",
-            "black_discord_name" to "blackDiscordName",
-            "black_discord_avatar" to "blackDiscordAvatar",
-            "black_rating" to "blackRating",
-            "black_tier_rank" to "blackTierRank",
-            "black_tier_name" to "blackTierName",
-            "white_discord_id" to "whiteDiscordId",
-            "white_discord_name" to "whiteDiscordName",
-            "white_discord_avatar" to "whiteDiscordAvatar",
-            "white_rating" to "whiteRating",
-            "white_tier_rank" to "whiteTierRank",
-            "white_tier_name" to "whiteTierName",
-            "access_token" to "accessToken",
-            "token_type" to "tokenType",
-            "refresh_token" to "refreshToken",
-            "expiration_date" to "expirationDate"
-        )
-    }
-
-    fun apiPlayers(): List<ApiPlayer> = dao().open().use { connection ->
+    fun apiPlayers(): List<ApiPlayer> = DatabaseAccessor.withDao { connection ->
         val query = "SELECT * FROM $PLAYERS_VIEW WHERE rating > 0 ORDER by rating DESC"
         connection
             .createQuery(query)
@@ -68,7 +20,7 @@ object ApiDatabaseAccessor {
             ?: listOf()
     }
 
-    fun apiPlayer(discordId: String): ApiPlayer? = dao().open().use { connection ->
+    fun apiPlayer(discordId: String): ApiPlayer? = DatabaseAccessor.withDao { connection ->
         val query = "SELECT * FROM $PLAYERS_VIEW WHERE discord_id = :discordId"
         connection
             .createQuery(query)
@@ -78,7 +30,7 @@ object ApiDatabaseAccessor {
             ?.toApiPlayer()
     }
 
-    fun recentGames(): List<ApiGame> = dao().open().use { connection ->
+    fun recentGames(): List<ApiGame> = DatabaseAccessor.withDao { connection ->
         val query = "SELECT * FROM $GAMES_VIEW ORDER BY date DESC LIMIT 20"
         connection
             .createQuery(query)
@@ -88,7 +40,7 @@ object ApiDatabaseAccessor {
             ?: listOf()
     }
 
-    fun apiGamesFor(discordId: String): List<ApiGame> = dao().open().use { connection ->
+    fun apiGamesFor(discordId: String): List<ApiGame> = DatabaseAccessor.withDao { connection ->
         val query = "SELECT * FROM $GAMES_VIEW " +
                 " WHERE black_discord_id = :discordId OR white_discord_id = :discordId " +
                 " ORDER BY date DESC"
@@ -101,7 +53,7 @@ object ApiDatabaseAccessor {
             ?: listOf()
     }
 
-    fun apiGame(goldId: String): ApiGame? = dao().open().use { connection ->
+    fun apiGame(goldId: String): ApiGame? = DatabaseAccessor.withDao { connection ->
         val query = "SELECT * FROM $GAMES_VIEW WHERE gold_id = :goldId LIMIT 1"
         connection
             .createQuery(query)
@@ -111,8 +63,8 @@ object ApiDatabaseAccessor {
             ?.toApiGame()
     }
 
-    fun saveAuthCredentials(goldId: String, authCredentials: AuthRequestResponse): Connection =
-        dao().open().use { connection ->
+    fun saveAuthCredentials(goldId: String, authCredentials: AuthRequestResponse) {
+        DatabaseAccessor.withDao { connection ->
             val query =
                 "INSERT INTO auth_credentials(gold_id, access_token, token_type, refresh_token, expiration_date) " +
                         " VALUES (:gold_id, :access_token, :token_type, :refresh_token, :expiration_date) " +
@@ -133,8 +85,9 @@ object ApiDatabaseAccessor {
                 )
                 .executeUpdate()
         }
+    }
 
-    fun getAuthCredentials(goldId: String): AuthCredentials? = dao().open().use { connection ->
+    fun getAuthCredentials(goldId: String): AuthCredentials? = DatabaseAccessor.withDao { connection ->
         val query = " SELECT * FROM auth_credentials WHERE gold_id = :goldId"
         connection
             .createQuery(query)

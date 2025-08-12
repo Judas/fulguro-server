@@ -25,7 +25,4 @@ noArg {
 
 dependencies {
     implementation(project(":modules:common"))
-    implementation(platform(libs.okhttp.bom))
-    implementation(libs.okhttp)
-    implementation(libs.okhttp.urlconnection)
 }

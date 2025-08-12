@@ -10,6 +10,7 @@ import com.fulgurogo.api.utilities.standardResponse
 import com.fulgurogo.common.config.Config
 import com.fulgurogo.common.logger.log
 import com.fulgurogo.common.utilities.DATE_ZONE
+import com.fulgurogo.common.utilities.okHttpClient
 import com.fulgurogo.common.utilities.toDate
 import com.fulgurogo.discord.DiscordModule
 import com.fulgurogo.discord.db.DiscordDatabaseAccessor
@@ -25,22 +26,13 @@ import com.fulgurogo.ogs.api.model.OgsUserList
 import com.fulgurogo.ogs.db.OgsDatabaseAccessor
 import com.google.gson.Gson
 import io.javalin.http.Context
-import okhttp3.JavaNetCookieJar
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
-import java.net.CookieManager
-import java.net.CookiePolicy
 import java.time.ZonedDateTime
-import java.util.concurrent.TimeUnit
 
 class Api {
     private val ogsApiClient = OgsApiClient()
     private val gson: Gson = Gson()
-    private val okHttpClient: OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(Config.get("global.read.timeout.ms").toLong(), TimeUnit.MILLISECONDS)
-        .readTimeout(Config.get("global.read.timeout.ms").toLong(), TimeUnit.MILLISECONDS)
-        .cookieJar(JavaNetCookieJar(CookieManager().apply { setCookiePolicy(CookiePolicy.ACCEPT_ALL) })).build()
 
     fun getPlayers(context: Context) = try {
         context.rateLimit()
@@ -158,7 +150,7 @@ class Api {
         val body: RequestBody = AuthRequestPayload(code = authCode).toFormBody()
 
         val request: Request = Request.Builder().url(Config.get("gold.discord.auth.token.uri")).post(body).build()
-        val response = okHttpClient.newCall(request).execute()
+        val response = okHttpClient().newCall(request).execute()
 
         if (!response.isSuccessful) {
             val error = Exception("DISCORD AUTH REQUEST FAILURE " + response.code)
@@ -176,7 +168,7 @@ class Api {
     private fun refreshAuthToken(refreshToken: String): AuthRequestResponse {
         val body: RequestBody = AuthRefreshPayload(refreshToken = refreshToken).toFormBody()
         val request: Request = Request.Builder().url(Config.get("gold.discord.auth.token.uri")).post(body).build()
-        val response = okHttpClient.newCall(request).execute()
+        val response = okHttpClient().newCall(request).execute()
 
         if (!response.isSuccessful) {
             val error = Exception("DISCORD AUTH REFRESH FAILURE " + response.code)
@@ -197,7 +189,7 @@ class Api {
             .url(url)
             .header("Authorization", "${authCredentials.tokenType} ${authCredentials.accessToken}")
             .get().build()
-        val response = okHttpClient.newCall(request).execute()
+        val response = okHttpClient().newCall(request).execute()
 
         if (!response.isSuccessful) {
             val error = Exception("DISCORD PROFILE REQUEST FAILURE " + response.code)

@@ -7,7 +7,7 @@ import com.fulgurogo.fgc.db.FgcDatabaseAccessor
 import com.fulgurogo.fgc.db.model.FgcValidity
 import java.util.*
 
-class FgcService : PeriodicFlowService(0, 5) {
+class FgcService : PeriodicFlowService(0, 15) {
     private var processing = false
 
     override fun onTick() {

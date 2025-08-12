@@ -9,7 +9,7 @@ import com.fulgurogo.egf.db.model.EgfUserInfo
 import org.jsoup.Jsoup
 import java.util.*
 
-class EgfService : PeriodicFlowService(0, 60) {
+class EgfService : PeriodicFlowService(0, 120) {
     private var processing = false
 
     override fun onTick() {

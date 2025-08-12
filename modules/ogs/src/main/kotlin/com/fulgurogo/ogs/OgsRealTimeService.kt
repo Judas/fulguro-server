@@ -137,6 +137,9 @@ class OgsRealTimeService : PeriodicFlowService(0, 10), OgsWsClient.Listener {
 
         // Check corresponding game in DB
         val dbGame = OgsDatabaseAccessor.game(game)
+        if (game.goldId to game.result != dbGame?.goldId to dbGame?.result) {
+            log(TAG_RT, "localGame [${game.goldId} | ${game.result}] - dbGame [${dbGame?.goldId} | ${dbGame?.result}]}")
+        }
         if (gameData.isFinished() && dbGame != null && !dbGame.isFinished()) {
             OgsDatabaseAccessor.finishGame(game)
             notifyGame(game)
