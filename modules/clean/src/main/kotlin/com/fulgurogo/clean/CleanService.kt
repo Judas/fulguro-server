@@ -2,7 +2,6 @@ package com.fulgurogo.clean
 
 import com.fulgurogo.clean.db.CleanDatabaseAccessor
 import com.fulgurogo.common.service.PeriodicFlowService
-import com.fulgurogo.discord.db.DiscordDatabaseAccessor
 
 class CleanService : PeriodicFlowService(300, 600) {
     private var processing = false
@@ -11,9 +10,10 @@ class CleanService : PeriodicFlowService(300, 600) {
         if (processing) return
         processing = true
 
-        // Delete everything related to users who have left the discord server
-        val phantomUsersIds = DiscordDatabaseAccessor.phantomUsers().map { it.discordId }
-        if (phantomUsersIds.isNotEmpty()) CleanDatabaseAccessor.removeAllFrom(phantomUsersIds)
+        // FIXME I REMOVED THIS FOR NOW, SEEMS TO TRIGGER TOO MUCH
+//        // Delete everything related to users who have left the discord server
+//        val phantomUsersIds = DiscordDatabaseAccessor.phantomUsers().map { it.discordId }
+//        if (phantomUsersIds.isNotEmpty()) CleanDatabaseAccessor.removeAllFrom(phantomUsersIds)
 
         // Delete games older than a month or so
         CleanDatabaseAccessor.removeOldGames(32)
