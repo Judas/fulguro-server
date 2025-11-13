@@ -82,9 +82,20 @@ class OgsService : PeriodicFlowService(0, 15) {
     }
 
     private fun fetchPlayerGames(stale: OgsUserInfo): List<OgsGame> {
-        // Get last 10 games
-        val route = "${Config.get("ogs.api.url")}/players/${stale.ogsId}/games?ordering=-ended"
-        val games = ogsApiClient.get(route, OgsApiGameList::class.java).results
+        // OGS puts ongoing correspondence games at the top of the list
+        // So we parse results until we get a page with live games
+        var pageIndex = 0
+        var games: MutableList<OgsApiGame>
+        do {
+            pageIndex++
+            val route = "${Config.get("ogs.api.url")}/players/${stale.ogsId}/games?ordering=-ended&page=$pageIndex"
+            games = ogsApiClient.get(route, OgsApiGameList::class.java).results.toMutableList()
+        } while (games.all { it.isCorrespondence() })
+
+        // Then we get the following page, this ensures having AT LEAST 1 full page of live games
+        pageIndex++
+        val route = "${Config.get("ogs.api.url")}/players/${stale.ogsId}/games?ordering=-ended&page=$pageIndex"
+        games.addAll(ogsApiClient.get(route, OgsApiGameList::class.java).results)
 
         return games.mapNotNull {
             // Skip cancelled games
