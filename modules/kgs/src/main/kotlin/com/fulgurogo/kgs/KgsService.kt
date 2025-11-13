@@ -20,7 +20,7 @@ import java.text.SimpleDateFormat
 import java.time.ZonedDateTime
 import java.util.*
 
-class KgsService : PeriodicFlowService(0, 15) {
+class KgsService : PeriodicFlowService(0, 60) {
     private var lastNetworkCallTime: ZonedDateTime = ZonedDateTime.now(DATE_ZONE)
 
     private var processing = false
