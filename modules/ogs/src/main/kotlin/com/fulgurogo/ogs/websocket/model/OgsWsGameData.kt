@@ -20,7 +20,8 @@ data class OgsWsGameData(
 ) {
     fun goldId(): String = "OGS_$id"
     fun isFinished() = !outcome.isNullOrBlank()
-    fun date() = Date(start)
+    // OGS sends start_time as epoch seconds
+    fun date() = Date(start * 1000)
 
     fun result(): String? = when {
         outcome.isNullOrBlank() -> "unfinished"

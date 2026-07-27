@@ -60,12 +60,11 @@ class OgsService : PeriodicFlowService(0, 15) {
                             "localGame [${game.goldId} | ${game.result}] - dbGame [${dbGame?.goldId} | ${dbGame?.result}]}"
                         )
                     }
+                    // Only the caller that actually wrote the row notifies, the real time service races us here
                     if (game.isFinished() && dbGame != null && !dbGame.isFinished()) {
-                        OgsDatabaseAccessor.finishGame(game)
-                        if (isGoldGame) notifyGame(game)
+                        if (OgsDatabaseAccessor.finishGame(game) && isGoldGame) notifyGame(game)
                     } else if (dbGame == null) {
-                        OgsDatabaseAccessor.addGame(game)
-                        if (isGoldGame) notifyGame(game)
+                        if (OgsDatabaseAccessor.addGame(game) && isGoldGame) notifyGame(game)
                     }
                 }
             } catch (e: Exception) {

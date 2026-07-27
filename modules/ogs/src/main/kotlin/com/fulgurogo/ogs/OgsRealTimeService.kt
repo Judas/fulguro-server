@@ -140,12 +140,11 @@ class OgsRealTimeService : PeriodicFlowService(0, 10), OgsWsClient.Listener {
         if (game.goldId to game.result != dbGame?.goldId to dbGame?.result) {
             log(TAG_RT, "localGame [${game.goldId} | ${game.result}] - dbGame [${dbGame?.goldId} | ${dbGame?.result}]}")
         }
+        // Only the caller that actually wrote the row notifies, the REST service races us here
         if (gameData.isFinished() && dbGame != null && !dbGame.isFinished()) {
-            OgsDatabaseAccessor.finishGame(game)
-            notifyGame(game)
+            if (OgsDatabaseAccessor.finishGame(game)) notifyGame(game)
         } else if (dbGame == null) {
-            OgsDatabaseAccessor.addGame(game)
-            notifyGame(game)
+            if (OgsDatabaseAccessor.addGame(game)) notifyGame(game)
         }
 
         if (gameData.isFinished()) {

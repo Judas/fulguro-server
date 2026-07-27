@@ -87,58 +87,65 @@ object OgsDatabaseAccessor {
             .executeAndFetchFirst(OgsGame::class.java)
     }
 
-    fun addGame(game: OgsGame) {
-        DatabaseAccessor.withDao { connection ->
-            val query = "INSERT INTO $GAME_TABLE( " +
-                    " gold_id, id, date, " +
-                    " black_id, black_name, black_rank, white_id, white_name, white_rank, " +
-                    " size, komi, handicap, ranked, long_game, result, sgf) " +
-                    " VALUES (:goldId, :id, :date, " +
-                    " :blackId, :blackName, :blackRank, :whiteId, :whiteName, :whiteRank, " +
-                    " :size, :komi, :handicap, :ranked, :longGame, :result, :sgf) "
+    /**
+     * Inserts the game if it is not already known.
+     * The OGS REST service and the OGS real time service both write this table, so the insert is made idempotent by
+     * the gold_id primary key instead of by the caller's earlier [game] lookup.
+     * @return true if this call is the one that created the row (i.e. the caller may notify).
+     */
+    fun addGame(game: OgsGame): Boolean = DatabaseAccessor.withDao { connection ->
+        val query = "INSERT IGNORE INTO $GAME_TABLE( " +
+                " gold_id, id, date, " +
+                " black_id, black_name, black_rank, white_id, white_name, white_rank, " +
+                " size, komi, handicap, ranked, long_game, result, sgf) " +
+                " VALUES (:goldId, :id, :date, " +
+                " :blackId, :blackName, :blackRank, :whiteId, :whiteName, :whiteRank, " +
+                " :size, :komi, :handicap, :ranked, :longGame, :result, :sgf) "
 
-            log(TAG, "addGame [$query] ${game.id}")
+        connection
+            .createQuery(query)
+            .addParameter("goldId", game.goldId)
+            .addParameter("id", game.id)
+            .addParameter("date", game.date)
+            .addParameter("blackId", game.blackId)
+            .addParameter("blackName", game.blackName)
+            .addParameter("blackRank", game.blackRank)
+            .addParameter("whiteId", game.whiteId)
+            .addParameter("whiteName", game.whiteName)
+            .addParameter("whiteRank", game.whiteRank)
+            .addParameter("size", game.size)
+            .addParameter("komi", game.komi)
+            .addParameter("handicap", game.handicap)
+            .addParameter("ranked", game.ranked)
+            .addParameter("longGame", game.longGame)
+            .addParameter("result", game.result)
+            .addParameter("sgf", game.sgf)
+            .executeUpdate()
 
-            connection
-                .createQuery(query)
-                .addParameter("goldId", game.goldId)
-                .addParameter("id", game.id)
-                .addParameter("date", game.date)
-                .addParameter("blackId", game.blackId)
-                .addParameter("blackName", game.blackName)
-                .addParameter("blackRank", game.blackRank)
-                .addParameter("whiteId", game.whiteId)
-                .addParameter("whiteName", game.whiteName)
-                .addParameter("whiteRank", game.whiteRank)
-                .addParameter("size", game.size)
-                .addParameter("komi", game.komi)
-                .addParameter("handicap", game.handicap)
-                .addParameter("ranked", game.ranked)
-                .addParameter("longGame", game.longGame)
-                .addParameter("result", game.result)
-                .addParameter("sgf", game.sgf)
-                .executeUpdate()
-
-            log(TAG, "addGame => ${connection.result}")
-
-
-        }
+        val inserted = connection.result == 1
+        log(TAG, "addGame ${game.goldId} inserted:$inserted")
+        inserted
     }
 
-    fun finishGame(game: OgsGame) {
-        DatabaseAccessor.withDao { connection ->
-            val query = "UPDATE $GAME_TABLE " +
-                    " SET result = :result, sgf = :sgf " +
-                    " WHERE gold_id = :goldId"
+    /**
+     * Stamps the final result on a game that is still unfinished.
+     * The unfinished check is part of the WHERE clause so that two concurrent callers cannot both win.
+     * @return true if this call is the one that finished the row (i.e. the caller may notify).
+     */
+    fun finishGame(game: OgsGame): Boolean = DatabaseAccessor.withDao { connection ->
+        val query = "UPDATE $GAME_TABLE " +
+                " SET result = :result, sgf = :sgf " +
+                " WHERE gold_id = :goldId AND result = 'unfinished' "
 
-            log(TAG, "finishGame [$query] ${game.goldId}")
+        connection
+            .createQuery(query)
+            .addParameter("result", game.result)
+            .addParameter("sgf", game.sgf)
+            .addParameter("goldId", game.goldId)
+            .executeUpdate()
 
-            connection
-                .createQuery(query)
-                .addParameter("result", game.result)
-                .addParameter("sgf", game.sgf)
-                .addParameter("goldId", game.goldId)
-                .executeUpdate()
-        }
+        val finished = connection.result == 1
+        log(TAG, "finishGame ${game.goldId} finished:$finished")
+        finished
     }
 }
