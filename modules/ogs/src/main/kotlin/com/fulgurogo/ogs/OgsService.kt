@@ -1,12 +1,11 @@
 package com.fulgurogo.ogs
 
 import com.fulgurogo.common.config.Config
-import com.fulgurogo.common.logger.log
 import com.fulgurogo.common.service.StalestFirstService
 import com.fulgurogo.common.utilities.DATE_ZONE
 import com.fulgurogo.common.utilities.rankToKyuDanString
 import com.fulgurogo.common.utilities.toDate
-import com.fulgurogo.discord.GameNotifier
+import com.fulgurogo.discord.reconcileGames
 import com.fulgurogo.ogs.OgsModule.TAG
 import com.fulgurogo.ogs.api.OgsApiClient
 import com.fulgurogo.ogs.api.model.OgsApiGame
@@ -43,27 +42,8 @@ class OgsService : StalestFirstService<OgsUserInfo>(0, 15, TAG) {
             )
         }
 
-        // Add games in DB
-        val games = fetchPlayerGames(stale)
-        games.forEach { game ->
-            // Check corresponding game in DB
-            val dbGame = OgsDatabaseAccessor.game(game)
-            val blackDiscordUser = OgsDatabaseAccessor.user(game.blackId)
-            val whiteDiscordUser = OgsDatabaseAccessor.user(game.whiteId)
-            val isGoldGame = blackDiscordUser != null && whiteDiscordUser != null
-            if (game.goldId to game.result != dbGame?.goldId to dbGame?.result) {
-                log(
-                    TAG,
-                    "localGame [${game.goldId} | ${game.result}] - dbGame [${dbGame?.goldId} | ${dbGame?.result}]}"
-                )
-            }
-            // Only the caller that actually wrote the row notifies, the real time service races us here
-            if (game.isFinished() && dbGame != null && !dbGame.isFinished()) {
-                if (OgsDatabaseAccessor.finishGame(game) && isGoldGame) notifyGame(game)
-            } else if (dbGame == null) {
-                if (OgsDatabaseAccessor.addGame(game) && isGoldGame) notifyGame(game)
-            }
-        }
+        // Add games in DB. Only the caller that actually wrote the row notifies; the real time service races us here.
+        reconcileGames(fetchPlayerGames(stale), OgsDatabaseAccessor, "OGS")
     }
 
     private fun fetchPlayerRating(stale: OgsUserInfo): OgsApiPlayerRating? {
@@ -142,5 +122,4 @@ class OgsService : StalestFirstService<OgsUserInfo>(0, 15, TAG) {
         ""
     }
 
-    private fun notifyGame(game: OgsGame) = GameNotifier.notify(game, "OGS")
 }

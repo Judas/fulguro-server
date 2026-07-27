@@ -8,7 +8,7 @@ import com.fulgurogo.common.utilities.okHttpClient
 import com.fulgurogo.common.utilities.scrap
 import com.fulgurogo.common.utilities.sgfProperty
 import com.fulgurogo.common.utilities.toDate
-import com.fulgurogo.discord.GameNotifier
+import com.fulgurogo.discord.reconcileGames
 import com.fulgurogo.kgs.KgsModule.TAG
 import com.fulgurogo.kgs.db.KgsDatabaseAccessor
 import com.fulgurogo.kgs.db.model.KgsGame
@@ -49,20 +49,7 @@ class KgsService : StalestFirstService<KgsUserInfo>(0, 60, TAG) {
         )
 
         // Add games in DB
-        games.forEach { game ->
-            val oldGame = KgsDatabaseAccessor.game(game)
-            val blackDiscordUser = KgsDatabaseAccessor.user(game.blackId)
-            val whiteDiscordUser = KgsDatabaseAccessor.user(game.whiteId)
-            val isGoldGame = blackDiscordUser != null && whiteDiscordUser != null
-            if (oldGame == null) {
-                KgsDatabaseAccessor.addGame(game)
-                if (isGoldGame) notifyGame(game)
-            } else if (!oldGame.isFinished() && game.isFinished()) {
-                // Game previously saved as "unfinished" is now finished
-                KgsDatabaseAccessor.finishGame(game)
-                if (isGoldGame) notifyGame(game)
-            }
-        }
+        reconcileGames(games, KgsDatabaseAccessor, "KGS")
     }
 
     private fun scrapGames(stale: KgsUserInfo): List<KgsGame> = stale.kgsId?.let { kgsId ->
@@ -207,5 +194,4 @@ class KgsService : StalestFirstService<KgsUserInfo>(0, 60, TAG) {
         lastNetworkCallTime = ZonedDateTime.now(DATE_ZONE)
     }
 
-    private fun notifyGame(game: KgsGame) = GameNotifier.notify(game, "KGS")
 }

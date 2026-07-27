@@ -5,7 +5,7 @@ import com.fulgurogo.common.service.StalestFirstService
 import com.fulgurogo.common.utilities.DATE_ZONE
 import com.fulgurogo.common.utilities.sgfProperty
 import com.fulgurogo.common.utilities.toDate
-import com.fulgurogo.discord.GameNotifier
+import com.fulgurogo.discord.reconcileGames
 import com.fulgurogo.fox.FoxModule.TAG
 import com.fulgurogo.fox.api.FoxApiClient
 import com.fulgurogo.fox.api.model.FoxApiGame
@@ -42,21 +42,7 @@ class FoxService : StalestFirstService<FoxUserInfo>(0, 60, TAG) {
         }
 
         // Add games in DB
-        val games = fetchPlayerGames(stale)
-        games.forEach { game ->
-            val oldGame = FoxDatabaseAccessor.game(game)
-            val blackDiscordUser = FoxDatabaseAccessor.userById(game.blackId)
-            val whiteDiscordUser = FoxDatabaseAccessor.userById(game.whiteId)
-            val isGoldGame = blackDiscordUser != null && whiteDiscordUser != null
-            if (oldGame == null) {
-                FoxDatabaseAccessor.addGame(game)
-                if (isGoldGame) notifyGame(game)
-            } else if (!oldGame.isFinished() && game.isFinished()) {
-                // Game previously saved as "unfinished" is now finished
-                FoxDatabaseAccessor.finishGame(game)
-                if (isGoldGame) notifyGame(game)
-            }
-        }
+        reconcileGames(fetchPlayerGames(stale), FoxDatabaseAccessor, "FOX")
     }
 
     private fun fetchPlayerRating(stale: FoxUserInfo): FoxApiPlayerRating? {
@@ -116,5 +102,4 @@ class FoxService : StalestFirstService<FoxUserInfo>(0, 60, TAG) {
         ""
     }
 
-    private fun notifyGame(game: FoxGame) = GameNotifier.notify(game, "FOX")
 }

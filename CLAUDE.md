@@ -141,11 +141,17 @@ game id, hence the composite). Games are inserted the first time they're seen �
 `result = "unfinished"`, so Discord can announce games in progress — then updated by `finishGame()` when a result
 appears. Views filter `result != "unfinished"` so unfinished games never reach the API.
 
+Storing and announcing games goes through `discord/GameReconciler.kt` — `reconcileGames(games, store, server)`, or
+`reconcileGame` for a single one. Each platform's accessor implements `GameStore`, whose `addGame`/`finishGame` are
+idempotent (`INSERT IGNORE`, and `UPDATE ... WHERE result = 'unfinished'`) and return whether *this* call changed the
+row. Only the winning writer notifies, so "announce once" is enforced by the `gold_id` primary key rather than by
+assuming a single writer.
+
 OGS has two paths that write the same table: `OgsService` polls the REST API for user profiles and finished games,
 while `OgsRealTimeService` keeps a WebSocket open (auth via `ogs.auth.*`, ping every 10s, `gamelist/query` filtered
-to known player ids, then `game/connect` per game). Both must respect the same insert-then-finish logic; a bug where
-a correspondence game overwrote live results was fixed here recently, so be deliberate about which game a `gold_id`
-refers to when touching either file.
+to known player ids, then `game/connect` per game). That second writer is exactly why the idempotent contract exists —
+a bug where a correspondence game overwrote live results was fixed here — so be deliberate about which game a
+`gold_id` refers to when touching either file.
 
 ### Outbound HTTP etiquette
 

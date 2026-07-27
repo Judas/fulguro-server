@@ -4,7 +4,7 @@ import com.fulgurogo.common.config.Config
 import com.fulgurogo.common.logger.log
 import com.fulgurogo.common.service.PeriodicFlowService
 import com.fulgurogo.common.utilities.rankToKyuDanString
-import com.fulgurogo.discord.GameNotifier
+import com.fulgurogo.discord.reconcileGame
 import com.fulgurogo.ogs.OgsModule.TAG_RT
 import com.fulgurogo.ogs.api.OgsApiClient
 import com.fulgurogo.ogs.api.model.OgsAuthCredentials
@@ -128,17 +128,9 @@ class OgsRealTimeService : PeriodicFlowService(0, 10), OgsWsClient.Listener {
             sgf = sgf
         )
 
-        // Check corresponding game in DB
-        val dbGame = OgsDatabaseAccessor.game(game)
-        if (game.goldId to game.result != dbGame?.goldId to dbGame?.result) {
-            log(TAG_RT, "localGame [${game.goldId} | ${game.result}] - dbGame [${dbGame?.goldId} | ${dbGame?.result}]}")
-        }
-        // Only the caller that actually wrote the row notifies, the REST service races us here
-        if (gameData.isFinished() && dbGame != null && !dbGame.isFinished()) {
-            if (OgsDatabaseAccessor.finishGame(game)) notifyGame(game)
-        } else if (dbGame == null) {
-            if (OgsDatabaseAccessor.addGame(game)) notifyGame(game)
-        }
+        // Only the caller that actually wrote the row notifies, the REST service races us here.
+        // No age check: this service only ever sees games from the live game list.
+        reconcileGame(game, OgsDatabaseAccessor, "OGS", checkAge = false)
 
         if (gameData.isFinished()) {
             val disconnect = Request("game/disconnect", GameDisconnectRequest(gameData.id))
@@ -163,6 +155,4 @@ class OgsRealTimeService : PeriodicFlowService(0, 10), OgsWsClient.Listener {
         ""
     }
 
-    // Unlike the REST service this one does not drop games by age: it only ever sees games from the live game list.
-    private fun notifyGame(game: OgsGame) = GameNotifier.notify(game, "OGS", checkAge = false)
 }
