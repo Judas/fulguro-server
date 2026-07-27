@@ -11,7 +11,7 @@ class FgcService : StalestFirstService<FgcValidity>(0, 15, TAG) {
 
     override fun markAsError(stale: FgcValidity) = FgcDatabaseAccessor.markAsError(stale)
 
-    override fun refresh(stale: FgcValidity) {
+    override suspend fun refresh(stale: FgcValidity) {
         // Get user games, gold or ranked
         val games = FgcDatabaseAccessor.validityGames(stale)
         FgcDatabaseAccessor.updateValidity(

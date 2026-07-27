@@ -15,7 +15,7 @@ class GoldService : StalestFirstService<GoldPlayer>(60, 15, TAG) {
 
     override fun markAsError(stale: GoldPlayer) = GoldDatabaseAccessor.markAsError(stale)
 
-    override fun refresh(stale: GoldPlayer) {
+    override suspend fun refresh(stale: GoldPlayer) {
         // Get user ranks
         val ranks = GoldDatabaseAccessor.userRanks(stale)
         if (ranks == null) {

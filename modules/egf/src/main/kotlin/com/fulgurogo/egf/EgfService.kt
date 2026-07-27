@@ -13,7 +13,7 @@ class EgfService : StalestFirstService<EgfUserInfo>(0, 120, TAG) {
 
     override fun markAsError(stale: EgfUserInfo) = EgfDatabaseAccessor.markAsError(stale)
 
-    override fun refresh(stale: EgfUserInfo) {
+    override suspend fun refresh(stale: EgfUserInfo) {
         // Scrap profile page
         val route = "${Config.get("egf.website.url")}?key=${stale.egfId}"
         val html = scrap(route)

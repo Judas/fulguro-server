@@ -20,7 +20,7 @@ class OgsRealTimeService : PeriodicFlowService(0, 10), OgsWsClient.Listener {
     private var ogsApiClient: OgsApiClient? = null
     private var credentials: OgsAuthCredentials? = null
 
-    override fun onTick() {
+    override suspend fun onTick() {
         // No web socket, create one
         if (webSocket == null) webSocket = OgsWsClient(Config.get("ogs.websocket.url"), this)
         webSocket?.let { ws ->

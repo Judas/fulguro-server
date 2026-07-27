@@ -15,8 +15,14 @@ class OgsApiClient {
     private val gson: Gson = Gson()
     private var lastNetworkCallTime: ZonedDateTime = ZonedDateTime.now(DATE_ZONE)
 
+    /**
+     * Delay to avoid spamming OGS API: ensure between 500ms & 1500ms free time.
+     *
+     * Blocking rather than `delay`, unlike the equivalent in KgsService: this client is also called from the Javalin
+     * request thread in `Api.link`, which is not a coroutine. Blocking is correct on Dispatchers.IO anyway; making it
+     * suspend would only push runBlocking into the API layer.
+     */
     private fun ensureSpamDelay() {
-        // Delay to avoid spamming OGS API: ensure between 500ms & 1500ms free time
         val now = ZonedDateTime.now(DATE_ZONE)
         if (lastNetworkCallTime.plusSeconds(1).isAfter(now))
             Thread.sleep(500)

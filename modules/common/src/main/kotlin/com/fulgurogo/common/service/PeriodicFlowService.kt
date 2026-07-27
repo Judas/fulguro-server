@@ -51,5 +51,10 @@ abstract class PeriodicFlowService(
 
     private fun serviceName(): String = this::class.simpleName ?: "PeriodicFlowService"
 
-    abstract fun onTick()
+    /**
+     * Suspending so a tick can use `delay` for its own throttles instead of `Thread.sleep`. Blocking calls are still
+     * fine — this runs on [Dispatchers.IO] — but a suspended tick can be cancelled, so [stop] no longer has to wait
+     * for a sleeping tick to finish.
+     */
+    abstract suspend fun onTick()
 }

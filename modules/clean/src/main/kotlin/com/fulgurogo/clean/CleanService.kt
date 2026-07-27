@@ -4,7 +4,7 @@ import com.fulgurogo.clean.db.CleanDatabaseAccessor
 import com.fulgurogo.common.service.PeriodicFlowService
 
 class CleanService : PeriodicFlowService(300, 600) {
-    override fun onTick() {
+    override suspend fun onTick() {
         // FIXME I REMOVED THIS FOR NOW, SEEMS TO TRIGGER TOO MUCH
 //        // Delete everything related to users who have left the discord server
 //        val phantomUsersIds = DiscordDatabaseAccessor.phantomUsers().map { it.discordId }

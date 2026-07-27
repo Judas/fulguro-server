@@ -22,12 +22,12 @@ abstract class StalestFirstService<T>(
     protected abstract fun stalest(): T?
 
     /** Refreshes [stale] from its source. Throwing hands it to [markAsError]. */
-    protected abstract fun refresh(stale: T)
+    protected abstract suspend fun refresh(stale: T)
 
     /** Stamps `updated` and sets `error = 1`, so a row that keeps failing does not block the queue. */
     protected abstract fun markAsError(stale: T)
 
-    final override fun onTick() {
+    final override suspend fun onTick() {
         val stale = stalest() ?: return
         try {
             refresh(stale)

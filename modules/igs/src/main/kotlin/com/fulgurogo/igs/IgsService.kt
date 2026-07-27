@@ -12,7 +12,7 @@ class IgsService : StalestFirstService<IgsUserInfo>(0, 60, TAG) {
 
     override fun markAsError(stale: IgsUserInfo) = IgsDatabaseAccessor.markAsError(stale)
 
-    override fun refresh(stale: IgsUserInfo) {
+    override suspend fun refresh(stale: IgsUserInfo) {
         val playerInfo = fetchPlayerInfo(stale)
 
         if (playerInfo.contains("5 Cannot find player.")) {

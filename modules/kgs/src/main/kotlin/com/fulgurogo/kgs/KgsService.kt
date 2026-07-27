@@ -13,6 +13,7 @@ import com.fulgurogo.kgs.KgsModule.TAG
 import com.fulgurogo.kgs.db.KgsDatabaseAccessor
 import com.fulgurogo.kgs.db.model.KgsGame
 import com.fulgurogo.kgs.db.model.KgsUserInfo
+import kotlinx.coroutines.delay
 import okhttp3.Request
 import okio.IOException
 import org.jsoup.nodes.Element
@@ -28,7 +29,7 @@ class KgsService : StalestFirstService<KgsUserInfo>(0, 60, TAG) {
 
     override fun markAsError(stale: KgsUserInfo) = KgsDatabaseAccessor.markAsError(stale)
 
-    override fun refresh(stale: KgsUserInfo) {
+    override suspend fun refresh(stale: KgsUserInfo) {
         // Scrap archives pages
         val games = scrapGames(stale)
 
@@ -52,7 +53,7 @@ class KgsService : StalestFirstService<KgsUserInfo>(0, 60, TAG) {
         reconcileGames(games, KgsDatabaseAccessor, "KGS")
     }
 
-    private fun scrapGames(stale: KgsUserInfo): List<KgsGame> = stale.kgsId?.let { kgsId ->
+    private suspend fun scrapGames(stale: KgsUserInfo): List<KgsGame> = stale.kgsId?.let { kgsId ->
         val now = ZonedDateTime.now(DATE_ZONE)
         val lastMonth = now.minusMonths(1)
 
@@ -62,7 +63,7 @@ class KgsService : StalestFirstService<KgsUserInfo>(0, 60, TAG) {
         games
     } ?: throw Exception("Invalid KGS id")
 
-    private fun scrapMonthlyGames(kgsId: String?, year: Int, month: Int): MutableList<KgsGame> = try {
+    private suspend fun scrapMonthlyGames(kgsId: String?, year: Int, month: Int): MutableList<KgsGame> = try {
         val route = "${Config.get("kgs.archives.url")}?user=$kgsId&year=$year&month=$month"
         val html = scrap(route)
 
@@ -74,7 +75,7 @@ class KgsService : StalestFirstService<KgsUserInfo>(0, 60, TAG) {
         throw Exception(e)
     }
 
-    private fun extractGamesFrom(gameTable: Element): MutableList<KgsGame> {
+    private suspend fun extractGamesFrom(gameTable: Element): MutableList<KgsGame> {
         val gameRows = gameTable.select("tr").asList()
         gameRows.removeFirst() // First row is header
 
@@ -158,7 +159,7 @@ class KgsService : StalestFirstService<KgsUserInfo>(0, 60, TAG) {
         }.toMutableList()
     }
 
-    private fun fetchSgf(sgfLink: String, allowRetry: Boolean = true): String {
+    private suspend fun fetchSgf(sgfLink: String, allowRetry: Boolean = true): String {
         val request = Request.Builder()
             .url(sgfLink)
             .header("User-Agent", Config.get("user.agent"))
@@ -174,7 +175,7 @@ class KgsService : StalestFirstService<KgsUserInfo>(0, 60, TAG) {
         }
 
         // Retry once after delay
-        Thread.sleep(1000L)
+        delay(1000)
         log(TAG, "Fetching SGF ERROR: Waiting then retrying")
         return fetchSgf(sgfLink, false)
     }
@@ -192,11 +193,11 @@ class KgsService : StalestFirstService<KgsUserInfo>(0, 60, TAG) {
         (name to rank)
     } ?: ("" to "?")
 
-    private fun ensureSpamDelay() {
+    private suspend fun ensureSpamDelay() {
         // Delay to avoid spamming OGS API: ensure between 500ms & 1500ms free time
         val now = ZonedDateTime.now(DATE_ZONE)
         if (lastNetworkCallTime.plusSeconds(1).isAfter(now))
-            Thread.sleep(500)
+            delay(500)
         lastNetworkCallTime = ZonedDateTime.now(DATE_ZONE)
     }
 

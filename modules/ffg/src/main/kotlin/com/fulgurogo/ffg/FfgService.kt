@@ -13,7 +13,7 @@ class FfgService : StalestFirstService<FfgUserInfo>(0, 120, TAG) {
 
     override fun markAsError(stale: FfgUserInfo) = FfgDatabaseAccessor.markAsError(stale)
 
-    override fun refresh(stale: FfgUserInfo) {
+    override suspend fun refresh(stale: FfgUserInfo) {
         // Scrap profile page
         val route = "${Config.get("ffg.website.url")}/php/affichePersonne.php?id=${stale.ffgId}"
         val html = scrap(route)

@@ -12,7 +12,7 @@ class DiscordService(private val discordBot: DiscordBot) : StalestFirstService<D
 
     override fun markAsError(stale: DiscordUserInfo) = DiscordDatabaseAccessor.markAsError(stale)
 
-    override fun refresh(stale: DiscordUserInfo) {
+    override suspend fun refresh(stale: DiscordUserInfo) {
         // In debug, users are not in the server, just keep their name or the cleaner service will remove them
         // In prod, get the updated name from Discord
         val discordName =

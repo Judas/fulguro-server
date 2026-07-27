@@ -23,7 +23,7 @@ class FoxService : StalestFirstService<FoxUserInfo>(0, 60, TAG) {
 
     override fun markAsError(stale: FoxUserInfo) = FoxDatabaseAccessor.markAsError(stale)
 
-    override fun refresh(stale: FoxUserInfo) {
+    override suspend fun refresh(stale: FoxUserInfo) {
         // Get user profile
         val rating = fetchPlayerRating(stale)
         if (rating == null) {

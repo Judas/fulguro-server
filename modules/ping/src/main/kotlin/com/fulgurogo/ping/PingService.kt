@@ -8,7 +8,7 @@ import com.fulgurogo.ping.PingModule.TAG
 import okhttp3.Request
 
 class PingService : PeriodicFlowService(0, 600) {
-    override fun onTick() {
+    override suspend fun onTick() {
         // Ping frontend
         try {
             val route = Config.get("frontend.url")

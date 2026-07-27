@@ -24,7 +24,7 @@ class OgsService : StalestFirstService<OgsUserInfo>(0, 15, TAG) {
 
     override fun markAsError(stale: OgsUserInfo) = OgsDatabaseAccessor.markAsError(stale)
 
-    override fun refresh(stale: OgsUserInfo) {
+    override suspend fun refresh(stale: OgsUserInfo) {
         // Get user profile
         val rating = fetchPlayerRating(stale)
         if (rating == null) {
