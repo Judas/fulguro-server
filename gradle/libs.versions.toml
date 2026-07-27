@@ -27,6 +27,7 @@ jsch = { group = "com.github.mwiede", name = "jsch", version.ref = "jsch" }
 jsoup = { group = "org.jsoup", name = "jsoup", version.ref = "jsoup" }
 kotlin-bom = { group = "org.jetbrains.kotlin", name = "kotlin-bom" }
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+kotlin-noarg-plugin = { module = "org.jetbrains.kotlin:kotlin-noarg", version.ref = "kotlin-noarg" }
 kotlin-stdlib = { group = "org.jetbrains.kotlin", name = "kotlin-stdlib" }
 kotlinx-coroutines = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 mysql-connector = { group = "com.mysql", name = "mysql-connector-j", version.ref = "mysql-connector" }

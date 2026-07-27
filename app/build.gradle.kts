@@ -1,30 +1,11 @@
 plugins {
-    alias(libs.plugins.kotlin.jvm)
-    alias(libs.plugins.kotlin.noarg)
+    id("fulgurogo-module")
     alias(libs.plugins.shadow.jar)
     application
 }
 
-repositories {
-    mavenCentral()
-    maven(url = uri("https://plugins.gradle.org/m2/"))
-    maven(url = uri("https://jitpack.io"))
-    maven(url = uri("https://m2.dv8tion.net/releases"))
-    gradlePluginPortal()
-}
-
 application {
-    group = providers.gradleProperty("fulgurogo.group.name").get()
-    version = providers.gradleProperty("fulgurogo.version.name").get()
     mainClass.set(providers.gradleProperty("fulgurogo.main.class").get())
-}
-
-kotlin {
-    jvmToolchain(providers.gradleProperty("fulgurogo.java.version").get().toInt())
-}
-
-noArg {
-    annotation("com.fulgurogo.common.utilities.GenerateNoArgConstructor")
 }
 
 dependencies {
