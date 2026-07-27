@@ -43,19 +43,25 @@ class IgsService : StalestFirstService<IgsUserInfo>(0, 60, TAG) {
 
     private fun fetchPlayerInfo(stale: IgsUserInfo): String {
         val telnetClient = IgsTelnetClient()
-        // Connect
-        telnetClient.connect(Config.get("igs.server.host"), Config.get("igs.server.port").toInt())
-        telnetClient.readUntil("Login: ")
-        // Login
-        telnetClient.write(Config.get("igs.user.name"))
-        telnetClient.readUntil("1 1")
-        telnetClient.write(Config.get("igs.user.password"))
-        telnetClient.readUntil("1 5")
-        // Get user profile
-        telnetClient.write("stats ${stale.igsId}")
-        val playerInfo = telnetClient.readUntil("1 5")
-        // Disconnect
-        telnetClient.disconnect()
-        return playerInfo
+        // finally, because the socket used to leak on every failure path: the disconnect only ran on success
+        try {
+            // Connect
+            telnetClient.connect(
+                Config.get("igs.server.host"),
+                Config.get("igs.server.port").toInt(),
+                Config.get("global.read.timeout.ms").toInt()
+            )
+            telnetClient.readUntil("Login: ")
+            // Login
+            telnetClient.write(Config.get("igs.user.name"))
+            telnetClient.readUntil("1 1")
+            telnetClient.write(Config.get("igs.user.password"))
+            telnetClient.readUntil("1 5")
+            // Get user profile
+            telnetClient.write("stats ${stale.igsId}")
+            return telnetClient.readUntil("1 5")
+        } finally {
+            telnetClient.disconnect()
+        }
     }
 }
