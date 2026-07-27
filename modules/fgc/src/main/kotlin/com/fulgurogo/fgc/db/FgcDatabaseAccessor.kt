@@ -1,6 +1,7 @@
 package com.fulgurogo.fgc.db
 
 import com.fulgurogo.common.db.DatabaseAccessor
+import com.fulgurogo.common.db.query
 import com.fulgurogo.fgc.db.model.FgcValidity
 import com.fulgurogo.fgc.db.model.FgcValidityGame
 
@@ -11,7 +12,7 @@ object FgcDatabaseAccessor {
     fun stalestUser(): FgcValidity? = DatabaseAccessor.withDao { connection ->
         val query = "SELECT * FROM $VALIDITY_TABLE ORDER BY updated"
         connection
-            .createQuery(query)
+            .query(query)
             .throwOnMappingFailure(false)
             .executeAndFetchFirst(FgcValidity::class.java)
     }
@@ -21,7 +22,7 @@ object FgcDatabaseAccessor {
             val query = "UPDATE $VALIDITY_TABLE SET updated = NOW(), error = 1 WHERE discord_id = :discordId "
 
             connection
-                .createQuery(query)
+                .query(query)
                 .throwOnMappingFailure(false)
                 .addParameter("discordId", fgcValidity.discordId)
                 .executeUpdate()
@@ -37,7 +38,7 @@ object FgcDatabaseAccessor {
                     " ON DUPLICATE KEY UPDATE " +
                     " updated='2025-01-01 00:00:00' "
             connection
-                .createQuery(query)
+                .query(query)
                 .throwOnMappingFailure(false)
                 .addParameter("discordId", discordId)
                 .executeUpdate()
@@ -49,7 +50,7 @@ object FgcDatabaseAccessor {
                 " WHERE black_discord_id = :discordId OR white_discord_id = :discordId "
 
         connection
-            .createQuery(query)
+            .query(query)
             .addParameter("discordId", fgcValidity.discordId)
             .executeAndFetch(FgcValidityGame::class.java)
     }
@@ -66,7 +67,7 @@ object FgcDatabaseAccessor {
                     " WHERE discord_id = :discordId "
 
             connection
-                .createQuery(query)
+                .query(query)
                 .throwOnMappingFailure(false)
                 .addParameter("totalGames", fgcValidity.totalGames)
                 .addParameter("totalRankedGames", fgcValidity.totalRankedGames)

@@ -2,6 +2,7 @@ package com.fulgurogo.clean.db
 
 import com.fulgurogo.clean.CleanModule.TAG
 import com.fulgurogo.common.db.DatabaseAccessor
+import com.fulgurogo.common.db.query
 import com.fulgurogo.common.logger.log
 
 object CleanDatabaseAccessor {
@@ -17,7 +18,7 @@ object CleanDatabaseAccessor {
             ).forEach { table ->
                 val query = "DELETE FROM $table WHERE discord_id IN (:ids)"
                 connection
-                    .createQuery(query)
+                    .query(query)
                     .addParameter("ids", phantomUsersIds)
                     .executeUpdate()
             }
@@ -31,7 +32,7 @@ object CleanDatabaseAccessor {
             listOf("kgs_games", "ogs_games", "fox_games").forEach { table ->
                 val query = "DELETE FROM $table WHERE DATEDIFF(NOW(), date) > :days"
                 connection
-                    .createQuery(query)
+                    .query(query)
                     .addParameter("days", days)
                     .executeUpdate()
             }
@@ -48,7 +49,7 @@ object CleanDatabaseAccessor {
                 "DELETE FROM egf_user_info WHERE error = 1 AND egf_name = ''",
                 "DELETE FROM ogs_user_info WHERE ogs_name LIKE 'deleted-%'"
             ).forEach {
-                connection.createQuery(it).executeUpdate()
+                connection.query(it).executeUpdate()
             }
         }
     }

@@ -1,6 +1,7 @@
 package com.fulgurogo.kgs.db
 
 import com.fulgurogo.common.db.DatabaseAccessor
+import com.fulgurogo.common.db.query
 import com.fulgurogo.common.logger.log
 import com.fulgurogo.kgs.KgsModule.TAG
 import com.fulgurogo.kgs.db.model.KgsGame
@@ -13,7 +14,7 @@ object KgsDatabaseAccessor {
     fun user(kgsId: String): KgsUserInfo? = DatabaseAccessor.withDao { connection ->
         val query = "SELECT * FROM $USER_TABLE WHERE kgs_id = :kgsId LIMIT 1"
         connection
-            .createQuery(query)
+            .query(query)
             .throwOnMappingFailure(false)
             .addParameter("kgsId", kgsId)
             .executeAndFetchFirst(KgsUserInfo::class.java)
@@ -25,7 +26,7 @@ object KgsDatabaseAccessor {
                     " VALUES (:discordId, :kgsId, '?', '2025-01-01 00:00:00', 0) "
 
             connection
-                .createQuery(query)
+                .query(query)
                 .throwOnMappingFailure(false)
                 .addParameter("discordId", discordId)
                 .addParameter("kgsId", kgsId)
@@ -36,7 +37,7 @@ object KgsDatabaseAccessor {
     fun stalestUser(): KgsUserInfo? = DatabaseAccessor.withDao { connection ->
         val query = "SELECT * FROM $USER_TABLE ORDER BY updated"
         connection
-            .createQuery(query)
+            .query(query)
             .throwOnMappingFailure(false)
             .executeAndFetchFirst(KgsUserInfo::class.java)
     }
@@ -46,7 +47,7 @@ object KgsDatabaseAccessor {
             val query = "UPDATE $USER_TABLE SET updated = NOW(), error = 1 WHERE discord_id = :discordId "
 
             connection
-                .createQuery(query)
+                .query(query)
                 .addParameter("discordId", kgsUserInfo.discordId)
                 .executeUpdate()
         }
@@ -61,7 +62,7 @@ object KgsDatabaseAccessor {
                     " WHERE discord_id = :discordId "
 
             connection
-                .createQuery(query)
+                .query(query)
                 .addParameter("kgsRank", kgsUserInfo.kgsRank)
                 .addParameter("updated", kgsUserInfo.updated)
                 .addParameter("discordId", kgsUserInfo.discordId)
@@ -72,7 +73,7 @@ object KgsDatabaseAccessor {
     fun game(game: KgsGame): KgsGame? = DatabaseAccessor.withDao { connection ->
         val query = " SELECT * FROM $GAME_TABLE WHERE gold_id = :goldId LIMIT 1 "
         connection
-            .createQuery(query)
+            .query(query)
             .addParameter("goldId", game.goldId)
             .executeAndFetchFirst(KgsGame::class.java)
     }
@@ -90,7 +91,7 @@ object KgsDatabaseAccessor {
             log(TAG, "addGame [$query] ${game.goldId}")
 
             connection
-                .createQuery(query)
+                .query(query)
                 .addParameter("goldId", game.goldId)
                 .addParameter("date", game.date)
                 .addParameter("blackId", game.blackId)
@@ -116,7 +117,7 @@ object KgsDatabaseAccessor {
             log(TAG, "finishGame [$query] ${game.goldId}")
 
             connection
-                .createQuery(query)
+                .query(query)
                 .addParameter("result", game.result)
                 .addParameter("sgf", game.sgf)
                 .addParameter("goldId", game.goldId)

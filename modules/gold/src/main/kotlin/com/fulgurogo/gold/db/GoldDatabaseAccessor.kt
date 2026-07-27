@@ -1,6 +1,7 @@
 package com.fulgurogo.gold.db
 
 import com.fulgurogo.common.db.DatabaseAccessor
+import com.fulgurogo.common.db.query
 import com.fulgurogo.gold.db.model.GoldPlayer
 import com.fulgurogo.gold.db.model.GoldTier
 import com.fulgurogo.gold.db.model.UserRanks
@@ -13,7 +14,7 @@ object GoldDatabaseAccessor {
     fun stalestUser(): GoldPlayer? = DatabaseAccessor.withDao { connection ->
         val query = "SELECT * FROM $RATINGS_TABLE ORDER BY updated"
         connection
-            .createQuery(query)
+            .query(query)
             .throwOnMappingFailure(false)
             .executeAndFetchFirst(GoldPlayer::class.java)
     }
@@ -23,7 +24,7 @@ object GoldDatabaseAccessor {
             val query = "UPDATE $RATINGS_TABLE SET updated = NOW(), error = 1 WHERE discord_id = :discordId "
 
             connection
-                .createQuery(query)
+                .query(query)
                 .throwOnMappingFailure(false)
                 .addParameter("discordId", goldPlayer.discordId)
                 .executeUpdate()
@@ -33,7 +34,7 @@ object GoldDatabaseAccessor {
     fun userRanks(stale: GoldPlayer): UserRanks? = DatabaseAccessor.withDao { connection ->
         val query = "SELECT * FROM $RANKS_VIEW WHERE discord_id = :discordId"
         connection
-            .createQuery(query)
+            .query(query)
             .throwOnMappingFailure(false)
             .addParameter("discordId", stale.discordId)
             .executeAndFetchFirst(UserRanks::class.java)
@@ -42,7 +43,7 @@ object GoldDatabaseAccessor {
     fun tiers(): List<GoldTier> = DatabaseAccessor.withDao { connection ->
         val query = "SELECT * FROM $TIERS_TABLE"
         connection
-            .createQuery(query)
+            .query(query)
             .throwOnMappingFailure(false)
             .executeAndFetch(GoldTier::class.java)
     }
@@ -52,7 +53,7 @@ object GoldDatabaseAccessor {
                 " WHERE (min <= :rating AND :rating < max) " +
                 " LIMIT 1"
         connection
-            .createQuery(query)
+            .query(query)
             .throwOnMappingFailure(false)
             .addParameter("rating", rating)
             .executeAndFetchFirst(GoldTier::class.java)
@@ -65,7 +66,7 @@ object GoldDatabaseAccessor {
                     " ON DUPLICATE KEY UPDATE " +
                     " updated='2025-01-01 00:00:00' "
             connection
-                .createQuery(query)
+                .query(query)
                 .throwOnMappingFailure(false)
                 .addParameter("discordId", discordId)
                 .executeUpdate()
@@ -82,7 +83,7 @@ object GoldDatabaseAccessor {
                     " WHERE discord_id = :discordId "
 
             connection
-                .createQuery(query)
+                .query(query)
                 .throwOnMappingFailure(false)
                 .addParameter("rating", goldPlayer.rating)
                 .addParameter("tierRank", goldPlayer.tierRank)

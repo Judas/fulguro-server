@@ -1,6 +1,7 @@
 package com.fulgurogo.ffg.db
 
 import com.fulgurogo.common.db.DatabaseAccessor
+import com.fulgurogo.common.db.query
 import com.fulgurogo.ffg.db.model.FfgUserInfo
 
 object FfgDatabaseAccessor {
@@ -9,7 +10,7 @@ object FfgDatabaseAccessor {
     fun stalestUser(): FfgUserInfo? = DatabaseAccessor.withDao { connection ->
         val query = "SELECT * FROM $USER_TABLE ORDER BY updated"
         connection
-            .createQuery(query)
+            .query(query)
             .throwOnMappingFailure(false)
             .executeAndFetchFirst(FfgUserInfo::class.java)
     }
@@ -17,7 +18,7 @@ object FfgDatabaseAccessor {
     fun user(ffgId: Int): FfgUserInfo? = DatabaseAccessor.withDao { connection ->
         val query = "SELECT * FROM $USER_TABLE WHERE ffg_id = :ffgId LIMIT 1"
         connection
-            .createQuery(query)
+            .query(query)
             .throwOnMappingFailure(false)
             .addParameter("ffgId", ffgId)
             .executeAndFetchFirst(FfgUserInfo::class.java)
@@ -29,7 +30,7 @@ object FfgDatabaseAccessor {
                     " VALUES (:discordId, :ffgId, '?', '?', '2025-01-01 00:00:00', 0) "
 
             connection
-                .createQuery(query)
+                .query(query)
                 .throwOnMappingFailure(false)
                 .addParameter("discordId", discordId)
                 .addParameter("ffgId", ffgId)
@@ -42,7 +43,7 @@ object FfgDatabaseAccessor {
             val query = "UPDATE $USER_TABLE SET updated = NOW(), error = 1 WHERE discord_id = :discordId "
 
             connection
-                .createQuery(query)
+                .query(query)
                 .addParameter("discordId", ffgUserInfo.discordId)
                 .executeUpdate()
         }
@@ -58,7 +59,7 @@ object FfgDatabaseAccessor {
                     " WHERE discord_id = :discordId "
 
             connection
-                .createQuery(query)
+                .query(query)
                 .addParameter("ffgName", ffgUserInfo.ffgName)
                 .addParameter("ffgRank", ffgUserInfo.ffgRank)
                 .addParameter("updated", ffgUserInfo.updated)

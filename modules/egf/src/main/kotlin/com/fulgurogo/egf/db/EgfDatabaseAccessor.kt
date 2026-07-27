@@ -1,6 +1,7 @@
 package com.fulgurogo.egf.db
 
 import com.fulgurogo.common.db.DatabaseAccessor
+import com.fulgurogo.common.db.query
 import com.fulgurogo.egf.db.model.EgfUserInfo
 
 object EgfDatabaseAccessor {
@@ -9,7 +10,7 @@ object EgfDatabaseAccessor {
     fun stalestUser(): EgfUserInfo? = DatabaseAccessor.withDao { connection ->
         val query = "SELECT * FROM $USER_TABLE ORDER BY updated"
         connection
-            .createQuery(query)
+            .query(query)
             .throwOnMappingFailure(false)
             .executeAndFetchFirst(EgfUserInfo::class.java)
     }
@@ -17,7 +18,7 @@ object EgfDatabaseAccessor {
     fun user(egfId: Int): EgfUserInfo? = DatabaseAccessor.withDao { connection ->
         val query = "SELECT * FROM $USER_TABLE WHERE egf_id = :egfId LIMIT 1"
         connection
-            .createQuery(query)
+            .query(query)
             .throwOnMappingFailure(false)
             .addParameter("egfId", egfId)
             .executeAndFetchFirst(EgfUserInfo::class.java)
@@ -29,7 +30,7 @@ object EgfDatabaseAccessor {
                     " VALUES (:discordId, :egfId, '?', '?', '2025-01-01 00:00:00', 0) "
 
             connection
-                .createQuery(query)
+                .query(query)
                 .throwOnMappingFailure(false)
                 .addParameter("discordId", discordId)
                 .addParameter("egfId", egfId)
@@ -42,7 +43,7 @@ object EgfDatabaseAccessor {
             val query = "UPDATE $USER_TABLE SET updated = NOW(), error = 1 WHERE discord_id = :discordId "
 
             connection
-                .createQuery(query)
+                .query(query)
                 .addParameter("discordId", egfUserInfo.discordId)
                 .executeUpdate()
         }
@@ -58,7 +59,7 @@ object EgfDatabaseAccessor {
                     " WHERE discord_id = :discordId "
 
             connection
-                .createQuery(query)
+                .query(query)
                 .addParameter("egfName", egfUserInfo.egfName)
                 .addParameter("egfRank", egfUserInfo.egfRank)
                 .addParameter("updated", egfUserInfo.updated)

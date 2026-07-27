@@ -1,6 +1,7 @@
 package com.fulgurogo.fox.db
 
 import com.fulgurogo.common.db.DatabaseAccessor
+import com.fulgurogo.common.db.query
 import com.fulgurogo.common.logger.log
 import com.fulgurogo.fox.FoxModule.TAG
 import com.fulgurogo.fox.db.model.FoxGame
@@ -13,7 +14,7 @@ object FoxDatabaseAccessor {
     fun userById(foxId: Int): FoxUserInfo? = DatabaseAccessor.withDao { connection ->
         val query = "SELECT * FROM $USER_TABLE WHERE fox_id = :foxId LIMIT 1"
         connection
-            .createQuery(query)
+            .query(query)
             .throwOnMappingFailure(false)
             .addParameter("foxId", foxId)
             .executeAndFetchFirst(FoxUserInfo::class.java)
@@ -22,7 +23,7 @@ object FoxDatabaseAccessor {
     fun user(foxName: Int): FoxUserInfo? = DatabaseAccessor.withDao { connection ->
         val query = "SELECT * FROM $USER_TABLE WHERE fox_name = :foxName LIMIT 1"
         connection
-            .createQuery(query)
+            .query(query)
             .throwOnMappingFailure(false)
             .addParameter("foxName", foxName)
             .executeAndFetchFirst(FoxUserInfo::class.java)
@@ -35,7 +36,7 @@ object FoxDatabaseAccessor {
                     " VALUES (:discordId, '?', :foxName, '?', '2025-01-01 00:00:00', 0) "
 
             connection
-                .createQuery(query)
+                .query(query)
                 .throwOnMappingFailure(false)
                 .addParameter("discordId", discordId)
                 .addParameter("foxName", foxName)
@@ -46,7 +47,7 @@ object FoxDatabaseAccessor {
     fun stalestUser(): FoxUserInfo? = DatabaseAccessor.withDao { connection ->
         val query = "SELECT * FROM $USER_TABLE ORDER BY updated"
         connection
-            .createQuery(query)
+            .query(query)
             .throwOnMappingFailure(false)
             .executeAndFetchFirst(FoxUserInfo::class.java)
     }
@@ -56,7 +57,7 @@ object FoxDatabaseAccessor {
             val query = "UPDATE $USER_TABLE SET updated = NOW(), error = 1 WHERE discord_id = :discordId "
 
             connection
-                .createQuery(query)
+                .query(query)
                 .addParameter("discordId", foxUserInfo.discordId)
                 .executeUpdate()
         }
@@ -72,7 +73,7 @@ object FoxDatabaseAccessor {
                     " WHERE discord_id = :discordId "
 
             connection
-                .createQuery(query)
+                .query(query)
                 .addParameter("foxId", foxUserInfo.foxId)
                 .addParameter("foxRank", foxUserInfo.foxRank)
                 .addParameter("updated", foxUserInfo.updated)
@@ -84,7 +85,7 @@ object FoxDatabaseAccessor {
     fun game(game: FoxGame): FoxGame? = DatabaseAccessor.withDao { connection ->
         val query = " SELECT * FROM $GAME_TABLE WHERE gold_id = :goldId LIMIT 1 "
         connection
-            .createQuery(query)
+            .query(query)
             .addParameter("goldId", game.goldId)
             .executeAndFetchFirst(FoxGame::class.java)
     }
@@ -102,7 +103,7 @@ object FoxDatabaseAccessor {
             log(TAG, "addGame [$query] ${game.id}")
 
             connection
-                .createQuery(query)
+                .query(query)
                 .addParameter("goldId", game.goldId)
                 .addParameter("id", game.id)
                 .addParameter("date", game.date)
@@ -131,7 +132,7 @@ object FoxDatabaseAccessor {
             log(TAG, "finishGame [$query] ${game.goldId}")
 
             connection
-                .createQuery(query)
+                .query(query)
                 .addParameter("result", game.result)
                 .addParameter("sgf", game.sgf)
                 .addParameter("goldId", game.goldId)

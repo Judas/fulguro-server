@@ -2,6 +2,7 @@ package com.fulgurogo.api.db
 
 import com.fulgurogo.api.db.model.*
 import com.fulgurogo.common.db.DatabaseAccessor
+import com.fulgurogo.common.db.query
 import com.fulgurogo.common.utilities.DATE_ZONE
 import com.fulgurogo.common.utilities.toDate
 import java.time.ZonedDateTime
@@ -13,7 +14,7 @@ object ApiDatabaseAccessor {
     fun apiPlayers(): List<ApiPlayer> = DatabaseAccessor.withDao { connection ->
         val query = "SELECT * FROM $PLAYERS_VIEW WHERE rating > 0 ORDER by rating DESC"
         connection
-            .createQuery(query)
+            .query(query)
             .throwOnMappingFailure(false)
             .executeAndFetch(ApiDbPlayer::class.java)
             ?.map { it.toApiPlayer() }
@@ -23,7 +24,7 @@ object ApiDatabaseAccessor {
     fun apiPlayer(discordId: String): ApiPlayer? = DatabaseAccessor.withDao { connection ->
         val query = "SELECT * FROM $PLAYERS_VIEW WHERE discord_id = :discordId"
         connection
-            .createQuery(query)
+            .query(query)
             .throwOnMappingFailure(false)
             .addParameter("discordId", discordId)
             .executeAndFetchFirst(ApiDbPlayer::class.java)
@@ -33,7 +34,7 @@ object ApiDatabaseAccessor {
     fun recentGames(): List<ApiGame> = DatabaseAccessor.withDao { connection ->
         val query = "SELECT * FROM $GAMES_VIEW ORDER BY date DESC LIMIT 20"
         connection
-            .createQuery(query)
+            .query(query)
             .throwOnMappingFailure(false)
             .executeAndFetch(ApiDbGame::class.java)
             ?.map { it.toApiGame() }
@@ -45,7 +46,7 @@ object ApiDatabaseAccessor {
                 " WHERE black_discord_id = :discordId OR white_discord_id = :discordId " +
                 " ORDER BY date DESC"
         connection
-            .createQuery(query)
+            .query(query)
             .throwOnMappingFailure(false)
             .addParameter("discordId", discordId)
             .executeAndFetch(ApiDbGame::class.java)
@@ -56,7 +57,7 @@ object ApiDatabaseAccessor {
     fun apiGame(goldId: String): ApiGame? = DatabaseAccessor.withDao { connection ->
         val query = "SELECT * FROM $GAMES_VIEW WHERE gold_id = :goldId LIMIT 1"
         connection
-            .createQuery(query)
+            .query(query)
             .throwOnMappingFailure(false)
             .addParameter("goldId", goldId)
             .executeAndFetchFirst(ApiDbGame::class.java)
@@ -74,7 +75,7 @@ object ApiDatabaseAccessor {
                         " refresh_token=VALUES(refresh_token), " +
                         " expiration_date=VALUES(expiration_date)"
             connection
-                .createQuery(query)
+                .query(query)
                 .addParameter("gold_id", goldId)
                 .addParameter("access_token", authCredentials.access_token)
                 .addParameter("token_type", authCredentials.token_type)
@@ -90,7 +91,7 @@ object ApiDatabaseAccessor {
     fun getAuthCredentials(goldId: String): AuthCredentials? = DatabaseAccessor.withDao { connection ->
         val query = " SELECT * FROM auth_credentials WHERE gold_id = :goldId"
         connection
-            .createQuery(query)
+            .query(query)
             .addParameter("goldId", goldId)
             .throwOnMappingFailure(false)
             .executeAndFetchFirst(AuthCredentials::class.java)

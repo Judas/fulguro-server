@@ -1,6 +1,7 @@
 package com.fulgurogo.ogs.db
 
 import com.fulgurogo.common.db.DatabaseAccessor
+import com.fulgurogo.common.db.query
 import com.fulgurogo.common.logger.log
 import com.fulgurogo.ogs.OgsModule.TAG
 import com.fulgurogo.ogs.db.model.OgsGame
@@ -13,7 +14,7 @@ object OgsDatabaseAccessor {
     fun user(ogsId: Int): OgsUserInfo? = DatabaseAccessor.withDao { connection ->
         val query = "SELECT * FROM $USER_TABLE WHERE ogs_id = :ogsId LIMIT 1"
         connection
-            .createQuery(query)
+            .query(query)
             .throwOnMappingFailure(false)
             .addParameter("ogsId", ogsId)
             .executeAndFetchFirst(OgsUserInfo::class.java)
@@ -25,7 +26,7 @@ object OgsDatabaseAccessor {
                     " VALUES (:discordId, :ogsId, '?', '?', '2025-01-01 00:00:00', 0) "
 
             connection
-                .createQuery(query)
+                .query(query)
                 .throwOnMappingFailure(false)
                 .addParameter("discordId", discordId)
                 .addParameter("ogsId", ogsId)
@@ -36,7 +37,7 @@ object OgsDatabaseAccessor {
     fun stalestUser(): OgsUserInfo? = DatabaseAccessor.withDao { connection ->
         val query = "SELECT * FROM $USER_TABLE ORDER BY updated"
         connection
-            .createQuery(query)
+            .query(query)
             .throwOnMappingFailure(false)
             .executeAndFetchFirst(OgsUserInfo::class.java)
     }
@@ -46,7 +47,7 @@ object OgsDatabaseAccessor {
             val query = "UPDATE $USER_TABLE SET updated = NOW(), error = 1 WHERE discord_id = :discordId "
 
             connection
-                .createQuery(query)
+                .query(query)
                 .addParameter("discordId", ogsUserInfo.discordId)
                 .executeUpdate()
         }
@@ -62,7 +63,7 @@ object OgsDatabaseAccessor {
                     " WHERE discord_id = :discordId "
 
             connection
-                .createQuery(query)
+                .query(query)
                 .addParameter("ogsName", ogsUserInfo.ogsName)
                 .addParameter("ogsRank", ogsUserInfo.ogsRank)
                 .addParameter("updated", ogsUserInfo.updated)
@@ -74,7 +75,7 @@ object OgsDatabaseAccessor {
     fun allUserIds(): List<Int> = DatabaseAccessor.withDao { connection ->
         val query = "SELECT ogs_id FROM $USER_TABLE"
         connection
-            .createQuery(query)
+            .query(query)
             .throwOnMappingFailure(false)
             .executeAndFetch(Int::class.java)
     }
@@ -82,7 +83,7 @@ object OgsDatabaseAccessor {
     fun game(game: OgsGame): OgsGame? = DatabaseAccessor.withDao { connection ->
         val query = " SELECT * FROM $GAME_TABLE WHERE gold_id = :goldId LIMIT 1 "
         connection
-            .createQuery(query)
+            .query(query)
             .addParameter("goldId", game.goldId)
             .executeAndFetchFirst(OgsGame::class.java)
     }
@@ -103,7 +104,7 @@ object OgsDatabaseAccessor {
                 " :size, :komi, :handicap, :ranked, :longGame, :result, :sgf) "
 
         connection
-            .createQuery(query)
+            .query(query)
             .addParameter("goldId", game.goldId)
             .addParameter("id", game.id)
             .addParameter("date", game.date)
@@ -138,7 +139,7 @@ object OgsDatabaseAccessor {
                 " WHERE gold_id = :goldId AND result = 'unfinished' "
 
         connection
-            .createQuery(query)
+            .query(query)
             .addParameter("result", game.result)
             .addParameter("sgf", game.sgf)
             .addParameter("goldId", game.goldId)

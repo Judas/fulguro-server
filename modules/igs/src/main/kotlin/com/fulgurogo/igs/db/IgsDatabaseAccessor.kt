@@ -1,6 +1,7 @@
 package com.fulgurogo.igs.db
 
 import com.fulgurogo.common.db.DatabaseAccessor
+import com.fulgurogo.common.db.query
 import com.fulgurogo.igs.db.model.IgsUserInfo
 
 object IgsDatabaseAccessor {
@@ -9,7 +10,7 @@ object IgsDatabaseAccessor {
     fun stalestUser(): IgsUserInfo? = DatabaseAccessor.withDao { connection ->
         val query = "SELECT * FROM $USER_TABLE ORDER BY updated"
         connection
-            .createQuery(query)
+            .query(query)
             .throwOnMappingFailure(false)
             .executeAndFetchFirst(IgsUserInfo::class.java)
     }
@@ -17,7 +18,7 @@ object IgsDatabaseAccessor {
     fun user(igsId: Int): IgsUserInfo? = DatabaseAccessor.withDao { connection ->
         val query = "SELECT * FROM $USER_TABLE WHERE igs_id = :igsId LIMIT 1"
         connection
-            .createQuery(query)
+            .query(query)
             .throwOnMappingFailure(false)
             .addParameter("igsId", igsId)
             .executeAndFetchFirst(IgsUserInfo::class.java)
@@ -29,7 +30,7 @@ object IgsDatabaseAccessor {
                     " VALUES (:discordId, :igsId, '?', '2025-01-01 00:00:00', 0) "
 
             connection
-                .createQuery(query)
+                .query(query)
                 .throwOnMappingFailure(false)
                 .addParameter("discordId", discordId)
                 .addParameter("igsId", igsId)
@@ -42,7 +43,7 @@ object IgsDatabaseAccessor {
             val query = "UPDATE $USER_TABLE SET updated = NOW(), error = 1 WHERE discord_id = :discordId "
 
             connection
-                .createQuery(query)
+                .query(query)
                 .addParameter("discordId", igsUserInfo.discordId)
                 .executeUpdate()
         }
@@ -57,7 +58,7 @@ object IgsDatabaseAccessor {
                     " WHERE discord_id = :discordId "
 
             connection
-                .createQuery(query)
+                .query(query)
                 .addParameter("igsRank", igsUserInfo.igsRank)
                 .addParameter("updated", igsUserInfo.updated)
                 .addParameter("discordId", igsUserInfo.discordId)

@@ -1,6 +1,7 @@
 package com.fulgurogo.discord.db
 
 import com.fulgurogo.common.db.DatabaseAccessor
+import com.fulgurogo.common.db.query
 import com.fulgurogo.discord.db.model.DiscordUserInfo
 
 object DiscordDatabaseAccessor {
@@ -9,7 +10,7 @@ object DiscordDatabaseAccessor {
     fun stalestUser(): DiscordUserInfo? = DatabaseAccessor.withDao { connection ->
         val query = "SELECT * FROM $USER_TABLE ORDER BY updated"
         connection
-            .createQuery(query)
+            .query(query)
             .throwOnMappingFailure(false)
             .executeAndFetchFirst(DiscordUserInfo::class.java)
     }
@@ -17,7 +18,7 @@ object DiscordDatabaseAccessor {
     fun user(discordId: String): DiscordUserInfo? = DatabaseAccessor.withDao { connection ->
         val query = "SELECT * FROM $USER_TABLE WHERE discord_id = :discordId"
         connection
-            .createQuery(query)
+            .query(query)
             .addParameter("discordId", discordId)
             .executeAndFetchFirst(DiscordUserInfo::class.java)
     }
@@ -27,7 +28,7 @@ object DiscordDatabaseAccessor {
             val query = "UPDATE $USER_TABLE SET updated = NOW(), error = 1 WHERE discord_id = :discordId "
 
             connection
-                .createQuery(query)
+                .query(query)
                 .addParameter("discordId", discordUserInfo.discordId)
                 .executeUpdate()
         }
@@ -42,7 +43,7 @@ object DiscordDatabaseAccessor {
                         " discord_name=VALUES(discord_name), " +
                         " discord_avatar=VALUES(discord_avatar)"
             connection
-                .createQuery(query)
+                .query(query)
                 .addParameter("discordId", discordId)
                 .addParameter("discordName", discordName)
                 .addParameter("discordAvatar", discordAvatar)
@@ -60,7 +61,7 @@ object DiscordDatabaseAccessor {
                     " WHERE discord_id = :discordId "
 
             connection
-                .createQuery(query)
+                .query(query)
                 .addParameter("discordName", discordUserInfo.discordName)
                 .addParameter("discordAvatar", discordUserInfo.discordAvatar)
                 .addParameter("updated", discordUserInfo.updated)
@@ -72,7 +73,7 @@ object DiscordDatabaseAccessor {
     fun phantomUsers(): List<DiscordUserInfo> = DatabaseAccessor.withDao { connection ->
         val query = "SELECT * FROM $USER_TABLE WHERE discord_id = discord_name"
         connection
-            .createQuery(query)
+            .query(query)
             .throwOnMappingFailure(false)
             .executeAndFetch(DiscordUserInfo::class.java)
     }

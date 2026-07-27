@@ -117,13 +117,12 @@ sql2o over a HikariCP pool, one shared `DatabaseAccessor.dao`, always used as
 `DatabaseAccessor.withDao { connection -> ... }` (opens and closes a connection per call; leak detection is at 5s).
 Queries are hand-written strings with named parameters.
 
-Two things bite when adding a column:
-
-- **Column mapping is global.** `DatabaseAccessor` holds one `defaultColumnMappings` map translating every
-  `snake_case` column to its camelCase property. A new snake_case column must be added there or it silently maps to
-  null (most reads use `throwOnMappingFailure(false)`).
+- **Build queries with `connection.query(sql)`, not `createQuery(sql)`.** The `query` extension in
+  `common/db/DatabaseAccessor.kt` sets `setAutoDeriveColumnNames(true)`, which maps `snake_case` columns onto
+  `camelCase` properties automatically, so a new column needs no registration anywhere. Plain `createQuery` skips the
+  derivation and — because most reads also set `throwOnMappingFailure(false)` — silently maps such a column to null.
 - **Models need a no-arg constructor.** Data classes are annotated `@GenerateNoArgConstructor`; the
-  `kotlin-noarg` plugin is configured for that annotation in every module's `build.gradle.kts`.
+  `kotlin-noarg` plugin is applied by the `fulgurogo-module` convention plugin in `buildSrc`.
 
 There is no migration tool. `doc/migration gold v3.sql` is the reference schema (tables, plus the `gold_ranks`,
 `fgc_validity_games`, `api_players`, `api_games` views) and it may have drifted from the live database. Schema and
