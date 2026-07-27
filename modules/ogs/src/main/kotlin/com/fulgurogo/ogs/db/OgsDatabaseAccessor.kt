@@ -89,7 +89,10 @@ object OgsDatabaseAccessor : GameStore<OgsGame> {
             .executeAndFetchFirst(OgsGame::class.java)
     }
 
-    override fun isGoldGame(game: OgsGame): Boolean = user(game.blackId) != null && user(game.whiteId) != null
+    override fun trackedPlayerIds(): Set<String> = allUserIds().mapTo(mutableSetOf()) { it.toString() }
+
+    override fun playerIds(game: OgsGame): Pair<String, String> =
+        game.blackId.toString() to game.whiteId.toString()
 
     /**
      * Inserts the game if it is not already known.

@@ -17,8 +17,14 @@ interface GameStore<G : NotifiableGame> {
     /** Stamps the final result on a game still stored as unfinished. @return true if this call finished the row. */
     fun finishGame(game: G): Boolean
 
-    /** Whether both players are tracked players, i.e. whether the game is worth announcing. */
-    fun isGoldGame(game: G): Boolean
+    /**
+     * Every player id this platform tracks, as strings. One query, reused across a whole batch — this replaced two
+     * per-game `user(id)` lookups.
+     */
+    fun trackedPlayerIds(): Set<String>
+
+    /** [game]'s black and white ids, in the same form as [trackedPlayerIds]. */
+    fun playerIds(game: G): Pair<String, String>
 }
 
 /**
@@ -36,7 +42,12 @@ fun <G : NotifiableGame> reconcileGames(
     store: GameStore<G>,
     server: String,
     checkAge: Boolean = true
-) = games.forEach { game -> reconcileGame(game, store, server, checkAge) }
+) {
+    // Loaded at most once for the batch, and not at all on a tick where every game is already known and unchanged.
+    // NONE is safe: the value never escapes this call.
+    val trackedPlayerIds = lazy(LazyThreadSafetyMode.NONE) { store.trackedPlayerIds() }
+    games.forEach { game -> reconcile(game, store, server, checkAge, trackedPlayerIds) }
+}
 
 /** Single-game form of [reconcileGames], for the OGS web socket which is handed one game at a time. */
 fun <G : NotifiableGame> reconcileGame(
@@ -44,6 +55,14 @@ fun <G : NotifiableGame> reconcileGame(
     store: GameStore<G>,
     server: String,
     checkAge: Boolean = true
+) = reconcile(game, store, server, checkAge, lazy(LazyThreadSafetyMode.NONE) { store.trackedPlayerIds() })
+
+private fun <G : NotifiableGame> reconcile(
+    game: G,
+    store: GameStore<G>,
+    server: String,
+    checkAge: Boolean,
+    trackedPlayerIds: Lazy<Set<String>>
 ) {
     val stored = store.storedGame(game)
     val wrote = when {
@@ -51,5 +70,10 @@ fun <G : NotifiableGame> reconcileGame(
         game.isFinished() && !stored.isFinished() -> store.finishGame(game)
         else -> false
     }
-    if (wrote && store.isGoldGame(game)) GameNotifier.notify(game, server, checkAge)
+    if (!wrote) return
+
+    // Only games between two tracked players are announced
+    val (black, white) = store.playerIds(game)
+    val tracked = trackedPlayerIds.value
+    if (black in tracked && white in tracked) GameNotifier.notify(game, server, checkAge)
 }

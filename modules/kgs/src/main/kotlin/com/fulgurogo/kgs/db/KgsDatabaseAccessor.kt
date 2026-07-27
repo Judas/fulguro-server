@@ -79,7 +79,16 @@ object KgsDatabaseAccessor : GameStore<KgsGame> {
             .executeAndFetchFirst(KgsGame::class.java)
     }
 
-    override fun isGoldGame(game: KgsGame): Boolean = user(game.blackId) != null && user(game.whiteId) != null
+    override fun trackedPlayerIds(): Set<String> = DatabaseAccessor.withDao { connection ->
+        val query = "SELECT kgs_id FROM $USER_TABLE"
+        connection
+            .query(query)
+            .throwOnMappingFailure(false)
+            .executeAndFetch(String::class.java)
+            .toSet()
+    }
+
+    override fun playerIds(game: KgsGame): Pair<String, String> = game.blackId to game.whiteId
 
     /**
      * Inserts the game if it is not already known, keyed on the gold_id primary key.

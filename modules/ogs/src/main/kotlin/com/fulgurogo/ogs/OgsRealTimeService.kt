@@ -80,13 +80,15 @@ class OgsRealTimeService : PeriodicFlowService(0, 10), OgsWsClient.Listener {
     }
 
     override fun onGameListResponse(message: OgsWsMessage.GameList) {
+        if (message.data.results.isEmpty()) return
+
+        // One query for the whole response. This used to be two queries per game listed, on a callback that fires
+        // every 10s.
+        val trackedIds = OgsDatabaseAccessor.allUserIds().toSet()
+
         message.data.results
-            .filter {
-                // Only keep games between 2 gold players
-                val existsBlack = OgsDatabaseAccessor.user(it.black.id) != null
-                val existsWhite = OgsDatabaseAccessor.user(it.white.id) != null
-                existsBlack && existsWhite
-            }
+            // Only keep games between 2 gold players
+            .filter { it.black.id in trackedIds && it.white.id in trackedIds }
             .filter { it.width == it.height } // Skip non-square goban
             .filterNot { it.rengo } // Skip rengo
             .map { it.id }

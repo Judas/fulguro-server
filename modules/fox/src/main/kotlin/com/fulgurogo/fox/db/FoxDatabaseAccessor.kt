@@ -12,15 +12,6 @@ object FoxDatabaseAccessor : GameStore<FoxGame> {
     private const val USER_TABLE = "fox_user_info"
     private const val GAME_TABLE = "fox_games"
 
-    fun userById(foxId: Int): FoxUserInfo? = DatabaseAccessor.withDao { connection ->
-        val query = "SELECT * FROM $USER_TABLE WHERE fox_id = :foxId LIMIT 1"
-        connection
-            .query(query)
-            .throwOnMappingFailure(false)
-            .addParameter("foxId", foxId)
-            .executeAndFetchFirst(FoxUserInfo::class.java)
-    }
-
     fun user(foxName: String): FoxUserInfo? = DatabaseAccessor.withDao { connection ->
         val query = "SELECT * FROM $USER_TABLE WHERE fox_name = :foxName LIMIT 1"
         connection
@@ -91,8 +82,17 @@ object FoxDatabaseAccessor : GameStore<FoxGame> {
             .executeAndFetchFirst(FoxGame::class.java)
     }
 
-    override fun isGoldGame(game: FoxGame): Boolean =
-        userById(game.blackId) != null && userById(game.whiteId) != null
+    override fun trackedPlayerIds(): Set<String> = DatabaseAccessor.withDao { connection ->
+        val query = "SELECT fox_id FROM $USER_TABLE"
+        connection
+            .query(query)
+            .throwOnMappingFailure(false)
+            .executeAndFetch(Int::class.java)
+            .mapTo(mutableSetOf()) { it.toString() }
+    }
+
+    override fun playerIds(game: FoxGame): Pair<String, String> =
+        game.blackId.toString() to game.whiteId.toString()
 
     /**
      * Inserts the game if it is not already known, keyed on the gold_id primary key.
