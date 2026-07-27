@@ -13,15 +13,15 @@ fun ZonedDateTime.millisecondsFromNow(): Long {
     return abs(ChronoUnit.MILLIS.between(this, now))
 }
 
-fun ZonedDateTime.toDate(): Date = Calendar.getInstance(Locale.FRANCE).let {
-    it.set(Calendar.YEAR, year)
-    it.set(Calendar.MONTH, monthValue - 1)
-    it.set(Calendar.DAY_OF_MONTH, dayOfMonth)
-    it.set(Calendar.HOUR_OF_DAY, hour)
-    it.set(Calendar.MINUTE, minute)
-    it.set(Calendar.SECOND, second)
-    it.time
-}
+/**
+ * The same instant as a [Date].
+ *
+ * Do not go back to building a [Calendar] and copying the local fields across. `Calendar.getInstance(Locale.FRANCE)`
+ * sets the *locale*, not the zone, so the fields were reinterpreted in the JVM default zone: on a UTC server that
+ * shifted every result by the Paris offset (+2h in summer). It also never set `MILLISECOND`, so each result carried
+ * whatever millisecond `getInstance()` happened to see, making the conversion non-deterministic.
+ */
+fun ZonedDateTime.toDate(): Date = Date.from(toInstant())
 
 fun ZonedDateTime.toStartOfMonth(): ZonedDateTime = this.withDayOfMonth(1).toStartOfDay()
 
