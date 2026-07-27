@@ -2,7 +2,7 @@ package com.fulgurogo.kgs
 
 import com.fulgurogo.common.config.Config
 import com.fulgurogo.common.logger.log
-import com.fulgurogo.common.service.PeriodicFlowService
+import com.fulgurogo.common.service.StalestFirstService
 import com.fulgurogo.common.utilities.DATE_ZONE
 import com.fulgurogo.common.utilities.okHttpClient
 import com.fulgurogo.common.utilities.scrap
@@ -20,58 +20,48 @@ import java.text.SimpleDateFormat
 import java.time.ZonedDateTime
 import java.util.*
 
-class KgsService : PeriodicFlowService(0, 60) {
+class KgsService : StalestFirstService<KgsUserInfo>(0, 60, TAG) {
     private var lastNetworkCallTime: ZonedDateTime = ZonedDateTime.now(DATE_ZONE)
 
-    private var processing = false
+    override fun stalest(): KgsUserInfo? = KgsDatabaseAccessor.stalestUser()
 
-    override fun onTick() {
-        if (processing) return
-        processing = true
+    override fun markAsError(stale: KgsUserInfo) = KgsDatabaseAccessor.markAsError(stale)
 
-        // Get stalest user
-        KgsDatabaseAccessor.stalestUser()?.let { stale ->
-            try {
-                // Scrap archives pages
-                val games = scrapGames(stale)
+    override fun refresh(stale: KgsUserInfo) {
+        // Scrap archives pages
+        val games = scrapGames(stale)
 
-                // Update user rank
-                val updatedRank = games.maxByOrNull { it.date }?.let {
-                    if (it.blackId == stale.kgsId) it.blackRank
-                    else if (it.whiteId == stale.kgsId) it.whiteRank
-                    else "?"
-                } ?: "?"
-                KgsDatabaseAccessor.updateUser(
-                    KgsUserInfo(
-                        discordId = stale.discordId,
-                        kgsId = stale.kgsId,
-                        kgsRank = updatedRank,
-                        updated = Date(),
-                        error = false
-                    )
-                )
+        // Update user rank
+        val updatedRank = games.maxByOrNull { it.date }?.let {
+            if (it.blackId == stale.kgsId) it.blackRank
+            else if (it.whiteId == stale.kgsId) it.whiteRank
+            else "?"
+        } ?: "?"
+        KgsDatabaseAccessor.updateUser(
+            KgsUserInfo(
+                discordId = stale.discordId,
+                kgsId = stale.kgsId,
+                kgsRank = updatedRank,
+                updated = Date(),
+                error = false
+            )
+        )
 
-                // Add games in DB
-                games.forEach { game ->
-                    val oldGame = KgsDatabaseAccessor.game(game)
-                    val blackDiscordUser = KgsDatabaseAccessor.user(game.blackId)
-                    val whiteDiscordUser = KgsDatabaseAccessor.user(game.whiteId)
-                    val isGoldGame = blackDiscordUser != null && whiteDiscordUser != null
-                    if (oldGame == null) {
-                        KgsDatabaseAccessor.addGame(game)
-                        if (isGoldGame) notifyGame(game)
-                    } else if (!oldGame.isFinished() && game.isFinished()) {
-                        // Game previously saved as "unfinished" is now finished
-                        KgsDatabaseAccessor.finishGame(game)
-                        if (isGoldGame) notifyGame(game)
-                    }
-                }
-            } catch (e: Exception) {
-                log(TAG, "onTick FAILURE ${e.message}")
-                KgsDatabaseAccessor.markAsError(stale)
+        // Add games in DB
+        games.forEach { game ->
+            val oldGame = KgsDatabaseAccessor.game(game)
+            val blackDiscordUser = KgsDatabaseAccessor.user(game.blackId)
+            val whiteDiscordUser = KgsDatabaseAccessor.user(game.whiteId)
+            val isGoldGame = blackDiscordUser != null && whiteDiscordUser != null
+            if (oldGame == null) {
+                KgsDatabaseAccessor.addGame(game)
+                if (isGoldGame) notifyGame(game)
+            } else if (!oldGame.isFinished() && game.isFinished()) {
+                // Game previously saved as "unfinished" is now finished
+                KgsDatabaseAccessor.finishGame(game)
+                if (isGoldGame) notifyGame(game)
             }
         }
-        processing = false
     }
 
     private fun scrapGames(stale: KgsUserInfo): List<KgsGame> = stale.kgsId?.let { kgsId ->

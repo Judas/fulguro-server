@@ -8,12 +8,7 @@ import com.fulgurogo.ping.PingModule.TAG
 import okhttp3.Request
 
 class PingService : PeriodicFlowService(0, 600) {
-    private var processing = false
-
     override fun onTick() {
-        if (processing) return
-        processing = true
-
         // Ping frontend
         try {
             val route = Config.get("frontend.url")
@@ -30,7 +25,5 @@ class PingService : PeriodicFlowService(0, 600) {
         } catch (e: Exception) {
             log(TAG, "Failed to reach frontend ${e.message}")
         }
-
-        processing = false
     }
 }

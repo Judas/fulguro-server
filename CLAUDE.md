@@ -73,7 +73,7 @@ Every feature is a Gradle module under `modules/` with an identical shape:
 - `XModule` — an `object` with a 3-letter `const val TAG` (used by every log line from that module) and an `init()`
   that instantiates and `start()`s its services. `App.main` calls each `init()` in order: aggregators, then community
   modules (gold, fgc, api), then utilities (ping, clean).
-- `XService : PeriodicFlowService` — the work loop.
+- `XService : StalestFirstService<T>` — the work loop (see below; a few services extend `PeriodicFlowService` directly).
 - `db/XDatabaseAccessor` — an `object` owning that module's tables via `private const val`; all SQL lives here.
 - `db/model/*` — sql2o-mapped data classes.
 
@@ -84,15 +84,19 @@ every other module because it links accounts across all of them.
 ### The service loop
 
 `PeriodicFlowService(initialDelayInSeconds, intervalInSeconds)` runs `onTick()` on a coroutine flow on
-`Dispatchers.IO`. Any exception escaping the flow kills that service permanently (the handler logs and calls
-`stop()`), which is why every `onTick()` body is wrapped in try/catch and guarded by a `processing` boolean re-entry
-flag. Follow that pattern exactly when adding a service.
+`Dispatchers.IO`. It catches whatever a tick throws, logs it, and ticks again on schedule, so `onTick()` does **not**
+need its own catch-all. Only an `Error` (or a failure of the flow itself) still stops a service for good.
 
-Aggregator services are **stalest-first single-item pollers**: each tick takes one row via
-`stalestUser()` (`ORDER BY updated` with no `LIMIT` in some accessors), refreshes it, and stamps `updated = NOW()`.
-Failures call `markAsError(...)`, which also stamps `updated` so a broken row rotates to the back of the queue
-instead of blocking it. Tick intervals are deliberately staggered (discord 5s, ogs/gold/fgc 15s, kgs/fox/igs 60s,
-ffg/egf 120s, ping/clean 600s) to spread outbound load.
+Ticks cannot overlap — the flow's `emit` suspends until the collector returns — so do not add a re-entry flag.
+
+Most services extend **`StalestFirstService<T>`** rather than `PeriodicFlowService` directly, implementing three
+methods: `stalest()` (the row longest without a refresh), `refresh(stale)`, and `markAsError(stale)`. The base class
+routes a `refresh` failure to `markAsError`, which stamps `updated` so a broken row rotates to the back of the queue
+instead of blocking it. Extend `PeriodicFlowService` directly only when there is no stalest-row queue to walk
+(`CleanService`, `PingService`, `OgsRealTimeService`).
+
+Tick intervals are deliberately staggered (discord 5s, ogs/gold/fgc 15s, kgs/fox/igs 60s, ffg/egf 120s,
+ping/clean 600s) to spread outbound load.
 
 ### Data flow
 

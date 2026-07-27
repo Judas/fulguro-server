@@ -16,16 +16,11 @@ import com.fulgurogo.ogs.websocket.model.*
 import com.fulgurogo.ogs.websocket.model.GameListRequest.Companion.GAME_LIST_REQUEST_ID
 
 class OgsRealTimeService : PeriodicFlowService(0, 10), OgsWsClient.Listener {
-    private var processing = false
-
     private var webSocket: OgsWsClient? = null
     private var ogsApiClient: OgsApiClient? = null
     private var credentials: OgsAuthCredentials? = null
 
     override fun onTick() {
-        if (processing) return
-        processing = true
-
         // No web socket, create one
         if (webSocket == null) webSocket = OgsWsClient(Config.get("ogs.websocket.url"), this)
         webSocket?.let { ws ->
@@ -60,8 +55,6 @@ class OgsRealTimeService : PeriodicFlowService(0, 10), OgsWsClient.Listener {
                 }
             }
         }
-
-        processing = false
     }
 
     override fun onOpened() {

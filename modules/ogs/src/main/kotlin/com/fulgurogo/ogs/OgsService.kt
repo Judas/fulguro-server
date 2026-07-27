@@ -2,7 +2,7 @@ package com.fulgurogo.ogs
 
 import com.fulgurogo.common.config.Config
 import com.fulgurogo.common.logger.log
-import com.fulgurogo.common.service.PeriodicFlowService
+import com.fulgurogo.common.service.StalestFirstService
 import com.fulgurogo.common.utilities.DATE_ZONE
 import com.fulgurogo.common.utilities.rankToKyuDanString
 import com.fulgurogo.common.utilities.toDate
@@ -18,61 +18,52 @@ import com.fulgurogo.ogs.db.model.OgsUserInfo
 import java.time.ZonedDateTime
 import java.util.*
 
-class OgsService : PeriodicFlowService(0, 15) {
-    private var processing = false
+class OgsService : StalestFirstService<OgsUserInfo>(0, 15, TAG) {
     private val ogsApiClient = OgsApiClient()
 
-    override fun onTick() {
-        if (processing) return
-        processing = true
+    override fun stalest(): OgsUserInfo? = OgsDatabaseAccessor.stalestUser()
 
-        // Get stalest user
-        OgsDatabaseAccessor.stalestUser()?.let { stale ->
-            try {
-                // Get user profile
-                val rating = fetchPlayerRating(stale)
-                if (rating == null) {
-                    OgsDatabaseAccessor.markAsError(stale)
-                } else {
-                    OgsDatabaseAccessor.updateUser(
-                        OgsUserInfo(
-                            discordId = stale.discordId,
-                            ogsId = stale.ogsId,
-                            ogsName = rating.username,
-                            ogsRank = rating.ranking.rankToKyuDanString(),
-                            updated = Date(),
-                            error = false
-                        )
-                    )
-                }
+    override fun markAsError(stale: OgsUserInfo) = OgsDatabaseAccessor.markAsError(stale)
 
-                // Add games in DB
-                val games = fetchPlayerGames(stale)
-                games.forEach { game ->
-                    // Check corresponding game in DB
-                    val dbGame = OgsDatabaseAccessor.game(game)
-                    val blackDiscordUser = OgsDatabaseAccessor.user(game.blackId)
-                    val whiteDiscordUser = OgsDatabaseAccessor.user(game.whiteId)
-                    val isGoldGame = blackDiscordUser != null && whiteDiscordUser != null
-                    if (game.goldId to game.result != dbGame?.goldId to dbGame?.result) {
-                        log(
-                            TAG,
-                            "localGame [${game.goldId} | ${game.result}] - dbGame [${dbGame?.goldId} | ${dbGame?.result}]}"
-                        )
-                    }
-                    // Only the caller that actually wrote the row notifies, the real time service races us here
-                    if (game.isFinished() && dbGame != null && !dbGame.isFinished()) {
-                        if (OgsDatabaseAccessor.finishGame(game) && isGoldGame) notifyGame(game)
-                    } else if (dbGame == null) {
-                        if (OgsDatabaseAccessor.addGame(game) && isGoldGame) notifyGame(game)
-                    }
-                }
-            } catch (e: Exception) {
-                log(TAG, "onTick FAILURE ${e.message}")
-                OgsDatabaseAccessor.markAsError(stale)
+    override fun refresh(stale: OgsUserInfo) {
+        // Get user profile
+        val rating = fetchPlayerRating(stale)
+        if (rating == null) {
+            markAsError(stale)
+        } else {
+            OgsDatabaseAccessor.updateUser(
+                OgsUserInfo(
+                    discordId = stale.discordId,
+                    ogsId = stale.ogsId,
+                    ogsName = rating.username,
+                    ogsRank = rating.ranking.rankToKyuDanString(),
+                    updated = Date(),
+                    error = false
+                )
+            )
+        }
+
+        // Add games in DB
+        val games = fetchPlayerGames(stale)
+        games.forEach { game ->
+            // Check corresponding game in DB
+            val dbGame = OgsDatabaseAccessor.game(game)
+            val blackDiscordUser = OgsDatabaseAccessor.user(game.blackId)
+            val whiteDiscordUser = OgsDatabaseAccessor.user(game.whiteId)
+            val isGoldGame = blackDiscordUser != null && whiteDiscordUser != null
+            if (game.goldId to game.result != dbGame?.goldId to dbGame?.result) {
+                log(
+                    TAG,
+                    "localGame [${game.goldId} | ${game.result}] - dbGame [${dbGame?.goldId} | ${dbGame?.result}]}"
+                )
+            }
+            // Only the caller that actually wrote the row notifies, the real time service races us here
+            if (game.isFinished() && dbGame != null && !dbGame.isFinished()) {
+                if (OgsDatabaseAccessor.finishGame(game) && isGoldGame) notifyGame(game)
+            } else if (dbGame == null) {
+                if (OgsDatabaseAccessor.addGame(game) && isGoldGame) notifyGame(game)
             }
         }
-        processing = false
     }
 
     private fun fetchPlayerRating(stale: OgsUserInfo): OgsApiPlayerRating? {

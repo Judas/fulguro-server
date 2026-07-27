@@ -1,66 +1,61 @@
 package com.fulgurogo.igs
 
 import com.fulgurogo.common.config.Config
-import com.fulgurogo.common.logger.log
-import com.fulgurogo.common.service.PeriodicFlowService
+import com.fulgurogo.common.service.StalestFirstService
 import com.fulgurogo.igs.IgsModule.TAG
 import com.fulgurogo.igs.db.IgsDatabaseAccessor
 import com.fulgurogo.igs.db.model.IgsUserInfo
 import java.util.*
 
-class IgsService : PeriodicFlowService(0, 60) {
-    private var processing = false
+class IgsService : StalestFirstService<IgsUserInfo>(0, 60, TAG) {
+    override fun stalest(): IgsUserInfo? = IgsDatabaseAccessor.stalestUser()
 
-    override fun onTick() {
-        if (processing) return
-        processing = true
+    override fun markAsError(stale: IgsUserInfo) = IgsDatabaseAccessor.markAsError(stale)
 
-        // Get stalest user
-        IgsDatabaseAccessor.stalestUser()?.let { stale ->
-            try {
-                val telnetClient = IgsTelnetClient()
-                // Connect
-                telnetClient.connect(Config.get("igs.server.host"), Config.get("igs.server.port").toInt())
-                telnetClient.readUntil("Login: ")
-                // Login
-                telnetClient.write(Config.get("igs.user.name"))
-                telnetClient.readUntil("1 1")
-                telnetClient.write(Config.get("igs.user.password"))
-                telnetClient.readUntil("1 5")
-                // Get user profile
-                telnetClient.write("stats ${stale.igsId}")
-                val playerInfo = telnetClient.readUntil("1 5")
-                // Disconnect
-                telnetClient.disconnect()
+    override fun refresh(stale: IgsUserInfo) {
+        val playerInfo = fetchPlayerInfo(stale)
 
-                if (playerInfo.contains("5 Cannot find player.")) {
-                    // Private user or wrong id
-                    IgsDatabaseAccessor.markAsError(stale)
-                } else {
-                    // Get rank
-                    val rank = playerInfo.split("\n")
-                        .firstOrNull { it.startsWith("9 Rating:") }
-                        ?.substring(9)?.trim()
-                        ?.split(" ")[0]
-                        ?.replace("*", "")
-                        ?.replace("NR", "?")
-                        ?: "?"
-
-                    IgsDatabaseAccessor.updateUser(
-                        IgsUserInfo(
-                            discordId = stale.discordId,
-                            igsId = stale.igsId,
-                            igsRank = rank,
-                            updated = Date(),
-                            error = false
-                        )
-                    )
-                }
-            } catch (e: Exception) {
-                log(TAG, "onTick FAILURE ${e.message}")
-                IgsDatabaseAccessor.markAsError(stale)
-            }
+        if (playerInfo.contains("5 Cannot find player.")) {
+            // Private user or wrong id
+            markAsError(stale)
+            return
         }
-        processing = false
+
+        // Get rank
+        val rank = playerInfo.split("\n")
+            .firstOrNull { it.startsWith("9 Rating:") }
+            ?.substring(9)?.trim()
+            ?.split(" ")[0]
+            ?.replace("*", "")
+            ?.replace("NR", "?")
+            ?: "?"
+
+        IgsDatabaseAccessor.updateUser(
+            IgsUserInfo(
+                discordId = stale.discordId,
+                igsId = stale.igsId,
+                igsRank = rank,
+                updated = Date(),
+                error = false
+            )
+        )
+    }
+
+    private fun fetchPlayerInfo(stale: IgsUserInfo): String {
+        val telnetClient = IgsTelnetClient()
+        // Connect
+        telnetClient.connect(Config.get("igs.server.host"), Config.get("igs.server.port").toInt())
+        telnetClient.readUntil("Login: ")
+        // Login
+        telnetClient.write(Config.get("igs.user.name"))
+        telnetClient.readUntil("1 1")
+        telnetClient.write(Config.get("igs.user.password"))
+        telnetClient.readUntil("1 5")
+        // Get user profile
+        telnetClient.write("stats ${stale.igsId}")
+        val playerInfo = telnetClient.readUntil("1 5")
+        // Disconnect
+        telnetClient.disconnect()
+        return playerInfo
     }
 }

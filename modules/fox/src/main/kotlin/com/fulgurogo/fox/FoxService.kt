@@ -1,8 +1,7 @@
 package com.fulgurogo.fox
 
 import com.fulgurogo.common.config.Config
-import com.fulgurogo.common.logger.log
-import com.fulgurogo.common.service.PeriodicFlowService
+import com.fulgurogo.common.service.StalestFirstService
 import com.fulgurogo.common.utilities.DATE_ZONE
 import com.fulgurogo.common.utilities.toDate
 import com.fulgurogo.discord.DiscordModule
@@ -18,55 +17,45 @@ import com.google.gson.reflect.TypeToken
 import java.time.ZonedDateTime
 import java.util.*
 
-class FoxService : PeriodicFlowService(0, 60) {
-    private var processing = false
+class FoxService : StalestFirstService<FoxUserInfo>(0, 60, TAG) {
+    override fun stalest(): FoxUserInfo? = FoxDatabaseAccessor.stalestUser()
 
-    override fun onTick() {
-        if (processing) return
-        processing = true
+    override fun markAsError(stale: FoxUserInfo) = FoxDatabaseAccessor.markAsError(stale)
 
-        // Get stalest user
-        FoxDatabaseAccessor.stalestUser()?.let { stale ->
-            try {
-                // Get user profile
-                val rating = fetchPlayerRating(stale)
-                if (rating == null) {
-                    FoxDatabaseAccessor.markAsError(stale)
-                } else {
-                    FoxDatabaseAccessor.updateUser(
-                        FoxUserInfo(
-                            discordId = stale.discordId,
-                            foxId = rating.id,
-                            foxName = rating.nick,
-                            foxRank = rating.rank.lowercase(),
-                            updated = Date(),
-                            error = false
-                        )
-                    )
-                }
+    override fun refresh(stale: FoxUserInfo) {
+        // Get user profile
+        val rating = fetchPlayerRating(stale)
+        if (rating == null) {
+            markAsError(stale)
+        } else {
+            FoxDatabaseAccessor.updateUser(
+                FoxUserInfo(
+                    discordId = stale.discordId,
+                    foxId = rating.id,
+                    foxName = rating.nick,
+                    foxRank = rating.rank.lowercase(),
+                    updated = Date(),
+                    error = false
+                )
+            )
+        }
 
-                // Add games in DB
-                val games = fetchPlayerGames(stale)
-                games.forEach { game ->
-                    val oldGame = FoxDatabaseAccessor.game(game)
-                    val blackDiscordUser = FoxDatabaseAccessor.userById(game.blackId)
-                    val whiteDiscordUser = FoxDatabaseAccessor.userById(game.whiteId)
-                    val isGoldGame = blackDiscordUser != null && whiteDiscordUser != null
-                    if (oldGame == null) {
-                        FoxDatabaseAccessor.addGame(game)
-                        if (isGoldGame) notifyGame(game)
-                    } else if (!oldGame.isFinished() && game.isFinished()) {
-                        // Game previously saved as "unfinished" is now finished
-                        FoxDatabaseAccessor.finishGame(game)
-                        if (isGoldGame) notifyGame(game)
-                    }
-                }
-            } catch (e: Exception) {
-                log(TAG, "onTick FAILURE ${e.message}")
-                FoxDatabaseAccessor.markAsError(stale)
+        // Add games in DB
+        val games = fetchPlayerGames(stale)
+        games.forEach { game ->
+            val oldGame = FoxDatabaseAccessor.game(game)
+            val blackDiscordUser = FoxDatabaseAccessor.userById(game.blackId)
+            val whiteDiscordUser = FoxDatabaseAccessor.userById(game.whiteId)
+            val isGoldGame = blackDiscordUser != null && whiteDiscordUser != null
+            if (oldGame == null) {
+                FoxDatabaseAccessor.addGame(game)
+                if (isGoldGame) notifyGame(game)
+            } else if (!oldGame.isFinished() && game.isFinished()) {
+                // Game previously saved as "unfinished" is now finished
+                FoxDatabaseAccessor.finishGame(game)
+                if (isGoldGame) notifyGame(game)
             }
         }
-        processing = false
     }
 
     private fun fetchPlayerRating(stale: FoxUserInfo): FoxApiPlayerRating? {
