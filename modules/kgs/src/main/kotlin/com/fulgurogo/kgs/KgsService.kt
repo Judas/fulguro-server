@@ -163,23 +163,20 @@ class KgsService : StalestFirstService<KgsUserInfo>(0, 60, TAG) {
             .url(sgfLink)
             .header("User-Agent", Config.get("user.agent"))
             .get().build()
-        val response = okHttpClient.newCall(request).execute()
-        return if (response.isSuccessful) {
-            val responseBody = response.body!!.string().replace("\n", "")
-            response.close()
-            responseBody
-        } else if (allowRetry) {
-            // Retry once after delay
-            response.close()
-            Thread.sleep(1000L)
-            log(TAG, "Fetching SGF ERROR: Waiting then retrying")
-            fetchSgf(sgfLink, false)
-        } else {
-            // Failed twice
-            response.close()
-            log(TAG, "Fetching SGF FAILURE " + response.code)
-            ""
+        okHttpClient.newCall(request).execute().use { response ->
+            if (response.isSuccessful) return response.body!!.string().replace("\n", "")
+
+            if (!allowRetry) {
+                // Failed twice
+                log(TAG, "Fetching SGF FAILURE " + response.code)
+                return ""
+            }
         }
+
+        // Retry once after delay
+        Thread.sleep(1000L)
+        log(TAG, "Fetching SGF ERROR: Waiting then retrying")
+        return fetchSgf(sgfLink, false)
     }
 
     private fun String?.splitNameRank(): Pair<String, String> = this?.let {

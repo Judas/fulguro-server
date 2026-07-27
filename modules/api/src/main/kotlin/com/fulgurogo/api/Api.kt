@@ -142,36 +142,34 @@ class Api {
         val body: RequestBody = AuthRequestPayload(code = authCode).toFormBody()
 
         val request: Request = Request.Builder().url(Config.get("gold.discord.auth.token.uri")).post(body).build()
-        val response = okHttpClient.newCall(request).execute()
 
-        if (!response.isSuccessful) {
-            val error = Exception("DISCORD AUTH REQUEST FAILURE " + response.code)
-            log(TAG, error.message!!, error)
-            response.close()
-            throw error
+        val responseBody = okHttpClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                val error = Exception("DISCORD AUTH REQUEST FAILURE " + response.code)
+                log(TAG, error.message!!, error)
+                throw error
+            }
+
+            log(TAG, "DISCORD AUTH REQUEST SUCCESS ${response.code}")
+            response.body?.string()
         }
-
-        log(TAG, "DISCORD AUTH REQUEST SUCCESS ${response.code}")
-        val responseBody = response.body?.string()
-        response.close()
         return gson.fromJson(responseBody, AuthRequestResponse::class.java)
     }
 
     private fun refreshAuthToken(refreshToken: String): AuthRequestResponse {
         val body: RequestBody = AuthRefreshPayload(refreshToken = refreshToken).toFormBody()
         val request: Request = Request.Builder().url(Config.get("gold.discord.auth.token.uri")).post(body).build()
-        val response = okHttpClient.newCall(request).execute()
 
-        if (!response.isSuccessful) {
-            val error = Exception("DISCORD AUTH REFRESH FAILURE " + response.code)
-            log(TAG, error.message!!, error)
-            response.close()
-            throw error
+        val responseBody = okHttpClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                val error = Exception("DISCORD AUTH REFRESH FAILURE " + response.code)
+                log(TAG, error.message!!, error)
+                throw error
+            }
+
+            log(TAG, "DISCORD AUTH REFRESH SUCCESS ${response.code}")
+            response.body?.string()
         }
-
-        log(TAG, "DISCORD AUTH REFRESH SUCCESS ${response.code}")
-        val responseBody = response.body?.string()
-        response.close()
         return gson.fromJson(responseBody, AuthRequestResponse::class.java)
     }
 
@@ -181,18 +179,17 @@ class Api {
             .url(url)
             .header("Authorization", "${authCredentials.tokenType} ${authCredentials.accessToken}")
             .get().build()
-        val response = okHttpClient.newCall(request).execute()
 
-        if (!response.isSuccessful) {
-            val error = Exception("DISCORD PROFILE REQUEST FAILURE " + response.code)
-            log(TAG, error.message!!, error)
-            response.close()
-            throw error
+        val responseBody = okHttpClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                val error = Exception("DISCORD PROFILE REQUEST FAILURE " + response.code)
+                log(TAG, error.message!!, error)
+                throw error
+            }
+
+            log(TAG, "DISCORD PROFILE REQUEST SUCCESS ${response.code}")
+            response.body?.string()
         }
-
-        log(TAG, "DISCORD PROFILE REQUEST SUCCESS ${response.code}")
-        val responseBody = response.body?.string()
-        response.close()
         return gson.fromJson(responseBody, ProfileRequestResponse::class.java).id
     }
 

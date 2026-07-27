@@ -32,16 +32,13 @@ object FoxApiClient {
             .header("X-APP-ID", Config.get("fox.app.id"))
             .header("X-API-KEY", Config.get("fox.api.key"))
             .get().build()
-        val response = foxHttpClient.newCall(request).execute()
-        return if (response.isSuccessful) {
-            val responseBody = response.body!!.string()
-            response.close()
-            responseBody
-        } else {
-            val error = Exception("GET FAILURE " + response.code)
-            log(TAG, error.message!!, error)
-            response.close()
-            throw error
+        return foxHttpClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                val error = Exception("GET FAILURE " + response.code)
+                log(TAG, error.message!!, error)
+                throw error
+            }
+            response.body!!.string()
         }
     }
 }
