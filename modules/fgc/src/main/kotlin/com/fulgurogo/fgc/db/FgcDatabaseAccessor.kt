@@ -10,7 +10,7 @@ object FgcDatabaseAccessor {
     private const val VALIDITY_GAMES_VIEW = "fgc_validity_games"
 
     fun stalestUser(): FgcValidity? = DatabaseAccessor.withDao { connection ->
-        val query = "SELECT * FROM $VALIDITY_TABLE ORDER BY updated"
+        val query = "SELECT * FROM $VALIDITY_TABLE ORDER BY updated LIMIT 1"
         connection
             .query(query)
             .throwOnMappingFailure(false)

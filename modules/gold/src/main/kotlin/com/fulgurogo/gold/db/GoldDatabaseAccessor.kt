@@ -12,7 +12,7 @@ object GoldDatabaseAccessor {
     private const val RANKS_VIEW = "gold_ranks"
 
     fun stalestUser(): GoldPlayer? = DatabaseAccessor.withDao { connection ->
-        val query = "SELECT * FROM $RATINGS_TABLE ORDER BY updated"
+        val query = "SELECT * FROM $RATINGS_TABLE ORDER BY updated LIMIT 1"
         connection
             .query(query)
             .throwOnMappingFailure(false)

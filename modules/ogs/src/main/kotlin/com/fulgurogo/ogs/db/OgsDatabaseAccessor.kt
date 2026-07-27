@@ -36,7 +36,7 @@ object OgsDatabaseAccessor : GameStore<OgsGame> {
     }
 
     fun stalestUser(): OgsUserInfo? = DatabaseAccessor.withDao { connection ->
-        val query = "SELECT * FROM $USER_TABLE ORDER BY updated"
+        val query = "SELECT * FROM $USER_TABLE ORDER BY updated LIMIT 1"
         connection
             .query(query)
             .throwOnMappingFailure(false)
