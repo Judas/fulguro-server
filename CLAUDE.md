@@ -167,10 +167,11 @@ broken scrapers before.
   `app/src/main/resources/simplelogger.properties` (its `logFile` is the production path `/root/logs/...`).
 - Time uses `DATE_ZONE` (`Europe/Paris`) and the helpers in `ZonedDateTimeExtensions.kt`; `ZonedDateTime.now(DATE_ZONE)`
   rather than bare `now()`.
-- API handlers: one method per route on `Api`, body wrapped in try/catch, `context.rateLimit()` first
-  (`NaiveRateLimit`, 60 req/min per IP), responses via the `ContextExtensions` helpers
+- API handlers: one method per route on `Api`, written as `context.handle("routeName") { ... }`. That wrapper applies
+  the rate limit (`NaiveRateLimit`, 60/min per IP+method+route) *before* the catch, since it signals by throwing, and
+  maps anything unexpected to a 500. Responses go through the `ContextExtensions` helpers
   (`standardResponse`/`notFoundError`/`internalError`).
 - Code and comments are English; anything a Discord user or the website sees is French.
-- Dependencies go through the `libs.versions.toml` version catalog. Each module repeats the same
-  plugins/repositories/jvmToolchain/noArg block — copy an existing `build.gradle.kts` when adding a module, and
-  register it in `settings.gradle.kts` plus `app/build.gradle.kts`.
+- Dependencies go through the `libs.versions.toml` version catalog. A new module's `build.gradle.kts` is just
+  `plugins { id("fulgurogo-module") }` plus its own dependencies — the convention plugin in `buildSrc` supplies
+  plugins/repositories/jvmToolchain/noArg. Register it in `settings.gradle.kts` plus `app/build.gradle.kts`.

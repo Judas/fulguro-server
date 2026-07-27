@@ -26,6 +26,7 @@ import com.fulgurogo.ogs.api.model.OgsUserList
 import com.fulgurogo.ogs.db.OgsDatabaseAccessor
 import com.google.gson.Gson
 import io.javalin.http.Context
+import io.javalin.http.HttpResponseException
 import okhttp3.Request
 import okhttp3.RequestBody
 import java.time.ZonedDateTime
@@ -34,73 +35,64 @@ class Api {
     private val ogsApiClient = OgsApiClient()
     private val gson: Gson = Gson()
 
-    fun getPlayers(context: Context) = try {
-        context.rateLimit()
-        val players = ApiDatabaseAccessor.apiPlayers()
-        context.standardResponse(players)
-    } catch (e: Exception) {
-        log(TAG, "getPlayers ${e.message}")
-        context.internalError()
+    /**
+     * Rate limits, then runs [handler], turning anything unexpected into a 500.
+     *
+     * The rate limit check deliberately sits *outside* the catch. NaiveRateLimit signals by throwing
+     * TooManyRequestsResponse, so while it was inside, every rate-limited request was reported as a 500 and clients had
+     * no way to tell they should back off. Javalin maps HttpResponseException to its own status, hence the rethrow.
+     */
+    private inline fun Context.handle(route: String, handler: () -> Unit) {
+        rateLimit()
+        try {
+            handler()
+        } catch (e: HttpResponseException) {
+            throw e
+        } catch (e: Exception) {
+            log(TAG, "$route FAILURE ${e.message}", e)
+            internalError()
+        }
     }
 
-    fun getPlayerProfile(context: Context) = try {
-        context.rateLimit()
+    fun getPlayers(context: Context) = context.handle("getPlayers") {
+        val players = ApiDatabaseAccessor.apiPlayers()
+        context.standardResponse(players)
+    }
 
+    fun getPlayerProfile(context: Context) = context.handle("getPlayerProfile") {
         val playerId = context.pathParam("id")
         val player = ApiDatabaseAccessor.apiPlayer(playerId)
         player?.let { p ->
             p.games = ApiDatabaseAccessor.apiGamesFor(playerId)
             context.standardResponse(p)
         } ?: context.notFoundError()
-    } catch (e: Exception) {
-        log(TAG, "getPlayerProfile", e)
-        context.internalError()
     }
 
-    fun getRecentGames(context: Context) = try {
-        context.rateLimit()
+    fun getRecentGames(context: Context) = context.handle("getRecentGames") {
         val games = ApiDatabaseAccessor.recentGames()
         context.standardResponse(games)
-    } catch (e: Exception) {
-        log(TAG, "getPlayerProfile", e)
-        context.internalError()
     }
 
-    fun getGame(context: Context) = try {
-        context.rateLimit()
+    fun getGame(context: Context) = context.handle("getGame") {
         val goldId = context.pathParam("id")
 
         val game = ApiDatabaseAccessor.apiGame(goldId)
         game?.let { context.standardResponse(it) } ?: context.notFoundError()
-    } catch (e: Exception) {
-        log(TAG, "getGame", e)
-        context.internalError()
     }
 
-    fun getTiers(context: Context) = try {
-        context.rateLimit()
+    fun getTiers(context: Context) = context.handle("getTiers") {
         val tiers = GoldDatabaseAccessor.tiers()
         context.standardResponse(tiers)
-    } catch (e: Exception) {
-        log(TAG, "getTiers", e)
-        context.internalError()
     }
 
-    fun authenticateUser(context: Context) = try {
-        context.rateLimit()
-
+    fun authenticateUser(context: Context) = context.handle("authenticateUser") {
         val body = gson.fromJson(context.body(), AuthRequestBody::class.java)
         val authRequestResponse = requestAuthToken(body.code)
         ApiDatabaseAccessor.saveAuthCredentials(body.goldId, authRequestResponse)
         context.standardResponse()
-    } catch (e: Exception) {
-        log(TAG, "authenticateUser", e)
-        context.internalError()
     }
 
-    fun getAuthProfile(context: Context) = try {
-        context.rateLimit()
-
+    fun getAuthProfile(context: Context) = context.handle("getAuthProfile") {
         val goldIdParam = context.queryParam("goldId")
         goldIdParam?.let { goldId ->
             // Get corresponding token
@@ -141,9 +133,6 @@ class Api {
                 } ?: context.notFoundError()
             } ?: context.notFoundError()
         } ?: context.notFoundError()
-    } catch (e: Exception) {
-        log(TAG, "getAuthProfile", e)
-        context.internalError()
     }
 
     private fun requestAuthToken(authCode: String): AuthRequestResponse {
@@ -204,17 +193,11 @@ class Api {
         return gson.fromJson(responseBody, ProfileRequestResponse::class.java).id
     }
 
-    fun getAccounts(context: Context) = try {
-        context.rateLimit()
+    fun getAccounts(context: Context) = context.handle("getAccounts") {
         context.standardResponse(listOf("KGS", "OGS", "FOX", "IGS", "FFG", "EGF"))
-    } catch (e: Exception) {
-        log(TAG, "getAccounts", e)
-        context.internalError()
     }
 
-    fun link(context: Context) = try {
-        context.rateLimit()
-
+    fun link(context: Context) = context.handle("link") {
         // Param validation
         val body = gson.fromJson(context.body(), LinkRequestBody::class.java)
 
@@ -236,9 +219,6 @@ class Api {
                 else -> linkAccount(context, body)
             }
         }
-    } catch (e: Exception) {
-        log(TAG, "link", e)
-        context.internalError()
     }
 
     private fun linkAccount(context: Context, body: LinkRequestBody) {
