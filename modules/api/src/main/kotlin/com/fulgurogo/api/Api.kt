@@ -3,6 +3,7 @@ package com.fulgurogo.api
 import com.fulgurogo.api.ApiModule.TAG
 import com.fulgurogo.api.db.ApiDatabaseAccessor
 import com.fulgurogo.api.db.model.*
+import com.fulgurogo.api.link.AccountLinkers
 import com.fulgurogo.api.utilities.badRequest
 import com.fulgurogo.api.utilities.conflict
 import com.fulgurogo.api.utilities.internalError
@@ -16,16 +17,9 @@ import com.fulgurogo.common.utilities.okHttpClient
 import com.fulgurogo.common.utilities.toDate
 import com.fulgurogo.discord.DiscordModule
 import com.fulgurogo.discord.db.DiscordDatabaseAccessor
-import com.fulgurogo.egf.db.EgfDatabaseAccessor
-import com.fulgurogo.ffg.db.FfgDatabaseAccessor
 import com.fulgurogo.fgc.db.FgcDatabaseAccessor
-import com.fulgurogo.fox.db.FoxDatabaseAccessor
 import com.fulgurogo.gold.db.GoldDatabaseAccessor
-import com.fulgurogo.igs.db.IgsDatabaseAccessor
-import com.fulgurogo.kgs.db.KgsDatabaseAccessor
 import com.fulgurogo.ogs.api.OgsApiClient
-import com.fulgurogo.ogs.api.model.OgsUserList
-import com.fulgurogo.ogs.db.OgsDatabaseAccessor
 import com.google.gson.Gson
 import io.javalin.http.Context
 import io.javalin.http.HttpResponseException
@@ -34,8 +28,8 @@ import okhttp3.RequestBody
 import java.time.ZonedDateTime
 
 class Api {
-    private val ogsApiClient = OgsApiClient()
     private val gson: Gson = Gson()
+    private val accountLinkers = AccountLinkers(OgsApiClient())
 
     /**
      * Rate limits, then runs [handler], turning anything unexpected into a 500.
@@ -203,7 +197,7 @@ class Api {
     }
 
     fun getAccounts(context: Context) = context.handle("getAccounts") {
-        context.standardResponse(SUPPORTED_ACCOUNTS)
+        context.standardResponse(accountLinkers.supportedServers)
     }
 
     fun link(context: Context) = context.handle("link") {
@@ -216,7 +210,9 @@ class Api {
             context.badRequest()
             return@handle
         }
-        if (account !in SUPPORTED_ACCOUNTS) {
+
+        val linker = accountLinkers[account]
+        if (linker == null) {
             context.badRequest()
             return@handle
         }
@@ -227,55 +223,23 @@ class Api {
             return@handle
         }
 
-        // OGS is linked by username, and stored by numeric id; every other platform stores what the user gave us
-        val storedId = if (account == "OGS") ogsPlayerId(accountId) else accountId
+        val storedId = linker.resolveAccountId(accountId)
         if (storedId == null) {
-            context.notFoundError()  // No OGS player by that username
+            context.notFoundError()  // No such account on that platform
             return@handle
         }
 
         // Check if this account is free to link
-        if (isAccountTaken(account, storedId)) {
+        if (linker.isTaken(storedId)) {
             context.conflict()
             return@handle
         }
 
-        linkAccount(discordId, account, storedId)
+        linker.link(discordId, storedId)
 
         // Add in others DB
         GoldDatabaseAccessor.addPlayer(discordId)
         FgcDatabaseAccessor.addPlayer(discordId)
         context.standardResponse()
-    }
-
-    private fun ogsPlayerId(username: String): String? {
-        val url = "${Config.get("ogs.api.url")}/players?username=$username"
-        return ogsApiClient.get(url, OgsUserList::class.java).results.firstOrNull()?.id?.toString()
-    }
-
-    private fun isAccountTaken(account: String, accountId: String): Boolean = when (account) {
-        "KGS" -> KgsDatabaseAccessor.user(accountId) != null
-        // ogs_id is the one id column that is really an INT
-        "OGS" -> accountId.toIntOrNull()?.let { OgsDatabaseAccessor.user(it) != null } ?: false
-        "FOX" -> FoxDatabaseAccessor.user(accountId) != null
-        "IGS" -> IgsDatabaseAccessor.user(accountId) != null
-        "FFG" -> FfgDatabaseAccessor.user(accountId) != null
-        "EGF" -> EgfDatabaseAccessor.user(accountId) != null
-        else -> false
-    }
-
-    private fun linkAccount(discordId: String, account: String, accountId: String) {
-        when (account) {
-            "KGS" -> KgsDatabaseAccessor.addUser(discordId, accountId)
-            "OGS" -> OgsDatabaseAccessor.addUser(discordId, accountId)
-            "FOX" -> FoxDatabaseAccessor.addUser(discordId, accountId)
-            "IGS" -> IgsDatabaseAccessor.addUser(discordId, accountId)
-            "FFG" -> FfgDatabaseAccessor.addUser(discordId, accountId)
-            "EGF" -> EgfDatabaseAccessor.addUser(discordId, accountId)
-        }
-    }
-
-    companion object {
-        private val SUPPORTED_ACCOUNTS = listOf("KGS", "OGS", "FOX", "IGS", "FFG", "EGF")
     }
 }
