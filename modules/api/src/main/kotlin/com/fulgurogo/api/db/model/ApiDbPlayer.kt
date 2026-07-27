@@ -41,11 +41,15 @@ data class ApiDbPlayer(
         goldRankedGames = goldRankedGames
     )
 
+    /**
+     * `api_players` LEFT JOINs each platform table, so a platform's id column is null exactly when the player has no
+     * account there. Presence is therefore keyed on the id for every platform, FOX included.
+     */
     fun toApiPlayerAccounts(): List<ApiPlayerAccount> =
         listOf(
             "KGS" to kgsId,
             "OGS" to ogsId,
-            "FOX" to foxName,
+            "FOX" to foxId,
             "IGS" to igsId,
             "FFG" to ffgId,
             "EGF" to egfId
@@ -57,7 +61,7 @@ data class ApiDbPlayer(
                         server = "KGS",
                         id = kgsId,
                         name = kgsId,
-                        rank = kgsRank?.fallbackTo("?"),
+                        rank = kgsRank.orUnknown(),
                         link = "https://www.gokgs.com/graphPage.jsp?user=$kgsId"
                     )
 
@@ -65,7 +69,7 @@ data class ApiDbPlayer(
                         server = "OGS",
                         id = ogsId.toString(),
                         name = ogsName,
-                        rank = ogsRank?.fallbackTo("?"),
+                        rank = ogsRank.orUnknown(),
                         link = "https://online-go.com/player/$ogsId"
                     )
 
@@ -73,21 +77,21 @@ data class ApiDbPlayer(
                         server = "FOX",
                         id = foxId.toString(),
                         name = foxName,
-                        rank = foxRank?.fallbackTo("?")
+                        rank = foxRank.orUnknown()
                     )
 
                     "IGS" -> ApiPlayerAccount(
                         server = "IGS",
                         id = igsId,
                         name = igsId,
-                        rank = igsRank?.fallbackTo("?")
+                        rank = igsRank.orUnknown()
                     )
 
                     "FFG" -> ApiPlayerAccount(
                         server = "FFG",
                         id = ffgId,
                         name = ffgName,
-                        rank = ffgRank?.fallbackTo("?"),
+                        rank = ffgRank.orUnknown(),
                         link = "https://ffg.jeudego.org/php/affichePersonne.php?id=$ffgId"
                     )
 
@@ -95,7 +99,7 @@ data class ApiDbPlayer(
                         server = "EGF",
                         id = egfId,
                         name = egfName,
-                        rank = egfRank?.fallbackTo("?"),
+                        rank = egfRank.orUnknown(),
                         link = "https://www.europeangodatabase.eu/EGD/Player_Card.php?key=$egfId"
                     )
 
@@ -104,4 +108,9 @@ data class ApiDbPlayer(
             }
 }
 
-private fun String.fallbackTo(fallback: String) = if (isNullOrBlank()) fallback else this
+/**
+ * Ranks are stored as "?" when unknown, so this is belt and braces -- but it is declared on String? because the
+ * previous form was an extension on non-null String that called isNullOrBlank(), so a null rank stayed null instead
+ * of becoming "?".
+ */
+private fun String?.orUnknown(): String = if (isNullOrBlank()) "?" else this
