@@ -77,15 +77,24 @@ class KgsService : StalestFirstService<KgsUserInfo>(0, 60, TAG) {
     private fun extractGamesFrom(gameTable: Element): MutableList<KgsGame> {
         val gameRows = gameTable.select("tr").asList()
         gameRows.removeFirst() // First row is header
+
+        // The archive pages are English, so pin the locale rather than inheriting the JVM default: the AM/PM markers
+        // are "AM"/"PM" under most locales but not all (ja_JP gives 午前/午後, zh_CN 上午/下午), and there the parse
+        // would fail for every row. Built once per table instead of once per row; kept local because SimpleDateFormat
+        // is not thread safe.
+        val dateFormat = SimpleDateFormat("M/d/y h:mm a", Locale.ENGLISH).apply {
+            timeZone = TimeZone.getTimeZone("GMT")
+        }
+
         return gameRows.mapNotNull { row ->
             val columns = row.select("td").asList()
             if (columns.size != 7) return@mapNotNull null
 
-            // Date => skip games older than 32 days
+            // Date => skip rows we cannot date, then games older than 32 days.
+            // parse(String, ParsePosition) reports failure by returning null rather than throwing, and that null used
+            // to travel on as a platform-typed Date until it blew up on date.time below.
             val dateString = columns[4].text().trim()
-            val sdf = SimpleDateFormat("M/d/y h:mm a")
-            sdf.timeZone = TimeZone.getTimeZone("GMT")
-            val date = sdf.parse(dateString, ParsePosition(0))
+            val date = dateFormat.parse(dateString, ParsePosition(0)) ?: return@mapNotNull null
             val now = ZonedDateTime.now(DATE_ZONE)
             if (now.minusDays(32).toDate().after(date)) return@mapNotNull null
 
