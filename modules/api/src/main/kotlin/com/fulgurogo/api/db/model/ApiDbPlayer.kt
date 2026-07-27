@@ -42,14 +42,21 @@ data class ApiDbPlayer(
     )
 
     /**
-     * `api_players` LEFT JOINs each platform table, so a platform's id column is null exactly when the player has no
-     * account there. Presence is therefore keyed on the id for every platform, FOX included.
+     * `api_players` LEFT JOINs each platform table, so all of a platform's columns are null exactly when the player has
+     * no account there — any one of them can answer "is this linked?".
+     *
+     * Each platform is keyed on the value the **user supplied** when linking, which is the id everywhere except FOX.
+     * On FOX the user gives a nickname and `fox_id` is derived afterwards: `addUser` writes the placeholder `'?'`
+     * (which the INT column stores as 0) and only the first successful refresh replaces it. So `fox_name` is the
+     * authoritative column there — do not "align" it with the others. It is also the safer choice, since a VARCHAR
+     * always maps to `String?`, whereas `fox_id` would silently map to null if that column's type ever changed to hold
+     * the placeholder honestly (reads set `throwOnMappingFailure(false)`).
      */
     fun toApiPlayerAccounts(): List<ApiPlayerAccount> =
         listOf(
             "KGS" to kgsId,
             "OGS" to ogsId,
-            "FOX" to foxId,
+            "FOX" to foxName,
             "IGS" to igsId,
             "FFG" to ffgId,
             "EGF" to egfId
