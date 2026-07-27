@@ -32,6 +32,9 @@ object ApiModule {
                 // Gold tiers
                 get("/gold/api/tiers", api::getTiers)
 
+                // Service liveness: 200 when every background service is healthy, 503 otherwise
+                get("/gold/api/health", api::getHealth)
+
                 // Auth
                 post("/gold/api/auth", api::authenticateUser)
                 get("/gold/api/auth/profile", api::getAuthProfile)

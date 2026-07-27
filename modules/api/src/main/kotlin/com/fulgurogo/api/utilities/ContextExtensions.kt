@@ -13,6 +13,12 @@ fun Context.standardResponse() {
     status(204)
 }
 
+/** A JSON body with an explicit status, for responses that are not simply 200. */
+fun Context.jsonResponse(statusCode: Int, data: Any) {
+    status(statusCode)
+    json(data)
+}
+
 fun Context.notFoundError() {
     status(404)
 }

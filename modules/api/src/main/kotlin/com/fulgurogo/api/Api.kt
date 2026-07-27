@@ -7,11 +7,13 @@ import com.fulgurogo.api.link.AccountLinkers
 import com.fulgurogo.api.utilities.badRequest
 import com.fulgurogo.api.utilities.conflict
 import com.fulgurogo.api.utilities.internalError
+import com.fulgurogo.api.utilities.jsonResponse
 import com.fulgurogo.api.utilities.notFoundError
 import com.fulgurogo.api.utilities.rateLimit
 import com.fulgurogo.api.utilities.standardResponse
 import com.fulgurogo.common.config.Config
 import com.fulgurogo.common.logger.log
+import com.fulgurogo.common.service.ServiceRegistry
 import com.fulgurogo.common.utilities.DATE_ZONE
 import com.fulgurogo.common.utilities.okHttpClient
 import com.fulgurogo.common.utilities.toDate
@@ -79,6 +81,23 @@ class Api {
     fun getTiers(context: Context) = context.handle("getTiers") {
         val tiers = GoldDatabaseAccessor.tiers()
         context.standardResponse(tiers)
+    }
+
+    /**
+     * Liveness of the background services. 200 when all of them are healthy, 503 otherwise, so a monitor can watch the
+     * status code and only read the body when something is wrong.
+     *
+     * PingService keeps the *frontend* warm; nothing reported on the services themselves, which matters because a
+     * wedged aggregator is otherwise completely silent.
+     */
+    fun getHealth(context: Context) = context.handle("getHealth") {
+        val services = ServiceRegistry.health()
+        // An empty registry means the modules never started, which is not healthy either
+        val healthy = services.isNotEmpty() && services.all { it.healthy }
+        context.jsonResponse(
+            statusCode = if (healthy) 200 else 503,
+            data = mapOf("healthy" to healthy, "services" to services)
+        )
     }
 
     fun authenticateUser(context: Context) = context.handle("authenticateUser") {

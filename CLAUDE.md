@@ -108,7 +108,12 @@ ping/clean 600s) to spread outbound load.
    promotions are announced on Discord.
 3. `FgcService` counts each player's recent valid games from the `fgc_validity_games` view into `fgc_validity`.
 4. `ApiModule` starts Javalin on `gold.api.port` and serves `/gold/api/*` almost entirely out of two MySQL views,
-   `api_players` and `api_games`.
+   `api_players` and `api_games`. The exception is `GET /gold/api/health`, which reports the background services:
+   200 when they are all healthy, 503 otherwise, so a monitor can watch the status code alone. Every service
+   registers itself in `ServiceRegistry` from `PeriodicFlowService.start()`, and each reports whether it is still
+   running, how long since its last successful tick, and its consecutive-failure count. A service counts as stale
+   after `max(interval * 5, 60s) + initialDelay` without a success — measured from start if it has never had one, so a
+   service failing on every tick does not read as healthy.
 5. `CleanService` deletes games older than 32 days and invalid accounts (the "phantom user" purge is commented out on
    purpose — it fired too aggressively).
 
