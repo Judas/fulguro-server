@@ -2,12 +2,13 @@ package com.fulgurogo.kgs.db.model
 
 import com.fulgurogo.common.config.Config
 import com.fulgurogo.common.utilities.GenerateNoArgConstructor
+import com.fulgurogo.discord.NotifiableGame
 import java.util.*
 
 @GenerateNoArgConstructor
 data class KgsGame(
     val goldId: String,
-    val date: Date,
+    override val date: Date,
     val blackId: String,
     val blackRank: String,
     val whiteId: String,
@@ -19,10 +20,10 @@ data class KgsGame(
     val longGame: Boolean,
     val result: String, // black / white / jigo / unfinished
     val sgf: String
-) {
-    fun isFinished(): Boolean = result != "unfinished"
+) : NotifiableGame {
+    override fun isFinished(): Boolean = result != "unfinished"
 
-    fun description(): String {
+    override fun description(): String {
         val blackDesc = "**$blackId ($blackRank)**"
         val whiteDesc = "**$whiteId ($whiteRank)**"
         val gameLink = "${Config.get("frontend.url")}/game/$goldId"

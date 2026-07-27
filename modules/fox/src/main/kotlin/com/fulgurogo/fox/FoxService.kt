@@ -3,8 +3,9 @@ package com.fulgurogo.fox
 import com.fulgurogo.common.config.Config
 import com.fulgurogo.common.service.StalestFirstService
 import com.fulgurogo.common.utilities.DATE_ZONE
+import com.fulgurogo.common.utilities.sgfProperty
 import com.fulgurogo.common.utilities.toDate
-import com.fulgurogo.discord.DiscordModule
+import com.fulgurogo.discord.GameNotifier
 import com.fulgurogo.fox.FoxModule.TAG
 import com.fulgurogo.fox.api.FoxApiClient
 import com.fulgurogo.fox.api.model.FoxApiGame
@@ -85,7 +86,7 @@ class FoxService : StalestFirstService<FoxUserInfo>(0, 60, TAG) {
             val sgf = fetchSgf(it)
 
             // Check long game from SGF
-            val timeLimit = getSgfProperty(sgf, "TM")?.toIntOrNull() ?: 0
+            val timeLimit = sgf.sgfProperty("TM")?.toIntOrNull() ?: 0
 
             FoxGame(
                 goldId = it.goldId(),
@@ -115,24 +116,5 @@ class FoxService : StalestFirstService<FoxUserInfo>(0, 60, TAG) {
         ""
     }
 
-    private fun getSgfProperty(sgf: String, key: String): String? =
-        if (sgf.contains("$key[")) {
-            val keyIndex = sgf.indexOf("$key[")
-            val suffix = sgf.substring(keyIndex + key.length + 1)
-            suffix.substring(0, suffix.indexOf("]"))
-        } else null
-
-    private fun notifyGame(game: FoxGame) {
-        // Do not notify if game started more than 4h ago
-        val now = ZonedDateTime.now(DATE_ZONE)
-        if (now.minusHours(4).toDate().after(game.date)) return
-
-        val title = ":popcorn: Partie ${if (game.isFinished()) "terminée" else "en cours"} sur FOX !"
-        DiscordModule.discordBot.sendMessageEmbeds(
-            channelId = Config.get("bot.notification.channel.id"),
-            message = game.description(),
-            title = title,
-            imageUrl = if (game.isFinished()) "" else Config.get("gold.ongoing.game.thumbnail")
-        )
-    }
+    private fun notifyGame(game: FoxGame) = GameNotifier.notify(game, "FOX")
 }

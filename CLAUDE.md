@@ -113,7 +113,9 @@ ping/clean 600s) to spread outbound load.
    purpose — it fired too aggressively).
 
 Rank/rating math is centralized in `common/utilities/RankingUtilities.kt` (`ratingToRank`, `rankToRating`,
-`rankToKyuDanString`, `kyuDanStringToRank`) — don't reimplement conversions locally.
+`rankToKyuDanString`, `kyuDanStringToRank`) — don't reimplement conversions locally. Likewise
+`String.sgfProperty(key)` in `common/utilities/SgfExtensions.kt` for reading `SZ`/`HA`/`KM`/`TM` out of an SGF, and
+`discord/GameNotifier.notify(game, server)` for announcing a game (implement `NotifiableGame` on the game model).
 
 ### Database
 

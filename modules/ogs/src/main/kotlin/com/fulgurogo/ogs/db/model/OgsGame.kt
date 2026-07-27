@@ -2,13 +2,14 @@ package com.fulgurogo.ogs.db.model
 
 import com.fulgurogo.common.config.Config
 import com.fulgurogo.common.utilities.GenerateNoArgConstructor
+import com.fulgurogo.discord.NotifiableGame
 import java.util.*
 
 @GenerateNoArgConstructor
 data class OgsGame(
     val goldId: String,
     val id: Int,
-    val date: Date,
+    override val date: Date,
     val blackId: Int,
     val blackName: String,
     val blackRank: String,
@@ -22,9 +23,10 @@ data class OgsGame(
     val ranked: Boolean,
     val result: String, // black / white / jigo / unfinished
     val sgf: String
-) {
-    fun isFinished(): Boolean = result != "unfinished"
-    fun description(): String {
+) : NotifiableGame {
+    override fun isFinished(): Boolean = result != "unfinished"
+
+    override fun description(): String {
         val blackDesc = "**$blackName ($blackRank)**"
         val whiteDesc = "**$whiteName ($whiteRank)**"
         val gameLink =

@@ -6,8 +6,9 @@ import com.fulgurogo.common.service.StalestFirstService
 import com.fulgurogo.common.utilities.DATE_ZONE
 import com.fulgurogo.common.utilities.okHttpClient
 import com.fulgurogo.common.utilities.scrap
+import com.fulgurogo.common.utilities.sgfProperty
 import com.fulgurogo.common.utilities.toDate
-import com.fulgurogo.discord.DiscordModule
+import com.fulgurogo.discord.GameNotifier
 import com.fulgurogo.kgs.KgsModule.TAG
 import com.fulgurogo.kgs.db.KgsDatabaseAccessor
 import com.fulgurogo.kgs.db.model.KgsGame
@@ -128,16 +129,16 @@ class KgsService : StalestFirstService<KgsUserInfo>(0, 60, TAG) {
             if (sgf.isBlank()) return@mapNotNull null
 
             // Goban size => Skip wrong size games
-            val size = getSgfProperty(sgf, "SZ")?.toIntOrNull() ?: 0
+            val size = sgf.sgfProperty("SZ")?.toIntOrNull() ?: 0
 
             // Get handicap from SGF
-            val handicap = getSgfProperty(sgf, "HA")?.toIntOrNull() ?: 0
+            val handicap = sgf.sgfProperty("HA")?.toIntOrNull() ?: 0
 
             // Get komi from SGF
-            val komi = getSgfProperty(sgf, "KM")?.toFloatOrNull() ?: return@mapNotNull null
+            val komi = sgf.sgfProperty("KM")?.toFloatOrNull() ?: return@mapNotNull null
 
             // Get time setting from SGF
-            val isLongGame = (getSgfProperty(sgf, "TM")?.toIntOrNull() ?: 0) > 1200
+            val isLongGame = (sgf.sgfProperty("TM")?.toIntOrNull() ?: 0) > 1200
 
             // Players
             val whitePlayer = columns[1].select("a").firstOrNull()?.text()?.trim().splitNameRank()
@@ -185,13 +186,6 @@ class KgsService : StalestFirstService<KgsUserInfo>(0, 60, TAG) {
         }
     }
 
-    private fun getSgfProperty(sgf: String, key: String): String? =
-        if (sgf.contains("$key[")) {
-            val keyIndex = sgf.indexOf("$key[")
-            val suffix = sgf.substring(keyIndex + key.length + 1)
-            suffix.substring(0, suffix.indexOf("]"))
-        } else null
-
     private fun String?.splitNameRank(): Pair<String, String> = this?.let {
         val splitted = split(" ")
         val name = splitted[0]
@@ -213,17 +207,5 @@ class KgsService : StalestFirstService<KgsUserInfo>(0, 60, TAG) {
         lastNetworkCallTime = ZonedDateTime.now(DATE_ZONE)
     }
 
-    private fun notifyGame(game: KgsGame) {
-        // Do not notify if game started more than 4h ago
-        val now = ZonedDateTime.now(DATE_ZONE)
-        if (now.minusHours(4).toDate().after(game.date)) return
-
-        val title = ":popcorn: Partie ${if (game.isFinished()) "terminée" else "en cours"} sur KGS !"
-        DiscordModule.discordBot.sendMessageEmbeds(
-            channelId = Config.get("bot.notification.channel.id"),
-            message = game.description(),
-            title = title,
-            imageUrl = if (game.isFinished()) "" else Config.get("gold.ongoing.game.thumbnail")
-        )
-    }
+    private fun notifyGame(game: KgsGame) = GameNotifier.notify(game, "KGS")
 }

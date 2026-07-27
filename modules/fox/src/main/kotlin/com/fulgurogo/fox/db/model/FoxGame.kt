@@ -2,13 +2,14 @@ package com.fulgurogo.fox.db.model
 
 import com.fulgurogo.common.config.Config
 import com.fulgurogo.common.utilities.GenerateNoArgConstructor
+import com.fulgurogo.discord.NotifiableGame
 import java.util.*
 
 @GenerateNoArgConstructor
 data class FoxGame(
     val goldId: String,
     val id: Long,
-    val date: Date,
+    override val date: Date,
     val blackId: Int,
     val blackName: String,
     val blackRank: String,
@@ -22,10 +23,10 @@ data class FoxGame(
     val longGame: Boolean,
     val result: String, // black / white / jigo / unfinished
     val sgf: String
-) {
-    fun isFinished(): Boolean = result != "unfinished"
+) : NotifiableGame {
+    override fun isFinished(): Boolean = result != "unfinished"
 
-    fun description(): String {
+    override fun description(): String {
         val blackDesc = "**$blackId ($blackRank)**"
         val whiteDesc = "**$whiteId ($whiteRank)**"
         val gameLink = "${Config.get("frontend.url")}/game/$goldId"

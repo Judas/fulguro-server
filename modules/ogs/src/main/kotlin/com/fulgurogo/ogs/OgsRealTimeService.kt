@@ -4,7 +4,7 @@ import com.fulgurogo.common.config.Config
 import com.fulgurogo.common.logger.log
 import com.fulgurogo.common.service.PeriodicFlowService
 import com.fulgurogo.common.utilities.rankToKyuDanString
-import com.fulgurogo.discord.DiscordModule
+import com.fulgurogo.discord.GameNotifier
 import com.fulgurogo.ogs.OgsModule.TAG_RT
 import com.fulgurogo.ogs.api.OgsApiClient
 import com.fulgurogo.ogs.api.model.OgsAuthCredentials
@@ -163,13 +163,6 @@ class OgsRealTimeService : PeriodicFlowService(0, 10), OgsWsClient.Listener {
         ""
     }
 
-    private fun notifyGame(game: OgsGame) {
-        val title = ":popcorn: Partie ${if (game.isFinished()) "terminée" else "en cours"} sur OGS !"
-        DiscordModule.discordBot.sendMessageEmbeds(
-            channelId = Config.get("bot.notification.channel.id"),
-            message = game.description(),
-            title = title,
-            imageUrl = if (game.isFinished()) "" else Config.get("gold.ongoing.game.thumbnail")
-        )
-    }
+    // Unlike the REST service this one does not drop games by age: it only ever sees games from the live game list.
+    private fun notifyGame(game: OgsGame) = GameNotifier.notify(game, "OGS", checkAge = false)
 }

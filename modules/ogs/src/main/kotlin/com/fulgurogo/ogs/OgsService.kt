@@ -6,7 +6,7 @@ import com.fulgurogo.common.service.StalestFirstService
 import com.fulgurogo.common.utilities.DATE_ZONE
 import com.fulgurogo.common.utilities.rankToKyuDanString
 import com.fulgurogo.common.utilities.toDate
-import com.fulgurogo.discord.DiscordModule
+import com.fulgurogo.discord.GameNotifier
 import com.fulgurogo.ogs.OgsModule.TAG
 import com.fulgurogo.ogs.api.OgsApiClient
 import com.fulgurogo.ogs.api.model.OgsApiGame
@@ -142,17 +142,5 @@ class OgsService : StalestFirstService<OgsUserInfo>(0, 15, TAG) {
         ""
     }
 
-    private fun notifyGame(game: OgsGame) {
-        // Do not notify if game started more than 4h ago
-        val now = ZonedDateTime.now(DATE_ZONE)
-        if (now.minusHours(4).toDate().after(game.date)) return
-
-        val title = ":popcorn: Partie ${if (game.isFinished()) "terminée" else "en cours"} sur OGS !"
-        DiscordModule.discordBot.sendMessageEmbeds(
-            channelId = Config.get("bot.notification.channel.id"),
-            message = game.description(),
-            title = title,
-            imageUrl = if (game.isFinished()) "" else Config.get("gold.ongoing.game.thumbnail")
-        )
-    }
+    private fun notifyGame(game: OgsGame) = GameNotifier.notify(game, "OGS")
 }
