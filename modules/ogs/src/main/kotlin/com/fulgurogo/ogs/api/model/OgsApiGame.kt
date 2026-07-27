@@ -1,8 +1,9 @@
 package com.fulgurogo.ogs.api.model
 
 import com.google.gson.annotations.SerializedName
-import java.text.ParsePosition
-import java.text.SimpleDateFormat
+import java.time.OffsetDateTime
+import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
 import java.util.*
 
 data class OgsApiGame(
@@ -23,17 +24,23 @@ data class OgsApiGame(
     @SerializedName("time_control_parameters") val timeControlParams: String = "",
     @SerializedName("time_per_move") val timePerMove: Int? = null
 ) {
-    companion object {
-        private const val DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSSSSX"
-        private const val DATE_FORMAT_OLD = "yyyy-MM-dd'T'HH:mm:ssX"
-    }
-
     fun goldId(): String = "OGS_$id"
 
-    fun date(): Date = try {
-        SimpleDateFormat(DATE_FORMAT).parse(started, ParsePosition(0))
-    } catch (_: Exception) {
-        SimpleDateFormat(DATE_FORMAT_OLD).parse(started, ParsePosition(0))
+    /**
+     * OGS sends ISO-8601 with a microsecond fraction (`2026-07-27T10:00:00.123456Z`), and none at all on older
+     * records. `ISO_OFFSET_DATE_TIME` reads both, and reads the fraction as a fraction.
+     *
+     * Null when [started] cannot be parsed, so one malformed record skips its own game instead of failing the tick.
+     *
+     * The previous `SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSSX")` read the six fractional digits as *milliseconds*
+     * — `.123456` became 123456ms, putting every game 2m03s late. And its `parse(String, ParsePosition)` overload
+     * returns null instead of throwing, so the `catch` that fell back to the no-fraction format never ran; the null
+     * surfaced later as an NPE in the caller's date comparison.
+     */
+    fun date(): Date? = try {
+        Date.from(OffsetDateTime.parse(started, DateTimeFormatter.ISO_OFFSET_DATE_TIME).toInstant())
+    } catch (_: DateTimeParseException) {
+        null
     }
 
     fun result(): String? = when {

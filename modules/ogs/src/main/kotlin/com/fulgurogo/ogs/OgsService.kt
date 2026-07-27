@@ -87,8 +87,8 @@ class OgsService : StalestFirstService<OgsUserInfo>(0, 15, TAG) {
             val result = it.result()
             if (result == null) return@mapNotNull null
 
-            // Date => skip games older than 32 days
-            val date = it.date()
+            // Date => skip games we cannot date, then games older than 32 days
+            val date = it.date() ?: return@mapNotNull null
             val now = ZonedDateTime.now(DATE_ZONE)
             if (now.minusDays(32).toDate().after(date)) return@mapNotNull null
 
