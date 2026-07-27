@@ -15,7 +15,7 @@ object EgfDatabaseAccessor {
             .executeAndFetchFirst(EgfUserInfo::class.java)
     }
 
-    fun user(egfId: Int): EgfUserInfo? = DatabaseAccessor.withDao { connection ->
+    fun user(egfId: String): EgfUserInfo? = DatabaseAccessor.withDao { connection ->
         val query = "SELECT * FROM $USER_TABLE WHERE egf_id = :egfId LIMIT 1"
         connection
             .query(query)

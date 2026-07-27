@@ -15,7 +15,7 @@ object IgsDatabaseAccessor {
             .executeAndFetchFirst(IgsUserInfo::class.java)
     }
 
-    fun user(igsId: Int): IgsUserInfo? = DatabaseAccessor.withDao { connection ->
+    fun user(igsId: String): IgsUserInfo? = DatabaseAccessor.withDao { connection ->
         val query = "SELECT * FROM $USER_TABLE WHERE igs_id = :igsId LIMIT 1"
         connection
             .query(query)

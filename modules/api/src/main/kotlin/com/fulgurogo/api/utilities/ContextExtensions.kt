@@ -17,6 +17,16 @@ fun Context.notFoundError() {
     status(404)
 }
 
+/** The request itself is malformed — missing fields, or an account type we do not support. */
+fun Context.badRequest() {
+    status(400)
+}
+
+/** The request was understood but conflicts with stored state, e.g. an account already linked to someone. */
+fun Context.conflict() {
+    status(409)
+}
+
 fun Context.internalError() {
     status(500)
 }

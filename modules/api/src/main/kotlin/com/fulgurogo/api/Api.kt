@@ -3,6 +3,8 @@ package com.fulgurogo.api
 import com.fulgurogo.api.ApiModule.TAG
 import com.fulgurogo.api.db.ApiDatabaseAccessor
 import com.fulgurogo.api.db.model.*
+import com.fulgurogo.api.utilities.badRequest
+import com.fulgurogo.api.utilities.conflict
 import com.fulgurogo.api.utilities.internalError
 import com.fulgurogo.api.utilities.notFoundError
 import com.fulgurogo.api.utilities.rateLimit
@@ -87,8 +89,15 @@ class Api {
 
     fun authenticateUser(context: Context) = context.handle("authenticateUser") {
         val body = gson.fromJson(context.body(), AuthRequestBody::class.java)
-        val authRequestResponse = requestAuthToken(body.code)
-        ApiDatabaseAccessor.saveAuthCredentials(body.goldId, authRequestResponse)
+        val code = body?.code
+        val goldId = body?.goldId
+        if (code.isNullOrBlank() || goldId.isNullOrBlank()) {
+            context.badRequest()
+            return@handle
+        }
+
+        val authRequestResponse = requestAuthToken(code)
+        ApiDatabaseAccessor.saveAuthCredentials(goldId, authRequestResponse)
         context.standardResponse()
     }
 
@@ -194,72 +203,79 @@ class Api {
     }
 
     fun getAccounts(context: Context) = context.handle("getAccounts") {
-        context.standardResponse(listOf("KGS", "OGS", "FOX", "IGS", "FFG", "EGF"))
+        context.standardResponse(SUPPORTED_ACCOUNTS)
     }
 
     fun link(context: Context) = context.handle("link") {
-        // Param validation
+        // Param validation. Gson does not honour Kotlin nullability, so treat every field as possibly absent.
         val body = gson.fromJson(context.body(), LinkRequestBody::class.java)
+        val discordId = body?.discordId
+        val account = body?.account
+        val accountId = body?.accountId
+        if (discordId.isNullOrBlank() || account.isNullOrBlank() || accountId.isNullOrBlank()) {
+            context.badRequest()
+            return@handle
+        }
+        if (account !in SUPPORTED_ACCOUNTS) {
+            context.badRequest()
+            return@handle
+        }
 
-        if (body.accountId.isBlank() || body.discordId.isBlank()) {
+        // Check that discord id exists
+        if (DiscordDatabaseAccessor.user(discordId) == null) {
             context.notFoundError()
-        } else {
-            // Check that discord id exists
-            val discordUser = DiscordDatabaseAccessor.user(body.discordId)
-            when {
-                discordUser == null -> context.notFoundError()
-                body.account == "OGS" -> {
-                    val url = "${Config.get("ogs.api.url")}/players?username=${body.accountId}"
-                    val userList = ogsApiClient.get(url, OgsUserList::class.java)
-                    userList.results.firstOrNull()?.id?.toString()?.let {
-                        linkAccount(context, LinkRequestBody(body.discordId, "OGS", it))
-                    }
-                }
+            return@handle
+        }
 
-                else -> linkAccount(context, body)
-            }
+        // OGS is linked by username, and stored by numeric id; every other platform stores what the user gave us
+        val storedId = if (account == "OGS") ogsPlayerId(accountId) else accountId
+        if (storedId == null) {
+            context.notFoundError()  // No OGS player by that username
+            return@handle
+        }
+
+        // Check if this account is free to link
+        if (isAccountTaken(account, storedId)) {
+            context.conflict()
+            return@handle
+        }
+
+        linkAccount(discordId, account, storedId)
+
+        // Add in others DB
+        GoldDatabaseAccessor.addPlayer(discordId)
+        FgcDatabaseAccessor.addPlayer(discordId)
+        context.standardResponse()
+    }
+
+    private fun ogsPlayerId(username: String): String? {
+        val url = "${Config.get("ogs.api.url")}/players?username=$username"
+        return ogsApiClient.get(url, OgsUserList::class.java).results.firstOrNull()?.id?.toString()
+    }
+
+    private fun isAccountTaken(account: String, accountId: String): Boolean = when (account) {
+        "KGS" -> KgsDatabaseAccessor.user(accountId) != null
+        // ogs_id is the one id column that is really an INT
+        "OGS" -> accountId.toIntOrNull()?.let { OgsDatabaseAccessor.user(it) != null } ?: false
+        "FOX" -> FoxDatabaseAccessor.user(accountId) != null
+        "IGS" -> IgsDatabaseAccessor.user(accountId) != null
+        "FFG" -> FfgDatabaseAccessor.user(accountId) != null
+        "EGF" -> EgfDatabaseAccessor.user(accountId) != null
+        else -> false
+    }
+
+    private fun linkAccount(discordId: String, account: String, accountId: String) {
+        when (account) {
+            "KGS" -> KgsDatabaseAccessor.addUser(discordId, accountId)
+            "OGS" -> OgsDatabaseAccessor.addUser(discordId, accountId)
+            "FOX" -> FoxDatabaseAccessor.addUser(discordId, accountId)
+            "IGS" -> IgsDatabaseAccessor.addUser(discordId, accountId)
+            "FFG" -> FfgDatabaseAccessor.addUser(discordId, accountId)
+            "EGF" -> EgfDatabaseAccessor.addUser(discordId, accountId)
         }
     }
 
-    private fun linkAccount(context: Context, body: LinkRequestBody) {
-        // Check if this account is free to link
-        when (body.account) {
-            "KGS" -> {
-                if (KgsDatabaseAccessor.user(body.accountId) != null) context.internalError()
-                else KgsDatabaseAccessor.addUser(body.discordId, body.accountId)
-            }
-
-            "OGS" -> {
-                if (OgsDatabaseAccessor.user(body.accountId.toInt()) != null) context.internalError()
-                else OgsDatabaseAccessor.addUser(body.discordId, body.accountId)
-            }
-
-            "FOX" -> {
-                if (FoxDatabaseAccessor.user(body.accountId.toInt()) != null) context.internalError()
-                else FoxDatabaseAccessor.addUser(body.discordId, body.accountId)
-            }
-
-            "IGS" -> {
-                if (IgsDatabaseAccessor.user(body.accountId.toInt()) != null) context.internalError()
-                else IgsDatabaseAccessor.addUser(body.discordId, body.accountId)
-            }
-
-            "FFG" -> {
-                if (FfgDatabaseAccessor.user(body.accountId.toInt()) != null) context.internalError()
-                else FfgDatabaseAccessor.addUser(body.discordId, body.accountId)
-            }
-
-            "EGF" -> {
-                if (EgfDatabaseAccessor.user(body.accountId.toInt()) != null) context.internalError()
-                else EgfDatabaseAccessor.addUser(body.discordId, body.accountId)
-            }
-
-            else -> context.internalError()
-        }
-
-        // Add in others DB
-        GoldDatabaseAccessor.addPlayer(body.discordId)
-        FgcDatabaseAccessor.addPlayer(body.discordId)
-        context.standardResponse()
+    companion object {
+        private val SUPPORTED_ACCOUNTS = listOf("KGS", "OGS", "FOX", "IGS", "FFG", "EGF")
     }
 }

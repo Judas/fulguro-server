@@ -15,7 +15,7 @@ object FfgDatabaseAccessor {
             .executeAndFetchFirst(FfgUserInfo::class.java)
     }
 
-    fun user(ffgId: Int): FfgUserInfo? = DatabaseAccessor.withDao { connection ->
+    fun user(ffgId: String): FfgUserInfo? = DatabaseAccessor.withDao { connection ->
         val query = "SELECT * FROM $USER_TABLE WHERE ffg_id = :ffgId LIMIT 1"
         connection
             .query(query)

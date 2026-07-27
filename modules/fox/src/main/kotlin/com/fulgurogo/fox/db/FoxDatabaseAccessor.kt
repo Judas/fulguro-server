@@ -21,7 +21,7 @@ object FoxDatabaseAccessor : GameStore<FoxGame> {
             .executeAndFetchFirst(FoxUserInfo::class.java)
     }
 
-    fun user(foxName: Int): FoxUserInfo? = DatabaseAccessor.withDao { connection ->
+    fun user(foxName: String): FoxUserInfo? = DatabaseAccessor.withDao { connection ->
         val query = "SELECT * FROM $USER_TABLE WHERE fox_name = :foxName LIMIT 1"
         connection
             .query(query)
