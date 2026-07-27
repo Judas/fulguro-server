@@ -163,7 +163,7 @@ class KgsService : StalestFirstService<KgsUserInfo>(0, 60, TAG) {
             .url(sgfLink)
             .header("User-Agent", Config.get("user.agent"))
             .get().build()
-        val response = okHttpClient().newCall(request).execute()
+        val response = okHttpClient.newCall(request).execute()
         return if (response.isSuccessful) {
             val responseBody = response.body!!.string().replace("\n", "")
             response.close()

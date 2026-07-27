@@ -10,13 +10,20 @@ import java.net.CookieManager
 import java.net.CookiePolicy
 import java.util.concurrent.TimeUnit
 
-fun okHttpClient(): OkHttpClient = OkHttpClient.Builder()
-    .connectTimeout(Config.get("global.read.timeout.ms").toLong(), TimeUnit.MILLISECONDS)
-    .readTimeout(Config.get("global.read.timeout.ms").toLong(), TimeUnit.MILLISECONDS)
-    .cookieJar(JavaNetCookieJar(CookieManager().apply { setCookiePolicy(CookiePolicy.ACCEPT_ALL) }))
-    .build()
-
-private val scraperCookies: MutableMap<String, String> = mutableMapOf()
+/**
+ * The shared outbound HTTP client.
+ *
+ * One instance, deliberately. Every OkHttpClient carries its own connection pool and dispatcher thread pool, and this
+ * used to be a factory: `KgsService.fetchSgf` called it once per SGF download, so a single tick over a busy player
+ * built dozens of clients. None were ever shut down, and no request ever reused a connection.
+ */
+val okHttpClient: OkHttpClient by lazy {
+    OkHttpClient.Builder()
+        .connectTimeout(Config.get("global.read.timeout.ms").toLong(), TimeUnit.MILLISECONDS)
+        .readTimeout(Config.get("global.read.timeout.ms").toLong(), TimeUnit.MILLISECONDS)
+        .cookieJar(JavaNetCookieJar(CookieManager().apply { setCookiePolicy(CookiePolicy.ACCEPT_ALL) }))
+        .build()
+}
 
 fun scrap(url: String): Document {
     val response: Connection.Response = Jsoup.connect(url)
@@ -42,8 +49,6 @@ fun scrap(url: String): Document {
         .timeout(Config.get("global.read.timeout.ms").toInt())
         .method(Connection.Method.GET)
         .execute()
-
-    scraperCookies.putAll(response.cookies())
 
     return response.parse()
 }

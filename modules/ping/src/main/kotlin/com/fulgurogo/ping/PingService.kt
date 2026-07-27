@@ -16,7 +16,7 @@ class PingService : PeriodicFlowService(0, 600) {
                 .url(route)
                 .header("User-Agent", Config.get("user.agent"))
                 .get().build()
-            val response = okHttpClient().newCall(request).execute()
+            val response = okHttpClient.newCall(request).execute()
 
             if (response.isSuccessful) log(TAG, "Pinged frontend at $route")
             else log(TAG, "Frontend responding code ${response.code}")

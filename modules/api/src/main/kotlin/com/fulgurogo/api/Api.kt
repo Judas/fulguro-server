@@ -142,7 +142,7 @@ class Api {
         val body: RequestBody = AuthRequestPayload(code = authCode).toFormBody()
 
         val request: Request = Request.Builder().url(Config.get("gold.discord.auth.token.uri")).post(body).build()
-        val response = okHttpClient().newCall(request).execute()
+        val response = okHttpClient.newCall(request).execute()
 
         if (!response.isSuccessful) {
             val error = Exception("DISCORD AUTH REQUEST FAILURE " + response.code)
@@ -160,7 +160,7 @@ class Api {
     private fun refreshAuthToken(refreshToken: String): AuthRequestResponse {
         val body: RequestBody = AuthRefreshPayload(refreshToken = refreshToken).toFormBody()
         val request: Request = Request.Builder().url(Config.get("gold.discord.auth.token.uri")).post(body).build()
-        val response = okHttpClient().newCall(request).execute()
+        val response = okHttpClient.newCall(request).execute()
 
         if (!response.isSuccessful) {
             val error = Exception("DISCORD AUTH REFRESH FAILURE " + response.code)
@@ -181,7 +181,7 @@ class Api {
             .url(url)
             .header("Authorization", "${authCredentials.tokenType} ${authCredentials.accessToken}")
             .get().build()
-        val response = okHttpClient().newCall(request).execute()
+        val response = okHttpClient.newCall(request).execute()
 
         if (!response.isSuccessful) {
             val error = Exception("DISCORD PROFILE REQUEST FAILURE " + response.code)

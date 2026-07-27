@@ -3,24 +3,16 @@ package com.fulgurogo.ogs.api
 import com.fulgurogo.common.config.Config
 import com.fulgurogo.common.logger.log
 import com.fulgurogo.common.utilities.DATE_ZONE
+import com.fulgurogo.common.utilities.okHttpClient
 import com.fulgurogo.ogs.OgsModule.TAG
 import com.google.gson.Gson
-import okhttp3.JavaNetCookieJar
 import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import java.net.CookieManager
-import java.net.CookiePolicy
 import java.time.ZonedDateTime
-import java.util.concurrent.TimeUnit
 
 class OgsApiClient {
     private val gson: Gson = Gson()
-    private val okHttpClient: OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(Config.get("global.read.timeout.ms").toLong(), TimeUnit.MILLISECONDS)
-        .readTimeout(Config.get("global.read.timeout.ms").toLong(), TimeUnit.MILLISECONDS)
-        .cookieJar(JavaNetCookieJar(CookieManager().apply { setCookiePolicy(CookiePolicy.ACCEPT_ALL) })).build()
     private var lastNetworkCallTime: ZonedDateTime = ZonedDateTime.now(DATE_ZONE)
 
     private fun ensureSpamDelay() {

@@ -2,24 +2,22 @@ package com.fulgurogo.fox.api
 
 import com.fulgurogo.common.config.Config
 import com.fulgurogo.common.logger.log
+import com.fulgurogo.common.utilities.okHttpClient
 import com.fulgurogo.fox.FoxModule.TAG
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import okhttp3.JavaNetCookieJar
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import java.net.CookieManager
-import java.net.CookiePolicy
-import java.util.concurrent.TimeUnit
 
 object FoxApiClient {
     private val gson: Gson = Gson()
-    private val okHttpClient: OkHttpClient = OkHttpClient.Builder()
+
+    // FOX needs its own authenticator and retry interceptor, but newBuilder() keeps the shared client's connection
+    // pool and dispatcher rather than standing up a second set of both.
+    private val foxHttpClient: OkHttpClient = okHttpClient.newBuilder()
         .authenticator(FoxAuthenticator())
         .addInterceptor(FoxRetryInterceptor())
-        .connectTimeout(Config.get("global.read.timeout.ms").toLong(), TimeUnit.MILLISECONDS)
-        .readTimeout(Config.get("global.read.timeout.ms").toLong(), TimeUnit.MILLISECONDS)
-        .cookieJar(JavaNetCookieJar(CookieManager().apply { setCookiePolicy(CookiePolicy.ACCEPT_ALL) })).build()
+        .build()
 
     fun <T : Any> get(route: String, className: Class<T>): T =
         gson.fromJson(get(route), className)
@@ -34,7 +32,7 @@ object FoxApiClient {
             .header("X-APP-ID", Config.get("fox.app.id"))
             .header("X-API-KEY", Config.get("fox.api.key"))
             .get().build()
-        val response = okHttpClient.newCall(request).execute()
+        val response = foxHttpClient.newCall(request).execute()
         return if (response.isSuccessful) {
             val responseBody = response.body!!.string()
             response.close()
