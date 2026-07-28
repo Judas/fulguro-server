@@ -13,7 +13,7 @@ object CleanDatabaseAccessor {
             listOf(
                 "discord_user_info",
                 "kgs_user_info", "ogs_user_info",
-                "igs_user_info", "ffg_user_info", "egf_user_info",
+                "ffg_user_info", "egf_user_info",
                 "gold_ratings", "fgc_validity"
             ).forEach { table ->
                 val query = "DELETE FROM $table WHERE discord_id IN (:ids)"
@@ -44,7 +44,6 @@ object CleanDatabaseAccessor {
             log(TAG, "removeDeletedAccounts")
 
             listOf(
-                "DELETE FROM igs_user_info WHERE error = 1 AND igs_rank = '?'",
                 "DELETE FROM ffg_user_info WHERE error = 1 AND ffg_name = ''",
                 "DELETE FROM egf_user_info WHERE error = 1 AND egf_name = ''",
                 "DELETE FROM ogs_user_info WHERE ogs_name LIKE 'deleted-%'"

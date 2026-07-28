@@ -12,8 +12,6 @@ data class ApiDbPlayer(
     val ogsId: Int? = null,
     val ogsName: String? = null,
     val ogsRank: String? = null,
-    val igsId: String? = null,
-    val igsRank: String? = null,
     val ffgId: String? = null,
     val ffgName: String? = null,
     val ffgRank: String? = null,
@@ -48,7 +46,6 @@ data class ApiDbPlayer(
         listOf(
             "KGS" to kgsId,
             "OGS" to ogsId,
-            "IGS" to igsId,
             "FFG" to ffgId,
             "EGF" to egfId
         )
@@ -69,13 +66,6 @@ data class ApiDbPlayer(
                         name = ogsName,
                         rank = ogsRank.orUnknown(),
                         link = "https://online-go.com/player/$ogsId"
-                    )
-
-                    "IGS" -> ApiPlayerAccount(
-                        server = "IGS",
-                        id = igsId,
-                        name = igsId,
-                        rank = igsRank.orUnknown()
                     )
 
                     "FFG" -> ApiPlayerAccount(

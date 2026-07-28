@@ -1,5 +1,4 @@
 [versions]
-commons-net = "3.11.1"
 gson = "2.13.1"
 hikari = "6.3.0"
 java-websocket = "1.5.7"
@@ -17,7 +16,6 @@ sl4j = "2.0.17"
 sql2o = "1.9.1"
 
 [libraries]
-commons-net = { group = "commons-net", name = "commons-net", version.ref = "commons-net" }
 gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
 hikari = { group = "com.zaxxer", name = "HikariCP", version.ref = "hikari" }
 java-websocket = { group = "org.java-websocket", name = "Java-WebSocket", version.ref = "java-websocket" }

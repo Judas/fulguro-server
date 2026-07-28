@@ -4,7 +4,6 @@ include(":modules:common")
 include(":modules:discord")
 include(":modules:kgs")
 include(":modules:ogs")
-include(":modules:igs")
 include(":modules:ffg")
 include(":modules:egf")
 

@@ -9,7 +9,6 @@ import com.fulgurogo.egf.EgfModule
 import com.fulgurogo.ffg.FfgModule
 import com.fulgurogo.fgc.FgcModule
 import com.fulgurogo.gold.GoldModule
-import com.fulgurogo.igs.IgsModule
 import com.fulgurogo.kgs.KgsModule
 import com.fulgurogo.ogs.OgsModule
 import com.fulgurogo.ping.PingModule
@@ -24,7 +23,6 @@ fun main() {
     DiscordModule.init()
     KgsModule.init()
     OgsModule.init()
-    IgsModule.init()
     FfgModule.init()
     EgfModule.init()
 

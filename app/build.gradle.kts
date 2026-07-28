@@ -14,7 +14,6 @@ dependencies {
 
     implementation(project(":modules:kgs"))
     implementation(project(":modules:ogs"))
-    implementation(project(":modules:igs"))
     implementation(project(":modules:ffg"))
     implementation(project(":modules:egf"))
 
@@ -25,7 +24,6 @@ dependencies {
     implementation(project(":modules:ping"))
     implementation(project(":modules:clean"))
 
-    implementation(libs.commons.net)
     implementation(libs.gson)
     implementation(libs.hikari)
     implementation(libs.javalin)
