@@ -49,7 +49,7 @@ class OgsApiClient {
                 log(TAG, error.message!!, error)
                 throw error
             }
-            response.body!!.string()
+            response.body.string()
         }
     }
 
@@ -68,7 +68,7 @@ class OgsApiClient {
                 log(TAG, error.message!!, error)
                 throw error
             }
-            response.body!!.string()
+            response.body.string()
         }
     }
 }

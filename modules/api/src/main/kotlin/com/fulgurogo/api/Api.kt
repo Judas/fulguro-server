@@ -170,7 +170,7 @@ class Api {
             }
 
             log(TAG, "DISCORD AUTH REQUEST SUCCESS ${response.code}")
-            response.body?.string()
+            response.body.string()
         }
         return gson.fromJson(responseBody, AuthRequestResponse::class.java)
     }
@@ -187,7 +187,7 @@ class Api {
             }
 
             log(TAG, "DISCORD AUTH REFRESH SUCCESS ${response.code}")
-            response.body?.string()
+            response.body.string()
         }
         return gson.fromJson(responseBody, AuthRequestResponse::class.java)
     }
@@ -207,7 +207,7 @@ class Api {
             }
 
             log(TAG, "DISCORD PROFILE REQUEST SUCCESS ${response.code}")
-            response.body?.string()
+            response.body.string()
         }
         return gson.fromJson(responseBody, ProfileRequestResponse::class.java).id
     }

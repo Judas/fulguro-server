@@ -260,7 +260,7 @@ class KgsService : StalestFirstService<KgsUserInfo>(0, 60, TAG) {
             .header("User-Agent", Config.get("user.agent"))
             .get().build()
         okHttpClient.newCall(request).execute().use { response ->
-            if (response.isSuccessful) return response.body!!.string().replace("\n", "")
+            if (response.isSuccessful) return response.body.string().replace("\n", "")
 
             if (!allowRetry) {
                 // Failed twice
