@@ -49,8 +49,26 @@ five keys present in the prod file too — with the `useless-only-needed-in-dev`
 against a prod config does not NPE.
 
 When `debug=true`, `App.main` opens an SSH tunnel (`SSHConnector`, jsch, key at `ssh.private.key.file`) because the
-prod MySQL only accepts local connections; `DatabaseAccessor` then connects to `ssh.forwarded.port` instead of
-`db.port`. **Dev runs against the production database** — be careful with anything that writes or deletes.
+server's MySQL only accepts local connections; `DatabaseAccessor` then connects to `ssh.forwarded.port` instead of
+`db.port`.
+
+The tunnel goes to the prod server either way, but the two configs pick different schemas on it: `db.name=fg_dev` in
+`config.properties.dev`, `db.name=fg_prod` in `config.properties.prod`. So a local `./gradlew :app:run` writes to
+`fg_dev` and cannot corrupt the live ladder — provided you actually copied the dev variant over
+`config.properties`, which is the one thing to check before running anything that writes. Only `config.properties` is
+read; the filename it came from is invisible at runtime, so `grep db.name` on it is the check, not the file listing.
+
+Two things `fg_dev` is *not*, despite being safe to write to. It is not anonymised: it is a snapshot of `fg_prod`
+taken on the same server, so it holds the same **member data** (Discord ids, names, avatars, games) and the same
+confidentiality rules apply — nothing out of it goes into a commit, a doc or a log line. And it is not fresh: it
+drifts from prod the moment it is taken, so a schema question it answers may be a stale answer.
+`mysqldump --no-data --routines fg_prod` still settles those.
+
+Discord is separated the same way: `bot.token`, `bot.guild.id` and `bot.notification.channel.id` all differ between
+the two variants, so a dev run drives its own bot on a test server and announces games and promotions there rather
+than in the live community. Only `bot.color` and `bot.name` are shared. The isolation of a local run therefore rests
+entirely on which file was copied over `config.properties` — get that wrong and both the database and the Discord
+channel are the live ones at once.
 
 ## `assets/` — local-only scratch folder
 
@@ -148,10 +166,14 @@ Queries are hand-written strings with named parameters.
 - **Models need a no-arg constructor.** Data classes are annotated `@GenerateNoArgConstructor`; the
   `kotlin-noarg` plugin is applied by the `fulgurogo-module` convention plugin in `buildSrc`.
 
-There is no migration tool. `doc/schema.sql` is the reference schema (9 tables, plus the `gold_ranks`,
-`fgc_validity_games`, `api_players`, `api_games` views and the `gold_tiers` rows) and it may have drifted from the
-live database — `mysqldump --no-data --routines fg_prod` settles any doubt. Schema and view changes are applied by
-hand on the server, and each one is written down as a `doc/migration *.sql` script stating where in a deploy it goes.
+There is no migration tool. `doc/schema.sql` is the reference schema (13 tables, plus the `gold_ranks`,
+`fgc_validity_games`, `api_players`, `api_games`, `house_games` views and the `gold_tiers` rows) and it may have
+drifted from the live database — `mysqldump --no-data --routines fg_prod` settles any doubt. Schema and view changes
+are applied by hand on the server, and each one is written down as a `doc/migration *.sql` script stating where in a
+deploy it goes.
+
+`doc/schema.sql` deliberately does not carry the RP text of the four `houses` rows — taglines, colours, descriptions.
+`doc/migration maisons.sql` is the single authority for that, and the reference schema only lists the ids and slugs.
 
 ### Cross-platform game identity
 
