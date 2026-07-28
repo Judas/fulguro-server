@@ -5,9 +5,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## What this is
 
 Kotlin/JVM (Java 17) multi-module Gradle app backing the FulguroGo Discord community. A single process runs many
-long-lived background services that scrape/poll Go servers (KGS, OGS, FOX, IGS) and rating federations (FFG, EGF),
-store users and games in MySQL, derive a custom "Gold" ladder rating/tier per player, notify Discord, and expose a
-JSON API for the website frontend.
+long-lived background services that scrape/poll the Go servers KGS and OGS, store users and games in MySQL, derive a
+custom "Gold" ladder rating/tier per player, notify Discord, and expose a JSON API for the website frontend.
+
+It used to aggregate four more sources — the FOX and IGS servers and the FFG and EGF rating federations — all removed
+in 8.8 (`doc/migration remove servers - *.sql`). Nothing of them is left; don't reintroduce a platform-shaped
+abstraction on their account.
 
 There are no tests in the repo (`src/test` does not exist anywhere), no linter config, and no CI. Verification means
 compiling and running.
@@ -36,10 +39,10 @@ name, so `dev.config.properties` or `config.properties.dev.properties` silently 
 
 `Config.get(key)` reads that file with no defaults and no error handling, so a missing key surfaces as an NPE deep in
 a service. Keys currently required include `debug`, `db.*`, `ssh.*`, `bot.*`, `user.agent`,
-`global.read.timeout.ms`, `gold.api.port`, `gold.discord.auth.*`, and per-platform blocks (`kgs.archives.url`,
-`ogs.*`, `fox.*`, `igs.*`, `ffg.website.url`, `egf.website.url`, `frontend.url`). The authoritative values are the
-ones deployed on the prod server; both variant files hold real credentials in plaintext, which is why the gitignore
-pattern has to match every `config.properties*` name.
+`global.read.timeout.ms`, `gold.api.port`, `gold.discord.auth.*`, the per-platform blocks (`kgs.archives.url`,
+`kgs.game.link`, `ogs.*`) and `frontend.url`. The authoritative values are the ones deployed on the prod server; both
+variant files hold real credentials in plaintext, which is why the gitignore pattern has to match every
+`config.properties*` name.
 
 `ssh.*` is only read when `debug=true` (`DatabaseAccessor` and `App.main` short-circuit on the flag), but keep the
 five keys present in the prod file too — with the `useless-only-needed-in-dev` placeholders — so flipping `debug`
@@ -54,22 +57,19 @@ prod MySQL only accepts local connections; `DatabaseAccessor` then connects to `
 Gitignored (`.gitignore:39`), untracked, and referenced by no code or build script. It won't exist in a fresh clone,
 so never make code or a Gradle task depend on it. What's in it:
 
-- `DevConfig.kt`, `ProdConfig.kt` — **real credentials in plaintext** (bot token, DB password, Discord OAuth secret,
-  IGS and KGS logins). Read them if you need a config value, but never copy one into a tracked file, a commit, or a
-  log line. `GitConfig.kt` is the same file with every secret replaced by an `<ENTER_...>` placeholder — that's the
-  one to share or paste from.
-- Those three files use the app's **previous** config format (`object Config { const val ... }`) rather than today's
-  `config.properties` + `Config.get("key")`. Key names map predictably (`Bot.TOKEN` → `bot.token`), but some entries
-  are for features no longer in the codebase: an `Exam` block (the "exam hunter", removed per `doc/changelog.txt`)
-  and a KGS block pointing at a local proxy with account credentials.
-- `kgs-proxy.war` — prebuilt webapp for that proxy, which fronted the real KGS API on `localhost:8080`. Dead weight
-  as long as `KgsService` scrapes `gameArchives.jsp`; relevant again only if someone goes back to the KGS API.
-- `v3 migration.sql` — an earlier, KGS-only draft of the v3 migration, and **not** the same as
-  `doc/migration gold v3.sql`. It disagrees on `error` (`DATETIME` vs `TINYINT(1)`) and keys `kgs_games` on
-  date + player names with `black_won`/`white_won` columns instead of a `gold_id` primary key. `doc/` is the
-  authoritative version; don't apply this one.
-- `database.txt` (manga titles) and `quizz-manga-raw.csv` (`category;question;answer`) — raw quiz data no current
-  module reads. `icon.xd` is the Adobe XD source for the bot icon.
+- `fg_prod.dump/` — a `mysqldump` of the production database, one file per table plus `fg_prod_routines.sql` for the
+  four views. It is the only copy of the real schema outside the server, so it settles any question `doc/schema.sql`
+  leaves open — but it also holds **member data** (Discord ids, names, avatars, games), so nothing from it goes into a
+  commit, a doc or a log line. It is a snapshot, not a live mirror: the dump in place predates the 8.8 removal, so it
+  still contains `fox_*`, `igs_*`, `ffg_*` and `egf_*` tables and the old view bodies. Handy for a rollback,
+  misleading if read as current.
+- `kgs-proxy.war` — prebuilt webapp for a proxy that fronted the real KGS API on `localhost:8080`. Dead weight as long
+  as `KgsService` scrapes `gameArchives.jsp`; relevant again only if someone goes back to the KGS API.
+- `maisons.md` — the "Houses" lore (four houses, their slug, name, tagline, colour), the source `doc/plan-maisons.md`
+  seeds from. `icon.xd` is the Adobe XD source for the bot icon.
+
+Earlier notes described `DevConfig.kt`, `ProdConfig.kt` and `GitConfig.kt` here, in the app's pre-`config.properties`
+format. They are gone; the credentials live in the three `config.properties*` files described above.
 
 ## Architecture
 
@@ -102,17 +102,20 @@ routes a `refresh` failure to `markAsError`, which stamps `updated` so a broken 
 instead of blocking it. Extend `PeriodicFlowService` directly only when there is no stalest-row queue to walk
 (`CleanService`, `PingService`, `OgsRealTimeService`).
 
-Tick intervals are deliberately staggered (discord 5s, ogs/gold/fgc 15s, kgs/fox/igs 60s, ffg/egf 120s,
-ping/clean 600s) to spread outbound load.
+Tick intervals are deliberately staggered (discord 5s, ogs/gold/fgc 15s, kgs 60s, ping/clean 600s) to spread
+outbound load.
 
 ### Data flow
 
 1. Platform modules fill `<platform>_user_info` (one row per linked Discord user, holds the current rank string like
-   `"12k"`/`"3d"`, or `"?"` when unknown) and, for KGS/OGS/FOX, `<platform>_games`.
+   `"12k"`/`"3d"`, or `"?"` when unknown) and `<platform>_games`.
 2. `GoldService` reads the `gold_ranks` view through `GoldDatabaseAccessor.userRanks()`, and `UserRanks.computeRating()`
-   converts each rank to a rating and averages it with hardcoded per-platform weights (KGS 0.8, OGS 1.0, FOX 0.1,
-   IGS 0.6, FFG 0.7, EGF 0.7). The result is matched to a row of `gold_tiers` and written to `gold_ratings`;
-   promotions are announced on Discord.
+   converts each rank to a rating and averages it with hardcoded per-platform weights (KGS 0.8, OGS 1.0). The result is
+   matched to a row of `gold_tiers` and written to `gold_ratings`; promotions are announced on Discord.
+   The KGS weight is additionally faded by the age of the rank, because KGS publishes no current rank — only the one a
+   player held in each archived game, which `KgsService.scrapRank()` reads and dates in `kgs_user_info.kgs_rank_date`.
+   Full weight for the first year, then a fifth less per further year, nothing from five years on. Getting this wrong
+   is not loud: before 8.8 every KGS rank was `"?"`, so the 0.8 weight silently contributed nothing at all.
 3. `FgcService` counts each player's recent valid games from the `fgc_validity_games` view into `fgc_validity`.
 4. `ApiModule` starts Javalin on `gold.api.port` and serves `/gold/api/*` almost entirely out of two MySQL views,
    `api_players` and `api_games`. The exception is `GET /gold/api/health`, which reports the background services:
@@ -142,13 +145,14 @@ Queries are hand-written strings with named parameters.
 - **Models need a no-arg constructor.** Data classes are annotated `@GenerateNoArgConstructor`; the
   `kotlin-noarg` plugin is applied by the `fulgurogo-module` convention plugin in `buildSrc`.
 
-There is no migration tool. `doc/migration gold v3.sql` is the reference schema (tables, plus the `gold_ranks`,
-`fgc_validity_games`, `api_players`, `api_games` views) and it may have drifted from the live database. Schema and
-view changes are applied by hand on the server.
+There is no migration tool. `doc/schema.sql` is the reference schema (9 tables, plus the `gold_ranks`,
+`fgc_validity_games`, `api_players`, `api_games` views and the `gold_tiers` rows) and it may have drifted from the
+live database — `mysqldump --no-data --routines fg_prod` settles any doubt. Schema and view changes are applied by
+hand on the server, and each one is written down as a `doc/migration *.sql` script stating where in a deploy it goes.
 
 ### Cross-platform game identity
 
-Games are keyed by `gold_id`, formatted `OGS_<id>` / `FOX_<id>` / `KGS_<black>_<white>_<epochMillis>` (KGS has no
+Games are keyed by `gold_id`, formatted `OGS_<id>` / `KGS_<black>_<white>_<epochMillis>` (KGS has no
 game id, hence the composite). Games are inserted the first time they're seen — including while still
 `result = "unfinished"`, so Discord can announce games in progress — then updated by `finishGame()` when a result
 appears. Views filter `result != "unfinished"` so unfinished games never reach the API.
@@ -169,9 +173,8 @@ a bug where a correspondence game overwrote live results was fixed here — so b
 
 Scraping is fragile and rate-sensitive. `common/utilities/HttpUtilities.kt` centralizes the okhttp client and the
 jsoup `scrap(url)` helper, which sends a full browser-like header set and the configured `user.agent`. Services add
-their own throttling (`ensureSpamDelay()` in `KgsService`, `FoxRetryInterceptor`/`FoxAuthenticator` for FOX) and
-retry-once-then-give-up patterns. Reuse these rather than building new clients; changes to headers/timings here have
-broken scrapers before.
+their own throttling (`ensureSpamDelay()` in `KgsService`) and retry-once-then-give-up patterns. Reuse these rather
+than building new clients; changes to headers/timings here have broken scrapers before.
 
 ## Conventions
 

@@ -1,5 +1,6 @@
 nouveau ladder plus statique
-retour de Fox
+retrait des serveurs Fox et IGS et des fédérations FFG et EGF : seuls KGS et OGS comptent désormais
+le rang KGS est enfin pris en compte, avec un poids qui diminue si le rang est ancien
 parties (9, 13) également visibles
 notifications discord (debut/fin de parties, changement de rang gold)
 disparition de l'exam hunter (vous inquiétez pas le remplaçant arrive bientôt)
