@@ -3,7 +3,6 @@ package com.fulgurogo.api.link
 import com.fulgurogo.common.config.Config
 import com.fulgurogo.egf.db.EgfDatabaseAccessor
 import com.fulgurogo.ffg.db.FfgDatabaseAccessor
-import com.fulgurogo.fox.db.FoxDatabaseAccessor
 import com.fulgurogo.igs.db.IgsDatabaseAccessor
 import com.fulgurogo.kgs.db.KgsDatabaseAccessor
 import com.fulgurogo.ogs.api.OgsApiClient
@@ -38,7 +37,6 @@ class AccountLinkers(ogsApiClient: OgsApiClient) {
     private val byServer: Map<String, AccountLinker> = listOf(
         KgsAccountLinker,
         OgsAccountLinker(ogsApiClient),
-        FoxAccountLinker,
         IgsAccountLinker,
         FfgAccountLinker,
         EgfAccountLinker
@@ -69,12 +67,6 @@ private class OgsAccountLinker(private val ogsApiClient: OgsApiClient) : Account
         accountId.toIntOrNull()?.let { OgsDatabaseAccessor.user(it) != null } ?: false
 
     override fun link(discordId: String, accountId: String) = OgsDatabaseAccessor.addUser(discordId, accountId)
-}
-
-private object FoxAccountLinker : AccountLinker {
-    override val server = "FOX"
-    override fun isTaken(accountId: String) = FoxDatabaseAccessor.user(accountId) != null
-    override fun link(discordId: String, accountId: String) = FoxDatabaseAccessor.addUser(discordId, accountId)
 }
 
 private object IgsAccountLinker : AccountLinker {

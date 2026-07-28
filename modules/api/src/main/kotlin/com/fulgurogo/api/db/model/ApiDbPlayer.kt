@@ -12,9 +12,6 @@ data class ApiDbPlayer(
     val ogsId: Int? = null,
     val ogsName: String? = null,
     val ogsRank: String? = null,
-    val foxId: Int? = null,
-    val foxName: String? = null,
-    val foxRank: String? = null,
     val igsId: String? = null,
     val igsRank: String? = null,
     val ffgId: String? = null,
@@ -45,18 +42,12 @@ data class ApiDbPlayer(
      * `api_players` LEFT JOINs each platform table, so all of a platform's columns are null exactly when the player has
      * no account there — any one of them can answer "is this linked?".
      *
-     * Each platform is keyed on the value the **user supplied** when linking, which is the id everywhere except FOX.
-     * On FOX the user gives a nickname and `fox_id` is derived afterwards: `addUser` writes the placeholder `'?'`
-     * (which the INT column stores as 0) and only the first successful refresh replaces it. So `fox_name` is the
-     * authoritative column there — do not "align" it with the others. It is also the safer choice, since a VARCHAR
-     * always maps to `String?`, whereas `fox_id` would silently map to null if that column's type ever changed to hold
-     * the placeholder honestly (reads set `throwOnMappingFailure(false)`).
+     * Each platform is keyed on the value the **user supplied** when linking, which is its id.
      */
     fun toApiPlayerAccounts(): List<ApiPlayerAccount> =
         listOf(
             "KGS" to kgsId,
             "OGS" to ogsId,
-            "FOX" to foxName,
             "IGS" to igsId,
             "FFG" to ffgId,
             "EGF" to egfId
@@ -78,13 +69,6 @@ data class ApiDbPlayer(
                         name = ogsName,
                         rank = ogsRank.orUnknown(),
                         link = "https://online-go.com/player/$ogsId"
-                    )
-
-                    "FOX" -> ApiPlayerAccount(
-                        server = "FOX",
-                        id = foxId.toString(),
-                        name = foxName,
-                        rank = foxRank.orUnknown()
                     )
 
                     "IGS" -> ApiPlayerAccount(

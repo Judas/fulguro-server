@@ -14,7 +14,7 @@ l'ordre — les dépendances sont indiquées.
 | Attribution d'une maison | Tirage au sort restreint aux maisons ayant le moins de membres |
 | Choix de vacances | Enregistrés comme intention, appliqués à l'ouverture de la saison |
 | Auth des mutations | Aucune — même pattern que `POST /gold/api/link` |
-| Parties éligibles | Toute partie finie sur KGS / OGS / FOX, sans filtre de taille, handicap ou komi |
+| Parties éligibles | Toute partie finie sur KGS / OGS, sans filtre de taille, handicap ou komi |
 | Anti-farming | Aucun garde-fou dans cette livraison |
 | Points après changement / départ | Restent acquis à la maison où ils ont été gagnés |
 | Sortie en cours de saison | Impossible, sauf en quittant le serveur Discord (le compte disparaît) |
@@ -171,13 +171,6 @@ UNION
   FROM kgs_games g
     LEFT JOIN kgs_user_info b ON g.black_id = b.kgs_id
     LEFT JOIN kgs_user_info w ON g.white_id = w.kgs_id
-  WHERE g.result <> 'unfinished'
-UNION
-  SELECT g.gold_id, g.date, g.result, g.ranked, g.long_game, g.handicap,
-         b.discord_id AS black_discord_id, w.discord_id AS white_discord_id
-  FROM fox_games g
-    LEFT JOIN fox_user_info b ON g.black_id = b.fox_id
-    LEFT JOIN fox_user_info w ON g.white_id = w.fox_id
   WHERE g.result <> 'unfinished';
 ```
 
@@ -188,9 +181,9 @@ ce qui distingue le bonus `gold_opponent`.
 retenu ne filtre sur aucun des deux. Si un filtre arrive un jour, ajouter la colonne suffit —
 `connection.query()` dérive les noms automatiquement, aucune inscription nulle part.
 
-Les trois plateformes qui stockent des parties sont incluses. C'est une différence assumée avec
-`fgc_validity_games`, qui n'unionne qu'OGS et KGS : la validité FGC ignore FOX volontairement, la
-comptabilité des maisons non.
+Les deux plateformes qui stockent des parties sont incluses, comme `fgc_validity_games`. La différence avec
+cette vue tient uniquement aux filtres : la validité FGC ne retient que le 19×19 sans handicap avec un komi
+standard sur 30 jours, la comptabilité des maisons prend tout.
 
 ### Seed
 

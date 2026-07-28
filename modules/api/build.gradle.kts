@@ -6,7 +6,6 @@ dependencies {
     implementation(project(":modules:discord"))
     implementation(project(":modules:kgs"))
     implementation(project(":modules:ogs"))
-    implementation(project(":modules:fox"))
     implementation(project(":modules:igs"))
     implementation(project(":modules:ffg"))
     implementation(project(":modules:egf"))
