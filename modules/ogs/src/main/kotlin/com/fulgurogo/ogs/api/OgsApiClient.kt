@@ -45,7 +45,7 @@ class OgsApiClient {
 
         return okHttpClient.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
-                val error = Exception("GET FAILURE " + response.code)
+                val error = Exception("GET FAILURE ${response.code} on $route")
                 log(TAG, error.message!!, error)
                 throw error
             }
@@ -64,7 +64,7 @@ class OgsApiClient {
 
         return okHttpClient.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
-                val error = Exception("POST FAILURE " + response.code)
+                val error = Exception("POST FAILURE ${response.code} on $route")
                 log(TAG, error.message!!, error)
                 throw error
             }
