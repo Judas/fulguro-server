@@ -23,6 +23,9 @@ fun ZonedDateTime.millisecondsFromNow(): Long {
  */
 fun ZonedDateTime.toDate(): Date = Date.from(toInstant())
 
+/** The same instant as a [ZonedDateTime] in [DATE_ZONE], the counterpart of [toDate]. */
+fun Date.toZonedDateTime(): ZonedDateTime = toInstant().atZone(DATE_ZONE)
+
 fun ZonedDateTime.toStartOfMonth(): ZonedDateTime = this.withDayOfMonth(1).toStartOfDay()
 
 fun ZonedDateTime.toStartOfDay(): ZonedDateTime = this

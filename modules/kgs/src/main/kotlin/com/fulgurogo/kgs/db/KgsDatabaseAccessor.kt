@@ -58,6 +58,7 @@ object KgsDatabaseAccessor : GameStore<KgsGame> {
         DatabaseAccessor.withDao { connection ->
             val query = "UPDATE $USER_TABLE SET " +
                     " kgs_rank = :kgsRank, " +
+                    " kgs_rank_date = :kgsRankDate, " +
                     " updated = :updated, " +
                     " error = 0 " +
                     " WHERE discord_id = :discordId "
@@ -65,6 +66,7 @@ object KgsDatabaseAccessor : GameStore<KgsGame> {
             connection
                 .query(query)
                 .addParameter("kgsRank", kgsUserInfo.kgsRank)
+                .addParameter("kgsRankDate", kgsUserInfo.kgsRankDate)
                 .addParameter("updated", kgsUserInfo.updated)
                 .addParameter("discordId", kgsUserInfo.discordId)
                 .executeUpdate()

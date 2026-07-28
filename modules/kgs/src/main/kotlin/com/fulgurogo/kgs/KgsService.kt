@@ -16,11 +16,16 @@ import com.fulgurogo.kgs.db.model.KgsUserInfo
 import kotlinx.coroutines.delay
 import okhttp3.Request
 import okio.IOException
+import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import java.text.ParsePosition
 import java.text.SimpleDateFormat
 import java.time.ZonedDateTime
 import java.util.*
+
+private const val UNKNOWN_RANK = "?"
+private val MONTH_LINK_YEAR = Regex("[?&]year=(\\d+)")
+private val MONTH_LINK_MONTH = Regex("[?&]month=(\\d+)")
 
 class KgsService : StalestFirstService<KgsUserInfo>(0, 60, TAG) {
     private var lastNetworkCallTime: ZonedDateTime = ZonedDateTime.now(DATE_ZONE)
@@ -30,20 +35,29 @@ class KgsService : StalestFirstService<KgsUserInfo>(0, 60, TAG) {
     override fun markAsError(stale: KgsUserInfo) = KgsDatabaseAccessor.markAsError(stale)
 
     override suspend fun refresh(stale: KgsUserInfo) {
-        // Scrap archives pages
-        val games = scrapGames(stale)
+        // One row is stored with a trailing space, and the archive cells have to be matched case insensitively anyway
+        val kgsId = stale.kgsId?.trim()
+        if (kgsId.isNullOrBlank()) throw Exception("Invalid KGS id")
+
+        val now = ZonedDateTime.now(DATE_ZONE)
+        val lastMonth = now.minusMonths(1)
+
+        // Scrap archives pages. Any month page also carries the chart of every month the player has games in, so
+        // these two answer both the game import and the rank lookup.
+        val pages = mapOf(
+            (now.year to now.monthValue) to scrapArchives(kgsId, now.year, now.monthValue),
+            (lastMonth.year to lastMonth.monthValue) to scrapArchives(kgsId, lastMonth.year, lastMonth.monthValue)
+        )
+        val games = pages.values.flatMap { page -> gamesTableOf(page)?.let { extractGamesFrom(it) } ?: listOf() }
 
         // Update user rank
-        val updatedRank = games.maxByOrNull { it.date }?.let {
-            if (it.blackId == stale.kgsId) it.blackRank
-            else if (it.whiteId == stale.kgsId) it.whiteRank
-            else "?"
-        } ?: "?"
+        val rank = scrapRank(kgsId, pages)
         KgsDatabaseAccessor.updateUser(
             KgsUserInfo(
                 discordId = stale.discordId,
                 kgsId = stale.kgsId,
-                kgsRank = updatedRank,
+                kgsRank = rank?.first ?: UNKNOWN_RANK,
+                kgsRankDate = rank?.second,
                 updated = Date(),
                 error = false
             )
@@ -53,39 +67,100 @@ class KgsService : StalestFirstService<KgsUserInfo>(0, 60, TAG) {
         reconcileGames(games, KgsDatabaseAccessor, "KGS")
     }
 
-    private suspend fun scrapGames(stale: KgsUserInfo): List<KgsGame> = stale.kgsId?.let { kgsId ->
-        val now = ZonedDateTime.now(DATE_ZONE)
-        val lastMonth = now.minusMonths(1)
+    /**
+     * The player's most recent known rank, with the date of the game it was read from.
+     *
+     * Deliberately not taken from the games imported above, which are the ones inside the 32-day window. KGS publishes
+     * no current rank anywhere -- `graphPage.jsp` serves a PNG and nothing else -- only the rank a player held in each
+     * archived game, and this community plays there rarely enough that that window is empty for almost everyone, which
+     * is why every stored rank used to be "?". So a rank of any age will do, and `UserRanks.computeRating` fades the
+     * weight by its age instead.
+     *
+     * Rows where KGS shows no rank at all are skipped rather than read as "unranked", so an older known rank still
+     * counts -- it just counts less.
+     */
+    private suspend fun scrapRank(kgsId: String, scrapped: Map<Pair<Int, Int>, Document>): Pair<String, Date>? {
+        // The two months already in hand are the newest there are, so read them before walking back
+        scrapped.values
+            .mapNotNull { page -> gamesTableOf(page)?.let { rankFrom(it, kgsId) } }
+            .maxByOrNull { it.second }
+            ?.let { return it }
 
-        val games = scrapMonthlyGames(stale.kgsId, now.year, now.monthValue)
-        games.addAll(scrapMonthlyGames(stale.kgsId, lastMonth.year, lastMonth.monthValue))
+        // Nothing usable there, so walk back to the newest month the chart still offers. One page only: a player whose
+        // newest known rank sits further back than that keeps no rank until they play again.
+        val month = scrapped.values
+            .map { monthsWithGames(it) }
+            .firstOrNull { it.isNotEmpty() }
+            ?.lastOrNull { it !in scrapped.keys }
+            ?: return null
 
-        games
-    } ?: throw Exception("Invalid KGS id")
+        ensureSpamDelay()
+        return gamesTableOf(scrapArchives(kgsId, month.first, month.second))?.let { rankFrom(it, kgsId) }
+    }
 
-    private suspend fun scrapMonthlyGames(kgsId: String?, year: Int, month: Int): MutableList<KgsGame> = try {
-        val route = "${Config.get("kgs.archives.url")}?user=$kgsId&year=$year&month=$month"
-        val html = scrap(route)
-
-        // Get the tables, there might be 0 (no games at all), 1 (no games this month) or 2 (games, yay !)
-        val tables = html.select("table.grid").asList()
-        if (tables.size == 2) extractGamesFrom(tables[0]) else mutableListOf()
+    private fun scrapArchives(kgsId: String, year: Int, month: Int): Document = try {
+        scrap("${Config.get("kgs.archives.url")}?user=$kgsId&year=$year&month=$month")
     } catch (e: IOException) {
-        log(TAG, "scrapMonthlyGames FAILURE ${e.message}")
+        log(TAG, "scrapArchives FAILURE ${e.message}")
         throw Exception(e)
+    }
+
+    /**
+     * The games table of an archive page, or null when the player has no game that month.
+     * There might be 0 tables (no games at all), 1 (the month chart alone) or 2 (games, yay !).
+     */
+    private fun gamesTableOf(html: Document): Element? = html
+        .select("table.grid").asList()
+        .takeIf { it.size == 2 }
+        ?.first()
+
+    /**
+     * Every (year, month) the month chart links to, oldest first, empty when the player never played.
+     *
+     * The chart runs oldest year first and January to December within a year, hence the ordering. It does not link the
+     * month currently displayed, so the page's own month is never in here -- which is exactly why [scrapRank] reads the
+     * pages it already has before trusting this.
+     */
+    private fun monthsWithGames(html: Document): List<Pair<Int, Int>> = html
+        .select("table.grid").asList()
+        .lastOrNull()
+        ?.select("a[href*=month]")
+        ?.mapNotNull { link ->
+            val href = link.attr("href")
+            val year = MONTH_LINK_YEAR.find(href)?.groupValues?.get(1)?.toIntOrNull()
+            val month = MONTH_LINK_MONTH.find(href)?.groupValues?.get(1)?.toIntOrNull()
+            if (year != null && month != null) year to month else null
+        }
+        ?: listOf()
+
+    /** The most recent known rank of [kgsId] in this games table, with the date of the game it comes from. */
+    private fun rankFrom(gameTable: Element, kgsId: String): Pair<String, Date>? {
+        val dateFormat = archiveDateFormat()
+
+        return gameTable
+            .select("tr").asList()
+            .drop(1) // First row is header
+            .mapNotNull { row ->
+                val columns = row.select("td").asList()
+                if (columns.size != 7) return@mapNotNull null
+
+                val date = dateFormat.parse(columns[4].text().trim(), ParsePosition(0)) ?: return@mapNotNull null
+                val rank = listOf(columns[1], columns[2]) // White then Black
+                    .map { it.select("a").firstOrNull()?.text()?.trim().splitNameRank() }
+                    .firstOrNull { it.first.equals(kgsId, ignoreCase = true) }
+                    ?.second
+                    ?: return@mapNotNull null
+
+                if (rank == UNKNOWN_RANK) null else rank to date
+            }
+            .maxByOrNull { it.second }
     }
 
     private suspend fun extractGamesFrom(gameTable: Element): MutableList<KgsGame> {
         val gameRows = gameTable.select("tr").asList()
         gameRows.removeFirst() // First row is header
 
-        // The archive pages are English, so pin the locale rather than inheriting the JVM default: the AM/PM markers
-        // are "AM"/"PM" under most locales but not all (ja_JP gives 午前/午後, zh_CN 上午/下午), and there the parse
-        // would fail for every row. Built once per table instead of once per row; kept local because SimpleDateFormat
-        // is not thread safe.
-        val dateFormat = SimpleDateFormat("M/d/y h:mm a", Locale.ENGLISH).apply {
-            timeZone = TimeZone.getTimeZone("GMT")
-        }
+        val dateFormat = archiveDateFormat()
 
         return gameRows.mapNotNull { row ->
             val columns = row.select("td").asList()
@@ -159,6 +234,15 @@ class KgsService : StalestFirstService<KgsUserInfo>(0, 60, TAG) {
         }.toMutableList()
     }
 
+    /**
+     * The archive pages are English, so pin the locale rather than inheriting the JVM default: the AM/PM markers
+     * are "AM"/"PM" under most locales but not all (ja_JP gives 午前/午後, zh_CN 上午/下午), and there the parse
+     * would fail for every row. Built once per table instead of once per row, and never held in a field, because
+     * SimpleDateFormat is not thread safe.
+     */
+    private fun archiveDateFormat(): SimpleDateFormat = SimpleDateFormat("M/d/y h:mm a", Locale.ENGLISH)
+        .apply { timeZone = TimeZone.getTimeZone("GMT") }
+
     private suspend fun fetchSgf(sgfLink: String, allowRetry: Boolean = true): String {
         val request = Request.Builder()
             .url(sgfLink)
@@ -180,18 +264,22 @@ class KgsService : StalestFirstService<KgsUserInfo>(0, 60, TAG) {
         return fetchSgf(sgfLink, false)
     }
 
-    private fun String?.splitNameRank(): Pair<String, String> = this?.let {
-        val splitted = split(" ")
-        val name = splitted[0]
-        val rank = when {
-            splitted.size <= 1 -> "?"
-            splitted[1].isBlank() -> "?"
-            splitted[1].contains("?") -> "?"
-            splitted[1].contains("-") -> "?"
-            else -> splitted[1].replace("[", "").replace("]", "")
-        }
-        (name to rank)
-    } ?: ("" to "?")
+    /**
+     * Splits an archive player cell ("Modoki [1d]") into its name and its rank.
+     *
+     * KGS marks a rank it is not yet confident in with a trailing "?" ("2d?"). That is still the player's rank, so
+     * the marker is stripped rather than the rank discarded -- half the ranks this community can be given are
+     * provisional, and discarding them is the other half of why every stored rank used to be "?". Only a cell with
+     * no digit at all ("[?]", "[-]") really means "no rank".
+     */
+    private fun String?.splitNameRank(): Pair<String, String> {
+        if (isNullOrBlank()) return "" to UNKNOWN_RANK
+
+        val name = substringBefore(" ").trim()
+        val rank = substringAfter(" ", "").trim().removeSurrounding("[", "]").removeSuffix("?")
+
+        return name to if (rank.any { it.isDigit() }) rank else UNKNOWN_RANK
+    }
 
     private suspend fun ensureSpamDelay() {
         // Delay to avoid spamming OGS API: ensure between 500ms & 1500ms free time
@@ -200,5 +288,4 @@ class KgsService : StalestFirstService<KgsUserInfo>(0, 60, TAG) {
             delay(500)
         lastNetworkCallTime = ZonedDateTime.now(DATE_ZONE)
     }
-
 }

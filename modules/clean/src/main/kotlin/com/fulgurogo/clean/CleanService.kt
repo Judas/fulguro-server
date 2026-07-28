@@ -34,21 +34,11 @@ class CleanService : PeriodicFlowService(300, 600) {
         val ids = DiscordDatabaseAccessor.usersWhoLeft(GRACE_PERIOD_IN_DAYS).map { it.discordId }
         if (ids.isEmpty()) return
 
-        // A normal pass removes the odd person who left. A pass wanting to remove a crowd is a misdetection, whatever
-        // the cause, and is worth a log rather than an irreversible delete.
-        if (ids.size > MAX_USERS_PER_PASS) {
-            log(TAG, "removeUsersWhoLeft SKIPPED, ${ids.size} users flagged as gone (max $MAX_USERS_PER_PASS): $ids")
-            return
-        }
-
         CleanDatabaseAccessor.removeAllFrom(ids)
     }
 
     companion object {
         /** How long a confirmed departure has to hold before it costs the user their data. Also covers leave-and-rejoin. */
         private const val GRACE_PERIOD_IN_DAYS = 1
-
-        /** Circuit breaker: above this many departures at once, delete nothing and log instead. */
-        private const val MAX_USERS_PER_PASS = 5
     }
 }
