@@ -7,13 +7,17 @@ CREATE TABLE `discord_user_info` (
   `discord_avatar` VARCHAR(255) NOT NULL,
   `updated` DATETIME NULL,
   `error` TINYINT(1) NOT NULL,
+  -- Set when Discord confirms the user is no longer a member of the guild, cleared as soon as they are seen again.
+  -- The clean module deletes on this column and nothing else.
+  `left_server_since` DATETIME NULL,
   PRIMARY KEY (`discord_id`)
 )
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8mb4;
 
 INSERT INTO `discord_user_info`
-  SELECT u.discord_id, u.name AS `discord_name`, u.avatar AS `discord_avatar`, NULL AS `updated`, 0 AS `error`
+  SELECT u.discord_id, u.name AS `discord_name`, u.avatar AS `discord_avatar`, NULL AS `updated`, 0 AS `error`,
+    NULL AS `left_server_since`
   FROM `users` AS u
   WHERE u.name IS NOT NULL AND u.avatar IS NOT NULL;
 

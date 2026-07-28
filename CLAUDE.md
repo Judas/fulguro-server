@@ -27,16 +27,23 @@ jar name). Bump it there; human-readable release notes go in `doc/changelog.txt`
 
 ## Local setup you must know about
 
-`modules/common/src/main/resources/config.properties` is **gitignored** (`*config.properties`) and the resources
+`modules/common/src/main/resources/config.properties` is **gitignored** (`*config.properties*`) and the resources
 directory is empty in a fresh clone. Nothing runs without it. The expected layout, per `release.sh`, is three files
-in that directory: `dev.config.properties`, `prod.config.properties`, and `config.properties` (a copy of one of them
-— dev in the working tree).
+in that directory: `config.properties.dev`, `config.properties.prod`, and `config.properties` (a copy of one of them
+— dev in the working tree). The suffix order matters: `release.sh` copies `config.properties.dev`/`.prod` by exact
+name, so `dev.config.properties` or `config.properties.dev.properties` silently break the release build. Only
+`config.properties` is on the classpath; the two variants are just templates to copy over it.
 
 `Config.get(key)` reads that file with no defaults and no error handling, so a missing key surfaces as an NPE deep in
 a service. Keys currently required include `debug`, `db.*`, `ssh.*`, `bot.*`, `user.agent`,
 `global.read.timeout.ms`, `gold.api.port`, `gold.discord.auth.*`, and per-platform blocks (`kgs.archives.url`,
-`ogs.*`, `fox.*`, `igs.*`, `ffg.website.url`, `egf.website.url`, `frontend.url`). The actual values live in
-`assets/` on the maintainer's machine (see below).
+`ogs.*`, `fox.*`, `igs.*`, `ffg.website.url`, `egf.website.url`, `frontend.url`). The authoritative values are the
+ones deployed on the prod server; both variant files hold real credentials in plaintext, which is why the gitignore
+pattern has to match every `config.properties*` name.
+
+`ssh.*` is only read when `debug=true` (`DatabaseAccessor` and `App.main` short-circuit on the flag), but keep the
+five keys present in the prod file too — with the `useless-only-needed-in-dev` placeholders — so flipping `debug`
+against a prod config does not NPE.
 
 When `debug=true`, `App.main` opens an SSH tunnel (`SSHConnector`, jsch, key at `ssh.private.key.file`) because the
 prod MySQL only accepts local connections; `DatabaseAccessor` then connects to `ssh.forwarded.port` instead of

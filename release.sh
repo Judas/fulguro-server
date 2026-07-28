@@ -3,7 +3,7 @@
 # Applying prod config before building
 cd modules/common/src/main/resources
   rm config.properties
-  cp prod.config.properties config.properties
+  cp config.properties.prod config.properties
 cd -
 
 # Fetching build number
@@ -18,5 +18,5 @@ mv app/build/libs/app-${version}-all.jar export/fulgurobot-${version}.jar
 # Rolling back to dev config
 cd modules/common/src/main/resources
   rm config.properties
-  cp dev.config.properties config.properties
+  cp config.properties.dev config.properties
 cd -
