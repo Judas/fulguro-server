@@ -1,8 +1,6 @@
 package com.fulgurogo.api.link
 
 import com.fulgurogo.common.config.Config
-import com.fulgurogo.egf.db.EgfDatabaseAccessor
-import com.fulgurogo.ffg.db.FfgDatabaseAccessor
 import com.fulgurogo.kgs.db.KgsDatabaseAccessor
 import com.fulgurogo.ogs.api.OgsApiClient
 import com.fulgurogo.ogs.api.model.OgsUserList
@@ -35,9 +33,7 @@ interface AccountLinker {
 class AccountLinkers(ogsApiClient: OgsApiClient) {
     private val byServer: Map<String, AccountLinker> = listOf(
         KgsAccountLinker,
-        OgsAccountLinker(ogsApiClient),
-        FfgAccountLinker,
-        EgfAccountLinker
+        OgsAccountLinker(ogsApiClient)
     ).associateBy { it.server }
 
     val supportedServers: List<String> = byServer.keys.toList()
@@ -65,16 +61,4 @@ private class OgsAccountLinker(private val ogsApiClient: OgsApiClient) : Account
         accountId.toIntOrNull()?.let { OgsDatabaseAccessor.user(it) != null } ?: false
 
     override fun link(discordId: String, accountId: String) = OgsDatabaseAccessor.addUser(discordId, accountId)
-}
-
-private object FfgAccountLinker : AccountLinker {
-    override val server = "FFG"
-    override fun isTaken(accountId: String) = FfgDatabaseAccessor.user(accountId) != null
-    override fun link(discordId: String, accountId: String) = FfgDatabaseAccessor.addUser(discordId, accountId)
-}
-
-private object EgfAccountLinker : AccountLinker {
-    override val server = "EGF"
-    override fun isTaken(accountId: String) = EgfDatabaseAccessor.user(accountId) != null
-    override fun link(discordId: String, accountId: String) = EgfDatabaseAccessor.addUser(discordId, accountId)
 }

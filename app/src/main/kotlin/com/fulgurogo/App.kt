@@ -5,8 +5,6 @@ import com.fulgurogo.clean.CleanModule
 import com.fulgurogo.common.config.Config
 import com.fulgurogo.common.db.ssh.SSHConnector
 import com.fulgurogo.discord.DiscordModule
-import com.fulgurogo.egf.EgfModule
-import com.fulgurogo.ffg.FfgModule
 import com.fulgurogo.fgc.FgcModule
 import com.fulgurogo.gold.GoldModule
 import com.fulgurogo.kgs.KgsModule
@@ -23,8 +21,6 @@ fun main() {
     DiscordModule.init()
     KgsModule.init()
     OgsModule.init()
-    FfgModule.init()
-    EgfModule.init()
 
     // Community modules
     GoldModule.init()

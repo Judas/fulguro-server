@@ -14,8 +14,6 @@ dependencies {
 
     implementation(project(":modules:kgs"))
     implementation(project(":modules:ogs"))
-    implementation(project(":modules:ffg"))
-    implementation(project(":modules:egf"))
 
     implementation(project(":modules:gold"))
     implementation(project(":modules:fgc"))

@@ -12,12 +12,6 @@ data class ApiDbPlayer(
     val ogsId: Int? = null,
     val ogsName: String? = null,
     val ogsRank: String? = null,
-    val ffgId: String? = null,
-    val ffgName: String? = null,
-    val ffgRank: String? = null,
-    val egfId: String? = null,
-    val egfName: String? = null,
-    val egfRank: String? = null,
     val rating: Double = 0.0,
     val tierRank: Int = 0,
     val tierName: String? = null,
@@ -45,9 +39,7 @@ data class ApiDbPlayer(
     fun toApiPlayerAccounts(): List<ApiPlayerAccount> =
         listOf(
             "KGS" to kgsId,
-            "OGS" to ogsId,
-            "FFG" to ffgId,
-            "EGF" to egfId
+            "OGS" to ogsId
         )
             .filter { it.second != null }
             .mapNotNull {
@@ -66,22 +58,6 @@ data class ApiDbPlayer(
                         name = ogsName,
                         rank = ogsRank.orUnknown(),
                         link = "https://online-go.com/player/$ogsId"
-                    )
-
-                    "FFG" -> ApiPlayerAccount(
-                        server = "FFG",
-                        id = ffgId,
-                        name = ffgName,
-                        rank = ffgRank.orUnknown(),
-                        link = "https://ffg.jeudego.org/php/affichePersonne.php?id=$ffgId"
-                    )
-
-                    "EGF" -> ApiPlayerAccount(
-                        server = "EGF",
-                        id = egfId,
-                        name = egfName,
-                        rank = egfRank.orUnknown(),
-                        link = "https://www.europeangodatabase.eu/EGD/Player_Card.php?key=$egfId"
                     )
 
                     else -> null

@@ -9,17 +9,15 @@ data class UserRanks(
     val discordId: String,
     val kgsRank: String?,
     val ogsRank: String?,
-    val ffgRank: String?,
-    val egfRank: String?,
     val error: Boolean
 ) {
     fun computeRating(): Double? {
         if (error) return null
 
         // Translate ranks to rating with weight applied
-        // KGS 0.8 - OGS 1.0 - FFG 0.7 - EGF 0.7
+        // KGS 0.8 - OGS 1.0
 
-        val ranks = listOf(kgsRank to 0.8, ogsRank to 1.0, ffgRank to 0.7, egfRank to 0.7)
+        val ranks = listOf(kgsRank to 0.8, ogsRank to 1.0)
             .filter { !it.first.isNullOrBlank() && it.first != "?" }
 
         // Total of applied weights
