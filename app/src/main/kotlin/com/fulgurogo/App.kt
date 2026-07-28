@@ -7,6 +7,7 @@ import com.fulgurogo.common.db.ssh.SSHConnector
 import com.fulgurogo.discord.DiscordModule
 import com.fulgurogo.fgc.FgcModule
 import com.fulgurogo.gold.GoldModule
+import com.fulgurogo.house.HouseModule
 import com.fulgurogo.kgs.KgsModule
 import com.fulgurogo.ogs.OgsModule
 import com.fulgurogo.ping.PingModule
@@ -25,9 +26,9 @@ fun main() {
     // Community modules
     GoldModule.init()
     FgcModule.init()
+    HouseModule.init()
     ApiModule.init(isDebug)
 
-    // TODO HouseModule
     // TODO CardsModule
 
     // Utility modules
