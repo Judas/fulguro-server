@@ -31,7 +31,12 @@ fun scrap(url: String): Document {
             "Accept",
             "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8"
         )
-        .header("Accept-Language", "fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7")
+        // English, and it matters. gokgs.com honours this header, and asking for French got us French archive pages:
+        // dates as "28/07/26 05:39" (no AM/PM, so the parse in KgsService returned null and every game row was
+        // silently dropped) and, worse, results as "B+" for *Blanc* -- white -- which the parser reads as black. The
+        // header used to be French-first for the FFG and EGF sites, both removed in 8.8; the only scraped site left
+        // is KGS, which is parsed in English.
+        .header("Accept-Language", "en-US,en;q=0.9")
         .header("Accept-Encoding", "gzip, deflate, br")
         .header("Connection", "keep-alive")
         .header("Upgrade-Insecure-Requests", "1")

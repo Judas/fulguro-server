@@ -24,6 +24,9 @@ import java.time.ZonedDateTime
 import java.util.*
 
 private const val UNKNOWN_RANK = "?"
+
+/** How many archive pages beyond the two a refresh already fetches may be read looking for a settled rank. */
+private const val MAX_EXTRA_RANK_PAGES = 3
 private val MONTH_LINK_YEAR = Regex("[?&]year=(\\d+)")
 private val MONTH_LINK_MONTH = Regex("[?&]month=(\\d+)")
 
@@ -68,34 +71,39 @@ class KgsService : StalestFirstService<KgsUserInfo>(0, 60, TAG) {
     }
 
     /**
-     * The player's most recent known rank, with the date of the game it was read from.
+     * The player's most recent settled rank, with the date of the game it was read from.
      *
-     * Deliberately not taken from the games imported above, which are the ones inside the 32-day window. KGS publishes
-     * no current rank anywhere -- `graphPage.jsp` serves a PNG and nothing else -- only the rank a player held in each
-     * archived game, and this community plays there rarely enough that that window is empty for almost everyone, which
-     * is why every stored rank used to be "?". So a rank of any age will do, and `UserRanks.computeRating` fades the
-     * weight by its age instead.
+     * Deliberately not taken from the games imported above, which are only the ones inside the 32-day window. KGS
+     * publishes no current rank anywhere -- `graphPage.jsp` serves a PNG and nothing else -- only the rank a player
+     * held in each archived game. So a rank of any age will do and `UserRanks.computeRating` fades the weight by its
+     * age; what will *not* do is a provisional "2d?", which is what KGS shows an account that drifted while idle, so
+     * those rows are walked past rather than read as a rank (see [isSettledRank]).
      *
-     * Rows where KGS shows no rank at all are skipped rather than read as "unranked", so an older known rank still
-     * counts -- it just counts less.
+     * Walking back is bounded to [MAX_EXTRA_RANK_PAGES] extra pages: a chart can span years, and a player whose last
+     * settled rank sits further back than that keeps no rank until they play again. It costs nothing for anyone who
+     * played this month or last, whose pages are already in hand.
      */
     private suspend fun scrapRank(kgsId: String, scrapped: Map<Pair<Int, Int>, Document>): Pair<String, Date>? {
-        // The two months already in hand are the newest there are, so read them before walking back
+        // The two months already in hand are the newest there are, so read them before fetching anything
         scrapped.values
             .mapNotNull { page -> gamesTableOf(page)?.let { rankFrom(it, kgsId) } }
             .maxByOrNull { it.second }
             ?.let { return it }
 
-        // Nothing usable there, so walk back to the newest month the chart still offers. One page only: a player whose
-        // newest known rank sits further back than that keeps no rank until they play again.
-        val month = scrapped.values
+        val months = scrapped.values
             .map { monthsWithGames(it) }
             .firstOrNull { it.isNotEmpty() }
-            ?.lastOrNull { it !in scrapped.keys }
+            ?.filter { it !in scrapped.keys }
             ?: return null
 
-        ensureSpamDelay()
-        return gamesTableOf(scrapArchives(kgsId, month.first, month.second))?.let { rankFrom(it, kgsId) }
+        // Newest first, and stop at the first month that yields a settled rank
+        return months
+            .reversed()
+            .take(MAX_EXTRA_RANK_PAGES)
+            .firstNotNullOfOrNull { (year, month) ->
+                ensureSpamDelay()
+                gamesTableOf(scrapArchives(kgsId, year, month))?.let { rankFrom(it, kgsId) }
+            }
     }
 
     private fun scrapArchives(kgsId: String, year: Int, month: Int): Document = try {
@@ -133,7 +141,7 @@ class KgsService : StalestFirstService<KgsUserInfo>(0, 60, TAG) {
         }
         ?: listOf()
 
-    /** The most recent known rank of [kgsId] in this games table, with the date of the game it comes from. */
+    /** The most recent settled rank of [kgsId] in this games table, with the date of the game it comes from. */
     private fun rankFrom(gameTable: Element, kgsId: String): Pair<String, Date>? {
         val dateFormat = archiveDateFormat()
 
@@ -151,7 +159,7 @@ class KgsService : StalestFirstService<KgsUserInfo>(0, 60, TAG) {
                     ?.second
                     ?: return@mapNotNull null
 
-                if (rank == UNKNOWN_RANK) null else rank to date
+                if (rank.isSettledRank()) rank to date else null
             }
             .maxByOrNull { it.second }
     }
@@ -235,9 +243,12 @@ class KgsService : StalestFirstService<KgsUserInfo>(0, 60, TAG) {
     }
 
     /**
-     * The archive pages are English, so pin the locale rather than inheriting the JVM default: the AM/PM markers
-     * are "AM"/"PM" under most locales but not all (ja_JP gives 午前/午後, zh_CN 上午/下午), and there the parse
-     * would fail for every row. Built once per table instead of once per row, and never held in a field, because
+     * The archive pages are English because `scrap()` asks for English -- do not change that header without reading
+     * the note on it, a French page dates games "28/07/26 05:39" and calls white wins "B+", for *Blanc*.
+     *
+     * The locale is pinned here for the same reason rather than inherited from the JVM: the AM/PM markers are
+     * "AM"/"PM" under most locales but not all (ja_JP gives 午前/午後, zh_CN 上午/下午), and there the parse would
+     * fail for every row. Built once per table instead of once per row, and never held in a field, because
      * SimpleDateFormat is not thread safe.
      */
     private fun archiveDateFormat(): SimpleDateFormat = SimpleDateFormat("M/d/y h:mm a", Locale.ENGLISH)
@@ -265,21 +276,24 @@ class KgsService : StalestFirstService<KgsUserInfo>(0, 60, TAG) {
     }
 
     /**
-     * Splits an archive player cell ("Modoki [1d]") into its name and its rank.
+     * Splits an archive player cell ("Modoki [1d]") into its name and its rank, as KGS shows it: "1d", "2d?" for a
+     * rank KGS is not confident in, "?" when there is none ("[?]" and "[-]" both mean that).
      *
-     * KGS marks a rank it is not yet confident in with a trailing "?" ("2d?"). That is still the player's rank, so
-     * the marker is stripped rather than the rank discarded -- half the ranks this community can be given are
-     * provisional, and discarding them is the other half of why every stored rank used to be "?". Only a cell with
-     * no digit at all ("[?]", "[-]") really means "no rank".
+     * The provisional marker is kept rather than stripped. It is not decoration: an account that stops playing drifts
+     * and comes back marked "2d?" while really being nothing of the sort, so a "2d?" must never be read as "2d" --
+     * see [isSettledRank], which is what the stored rank goes through.
      */
     private fun String?.splitNameRank(): Pair<String, String> {
         if (isNullOrBlank()) return "" to UNKNOWN_RANK
 
         val name = substringBefore(" ").trim()
-        val rank = substringAfter(" ", "").trim().removeSurrounding("[", "]").removeSuffix("?")
+        val rank = substringAfter(" ", "").trim().removeSurrounding("[", "]")
 
         return name to if (rank.any { it.isDigit() }) rank else UNKNOWN_RANK
     }
+
+    /** Whether this is a rank KGS stands behind: "5k" and "2d" are, "2d?" and "?" are not. */
+    private fun String.isSettledRank(): Boolean = !endsWith("?") && any { it.isDigit() }
 
     private suspend fun ensureSpamDelay() {
         // Delay to avoid spamming OGS API: ensure between 500ms & 1500ms free time

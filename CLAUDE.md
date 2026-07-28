@@ -114,8 +114,11 @@ outbound load.
    matched to a row of `gold_tiers` and written to `gold_ratings`; promotions are announced on Discord.
    The KGS weight is additionally faded by the age of the rank, because KGS publishes no current rank — only the one a
    player held in each archived game, which `KgsService.scrapRank()` reads and dates in `kgs_user_info.kgs_rank_date`.
-   Full weight for the first year, then a fifth less per further year, nothing from five years on. Getting this wrong
-   is not loud: before 8.8 every KGS rank was `"?"`, so the 0.8 weight silently contributed nothing at all.
+   Full weight for the first year, then a fifth less per further year, nothing from five years on. Only a *settled*
+   rank is stored: KGS marks a rank it is unsure of with a trailing `?` (`"2d?"`), which is what an account that
+   drifted while idle gets, and reading one of those as `"2d"` puts a genuine 30k in the middle of the ladder.
+   Getting this wrong is not loud: before 8.8 every KGS rank was `"?"`, so the 0.8 weight silently contributed
+   nothing at all.
 3. `FgcService` counts each player's recent valid games from the `fgc_validity_games` view into `fgc_validity`.
 4. `ApiModule` starts Javalin on `gold.api.port` and serves `/gold/api/*` almost entirely out of two MySQL views,
    `api_players` and `api_games`. The exception is `GET /gold/api/health`, which reports the background services:
@@ -175,6 +178,12 @@ Scraping is fragile and rate-sensitive. `common/utilities/HttpUtilities.kt` cent
 jsoup `scrap(url)` helper, which sends a full browser-like header set and the configured `user.agent`. Services add
 their own throttling (`ensureSpamDelay()` in `KgsService`) and retry-once-then-give-up patterns. Reuse these rather
 than building new clients; changes to headers/timings here have broken scrapers before.
+
+`Accept-Language` is the sharpest of those edges and is now English. gokgs.com honours it, and the French value it
+used to carry (for the FFG and EGF sites, both gone) made it serve French archive pages, where `KgsService` dropped
+every game row on the date format — no error, no log line, just an empty `kgs_games` and `kgs_rank = '?'` for
+everyone, for years. A French page also writes a white win `B+`, for *Blanc*, which the parser reads as black. Ask
+for English; do not teach the parser French.
 
 ## Conventions
 
