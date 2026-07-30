@@ -528,7 +528,15 @@ supprime une ligne de `house_members` pendant la saison.
 et qu'ils sont sains ; avec 30 s et 600 s d'intervalle, les seuils de péremption sont 150 s et 3000 s.
 
 **Config** — reporter les nouvelles clés (`house.period.override`, et `house.scanner.enabled` si retenue)
-dans `dev.config.properties` et `prod.config.properties`, ainsi que dans `assets/GitConfig.kt`.
+dans les trois fichiers de `modules/common/src/main/resources/` : `config.properties.dev`,
+`config.properties.prod`, et la copie de travail `config.properties`. Les trois, pas seulement les deux
+variantes : seul `config.properties` est sur le classpath, donc une clé ajoutée aux variantes sans être
+recopiée n'existe pas pour l'application qui tourne en local.
+
+Le suffixe se place après `.properties` et pas avant. `release.sh` copie `config.properties.dev` et
+`config.properties.prod` par nom exact ; un fichier nommé `dev.config.properties` casse la release sans
+message d'erreur. Aucun `GitConfig.kt` à mettre à jour, il n'existe plus — les identifiants vivent dans ces
+trois fichiers depuis leur suppression.
 
 **Documentation** — dans `CLAUDE.md` : ajouter le module à la liste, les nouvelles clés à l'énumération des
 clés requises, les intervalles au paragraphe sur l'étalement des ticks, et une ligne sur le flux de données.
