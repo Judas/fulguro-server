@@ -4,9 +4,10 @@ import com.fulgurogo.common.db.DatabaseAccessor
 import com.fulgurogo.common.db.query
 import com.fulgurogo.house.db.model.*
 import org.sql2o.Connection
+import java.util.*
 
 /**
- * Every read the house module makes. The write paths arrive with the scanner and the API mutations.
+ * Every read the house module makes, plus the scanner's one write. The mutation paths arrive with the API.
  *
  * The aggregates take the season as a parameter, which is why they are queries here and not views: a view cannot be
  * told which season is current, and that is computed in Kotlin.
@@ -19,6 +20,7 @@ object HouseDatabaseAccessor {
     private const val HOUSES_TABLE = "houses"
     private const val MEMBERS_TABLE = "house_members"
     private const val POINTS_TABLE = "house_points"
+    private const val GAMES_VIEW = "house_games"
     private const val DISCORD_TABLE = "discord_user_info"
 
     /**
@@ -65,6 +67,28 @@ object HouseDatabaseAccessor {
             .throwOnMappingFailure(false)
             .addParameter("discordId", discordId)
             .executeAndFetchFirst(HouseMember::class.java)
+    }
+
+    /**
+     * The memberships of [discordIds], keyed by Discord id and missing the ids that are in no house.
+     *
+     * The scanner's way of not asking [member] twice per game: one round trip for a whole batch, and the misses are
+     * answered by the map rather than by a query returning nothing.
+     */
+    fun members(discordIds: Collection<String>): Map<String, HouseMember> {
+        // `IN ()` is a syntax error in MySQL, and an empty batch is the normal quiet case, not an exceptional one.
+        if (discordIds.isEmpty()) return mapOf()
+
+        return DatabaseAccessor.withDao { connection ->
+            val query = "SELECT * FROM $MEMBERS_TABLE WHERE discord_id IN (:discordIds)"
+            connection
+                .query(query)
+                .throwOnMappingFailure(false)
+                .addParameter("discordIds", discordIds)
+                .executeAndFetch(HouseMember::class.java)
+                ?.associateBy { it.discordId }
+                ?: mapOf()
+        }
     }
 
     /**
@@ -156,6 +180,94 @@ object HouseDatabaseAccessor {
         return ranking(season, member.houseId)
             .firstOrNull { it.discordId == discordId }
             ?.rank
+    }
+
+    /**
+     * The next [batchSize] games left to score, oldest first: finished, inside the season window, involving at least
+     * one house member who had already joined when they were played, and not yet in the register.
+     *
+     * The whole of the scanner's bookkeeping is in this one query — no cursor, no "scored" flag, nothing to reset.
+     * Three properties hold it up, and each is quiet when broken:
+     *
+     * - **The join on the members** drops the games no member played. Without it those games would come back every
+     *   tick, fill the batch and stall the scan for good once there are [batchSize] of them.
+     * - **`g.date >= m.joined`** is what stops back-scoring: a player who joins in November earns nothing on the
+     *   October games still inside CleanService's 32-day window.
+     * - **The season window** puts July and August games permanently out of reach, which is "no points outside the
+     *   season" with no extra state. It is a window over the *game* date, so a late-June game scanned in July still
+     *   scores — which is why the scanner keeps running through the summer instead of stopping on the period.
+     *
+     * `DISTINCT` because the join matches twice on a game between two members, and a duplicate would waste a slot in
+     * the batch. `p.gold_id IS NULL` marks progress per *game* while eligibility is per *player*: a game A and B
+     * played in October, with A a member since September and B since November, credits A only and counts as done.
+     * That is the intended behaviour, not an oversight.
+     */
+    fun gamesToScore(seasonStart: Date, seasonEnd: Date, batchSize: Int): List<HouseGame> =
+        DatabaseAccessor.withDao { connection ->
+            val query = "SELECT DISTINCT g.* FROM $GAMES_VIEW g " +
+                    " JOIN $MEMBERS_TABLE m " +
+                    "   ON m.discord_id IN (g.black_discord_id, g.white_discord_id) " +
+                    "  AND g.date >= m.joined " +
+                    " LEFT JOIN $POINTS_TABLE p ON p.gold_id = g.gold_id " +
+                    " WHERE p.gold_id IS NULL " +
+                    "   AND g.date >= :seasonStart AND g.date < :seasonEnd " +
+                    " ORDER BY g.date " +
+                    " LIMIT :batchSize "
+            connection
+                .query(query)
+                .throwOnMappingFailure(false)
+                .addParameter("seasonStart", seasonStart)
+                .addParameter("seasonEnd", seasonEnd)
+                .addParameter("batchSize", batchSize)
+                .executeAndFetch(HouseGame::class.java)
+                ?: listOf()
+        }
+
+    /**
+     * Writes the register rows the scanner produced, and answers how many were new.
+     *
+     * `ON DUPLICATE KEY UPDATE gold_id = gold_id` rather than `INSERT IGNORE`: both make a second pass over the same
+     * game a no-op, but `INSERT IGNORE` also turns a genuine failure — a value too wide for its column, say — into a
+     * warning nobody reads, and a point row lost that way would never be retried, since the game counts as scored the
+     * moment any row for it exists.
+     *
+     * `scored_at` comes from `NOW()`, so the register is stamped by the database clock rather than by a JVM that might
+     * be in another zone. Nothing reads it yet: with no anti-farming cap in this delivery, it is what makes one
+     * computable after the fact, mid-season, without a migration.
+     */
+    fun addPoints(points: List<HousePoints>): Int {
+        if (points.isEmpty()) return 0
+
+        return DatabaseAccessor.withDao { connection ->
+            val sql = "INSERT INTO $POINTS_TABLE( " +
+                    " gold_id, discord_id, house_id, season, " +
+                    " played, gold_opponent, rival_house, long_game, victory, even_game, ranked, scored_at) " +
+                    " VALUES (:goldId, :discordId, :houseId, :season, " +
+                    " :played, :goldOpponent, :rivalHouse, :longGame, :victory, :evenGame, :ranked, NOW()) " +
+                    " ON DUPLICATE KEY UPDATE gold_id = gold_id "
+
+            var inserted = 0
+            points.forEach { row ->
+                connection
+                    .query(sql)
+                    .addParameter("goldId", row.goldId)
+                    .addParameter("discordId", row.discordId)
+                    .addParameter("houseId", row.houseId)
+                    .addParameter("season", row.season)
+                    .addParameter("played", row.played)
+                    .addParameter("goldOpponent", row.goldOpponent)
+                    .addParameter("rivalHouse", row.rivalHouse)
+                    .addParameter("longGame", row.longGame)
+                    .addParameter("victory", row.victory)
+                    .addParameter("evenGame", row.evenGame)
+                    .addParameter("ranked", row.ranked)
+                    .executeUpdate()
+
+                // 1 on an insert, 0 when the row was already there and the update changed nothing.
+                if (connection.result == 1) inserted++
+            }
+            inserted
+        }
     }
 
     private fun houseTotals(connection: Connection, season: String): List<HouseTotals> {

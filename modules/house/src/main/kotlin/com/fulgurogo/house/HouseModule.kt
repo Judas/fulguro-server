@@ -10,8 +10,11 @@ import java.time.ZonedDateTime
 object HouseModule {
     const val TAG = "HSE"
 
+    private val housePointsService = HousePointsService()
+
     fun init() {
         logCalendar()
+        housePointsService.start()
     }
 
     /**

@@ -352,13 +352,17 @@ d'une seule ligne suffit à la considérer comme traitée. C'est le comportement
 Écriture en `INSERT ... ON DUPLICATE KEY UPDATE gold_id = gold_id` ou `INSERT IGNORE`, pour que deux passages
 concurrents ne puissent pas doubler une ligne.
 
-⚠ **À valider** : une clé `house.scanner.enabled`, à `false` par défaut en dev. Sans elle, tout
-`./gradlew :app:run` en local écrit des points réels en prod, y compris pendant qu'on met le barème au point.
-Sans le verrou, la seule façon de tester sans polluer est de laisser l'override de période sur `VACATION`,
-ce qui empêche précisément de tester le scoring.
+**Retenu** : la clé `house.scanner.enabled`, `false` dans `config.properties.dev` et la copie de travail, `true`
+dans `config.properties.prod`. Sans elle, tout `./gradlew :app:run` en local écrit des points réels, y compris
+pendant qu'on met le barème au point ; la seule alternative aurait été de laisser l'override de période sur
+`VACATION`, ce qui empêche précisément de tester le scoring. Clé absente = scanner éteint : des parties non
+scorées se rattrapent au run suivant, des points écrits par erreur restent dans un registre fait pour être
+définitif. Le risque miroir — oublier la clé en prod et ne rien marquer en silence — est couvert par une ligne
+de log au démarrage qui dit ON ou OFF.
 
-⚠ **À valider** : taille du lot (`batch`). 50 me paraît raisonnable — assez pour absorber un rattrapage,
-assez petit pour qu'un tick reste court.
+**Retenu** : lot de 50, et pas de sortie anticipée sur la période. Le scanner tourne aussi en juillet et août,
+c'est ce qui lui fait ramasser les dernières parties de juin avant que `CleanService` ne les supprime ; la
+fenêtre de saison suffit à écarter les parties de l'été.
 
 **Vérification** : démarrer avec un log par partie scorée, comparer à la main le contenu de `house_points`
 avec quelques parties récentes de `house_games`, vérifier qu'un second tick n'ajoute rien.
@@ -553,9 +557,9 @@ bientôt » à propos de la disparition de l'Exam Hunter.
 
 À trancher avant ou pendant l'exécution, aucun ne bloque le démarrage :
 
-1. **`house.scanner.enabled`** (étape 5) — le verrou qui empêche un run de dev d'écrire des points en prod.
-2. **Taille du lot du scanner** (étape 5) — proposition : 50.
-3. **Intervalles** (étapes 5 et 9) — proposition : 90/30 pour le scanner, 120/600 pour la saison.
+1. ~~**`house.scanner.enabled`** (étape 5)~~ — retenu, cf. étape 5.
+2. ~~**Taille du lot du scanner** (étape 5)~~ — 50.
+3. **Intervalles** — 90/30 pour le scanner, retenu à l'étape 5. Reste 120/600 pour la saison (étape 9).
 4. **Formulation des messages Discord** (étape 10), et contenu du classement quotidien.
 5. **Contrat avec le dépôt du site** — convention de nommage des blasons à partir du slug, et forme exacte
    des réponses de `/gold/api/houses` et `/gold/api/house/{slug}`. À figer avec le front avant l'étape 6,
