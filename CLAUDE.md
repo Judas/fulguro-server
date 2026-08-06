@@ -40,7 +40,9 @@ name, so `dev.config.properties` or `config.properties.dev.properties` silently 
 `Config.get(key)` reads that file with no defaults and no error handling, so a missing key surfaces as an NPE deep in
 a service. Keys currently required include `debug`, `db.*`, `ssh.*`, `bot.*`, `user.agent`,
 `global.read.timeout.ms`, `gold.api.port`, `gold.discord.auth.*`, the per-platform blocks (`kgs.archives.url`,
-`kgs.game.link`, `ogs.*`) and `frontend.url`. The authoritative values are the ones deployed on the prod server; both
+`kgs.game.link`, `ogs.*`) and `frontend.url`. `house.period.override` is the one exception to "no defaults": it is read
+through `Config.getOrNull` and may be empty, which is what it is set to in all three files — see the houses in the data
+flow below. The authoritative values are the ones deployed on the prod server; both
 variant files hold real credentials in plaintext, which is why the gitignore pattern has to match every
 `config.properties*` name.
 
@@ -117,7 +119,7 @@ Every feature is a Gradle module under `modules/` with an identical shape:
 
 - `XModule` — an `object` with a 3-letter `const val TAG` (used by every log line from that module) and an `init()`
   that instantiates and `start()`s its services. `App.main` calls each `init()` in order: aggregators, then community
-  modules (gold, fgc, api), then utilities (ping, clean).
+  modules (gold, fgc, house, api — `house` before `api`, since `api` depends on it), then utilities (ping, clean).
 - `XService : StalestFirstService<T>` — the work loop (see below; a few services extend `PeriodicFlowService` directly).
 - `db/XDatabaseAccessor` — an `object` owning that module's tables via `private const val`; all SQL lives here.
 - `db/model/*` — sql2o-mapped data classes.
@@ -140,8 +142,9 @@ routes a `refresh` failure to `markAsError`, which stamps `updated` so a broken 
 instead of blocking it. Extend `PeriodicFlowService` directly only when there is no stalest-row queue to walk
 (`CleanService`, `PingService`, `OgsRealTimeService`).
 
-Tick intervals are deliberately staggered (discord 5s, ogs/gold/fgc 15s, kgs 60s, ping/clean 600s) to spread
-outbound load.
+Tick intervals are deliberately staggered (discord 5s, ogs/gold/fgc 15s, house points 30s, kgs 60s,
+house season/ping/clean 600s) to spread outbound load. Initial delays stagger the first tick the same way — the two
+house services start at 90s and 120s, behind `GoldService`, so a cold start does not open every connection at once.
 
 ### Data flow
 
@@ -158,15 +161,34 @@ outbound load.
    Getting this wrong is not loud: before 8.8 every KGS rank was `"?"`, so the 0.8 weight silently contributed
    nothing at all.
 3. `FgcService` counts each player's recent valid games from the `fgc_validity_games` view into `fgc_validity`.
-4. `ApiModule` starts Javalin on `gold.api.port` and serves `/gold/api/*` almost entirely out of two MySQL views,
-   `api_players` and `api_games`. The exception is `GET /gold/api/health`, which reports the background services:
+4. The **houses** are a season-long team competition, four houses, a player in at most one. `HousePointsService` walks
+   the `house_games` view for games nobody has scored yet and writes a `house_points` row per (game, player) — the
+   scale is in `HousePointsCalculator`, and the primary key `(gold_id, discord_id)` is the whole of the idempotence,
+   so there is no cursor and nothing to reset. Every row carries its `season` and its `house_id` frozen at write time,
+   which is what makes a house's total survive a player leaving it, and why `CleanService` purges `house_members` but
+   never `house_points`. `HouseSeasonService` runs the calendar: a season is 1 September to 30 June (`HouseSeason`,
+   overridable for dev with `house.period.override`), July and August are the break, and the once-a-year events —
+   applying the summer intentions, closing a season, posting the daily ranking — are each guarded by a column of
+   `house_seasons` rather than by the calendar, because the calendar cannot say whether something has already been
+   done. Announcements go through `HouseNotifier`.
+5. `ApiModule` starts Javalin on `gold.api.port`. The players and games routes come almost entirely out of two MySQL
+   views, `api_players` and `api_games`. The house routes do not: their figures are counted over the *current* season,
+   which only Kotlin knows, so they are hand-written queries in `HouseDatabaseAccessor` and the `house` block of a
+   player's profile is composed in the handler rather than added to `api_players` — which also means no view to alter
+   on the production server. The other exception is `GET /gold/api/health`, which reports the background services:
    200 when they are all healthy, 503 otherwise, so a monitor can watch the status code alone. Every service
    registers itself in `ServiceRegistry` from `PeriodicFlowService.start()`, and each reports whether it is still
    running, how long since its last successful tick, and its consecutive-failure count. A service counts as stale
    after `max(interval * 5, 60s) + initialDelay` without a success — measured from start if it has never had one, so a
    service failing on every tick does not read as healthy.
-5. `CleanService` deletes games older than 32 days and invalid accounts (the "phantom user" purge is commented out on
-   purpose — it fired too aggressively).
+6. `CleanService` deletes games older than 32 days and invalid accounts, and purges the users Discord confirmed left the
+   guild. That purge is **live**, not commented out as it once was: `removeUsersWhoLeft` guards it with `debug` (a dev
+   run never acts on departure flags, since in debug the bot cannot tell who is still on the server) and a one-day
+   grace period that also covers leave-and-rejoin. It is destructive and has no undo — a purged user loses their
+   Discord row, their platform links, their rating, their fgc validity and their house membership, and has to link
+   everything again. Losing the membership is deliberate: it is the only way out of a house mid-season, because the API
+   only offers "leave" during the summer break. `house_points` is pointedly **not** purged, or a house's total would
+   shrink when someone left.
 
 Rank/rating math is centralized in `common/utilities/RankingUtilities.kt` (`ratingToRank`, `rankToRating`,
 `rankToKyuDanString`, `kyuDanStringToRank`) — don't reimplement conversions locally. Likewise

@@ -712,38 +712,52 @@ s'afficher n'est pas quelque chose à livrer. Le reste du module a été scanné
 
 Dépend de : tout ce qui précède.
 
-**Purge** — ajouter `house_members` à la liste de `CleanDatabaseAccessor.removeAllFrom`. Ne **pas** y mettre
-`house_points` : supprimer les points d'un joueur parti ferait rétrécir le total de sa maison, ce qui
-contredit la décision « les points restent acquis à la maison ». Cette purge est de toute façon commentée
-aujourd'hui, mais la liste doit être juste.
+**Purge** — fait : `house_members` ajouté à la liste de `CleanDatabaseAccessor.removeAllFrom`, et **pas**
+`house_points`, parce que supprimer les points d'un joueur parti ferait rétrécir le total de sa maison, ce qui
+contredit la décision « les points restent acquis à la maison ».
 
-C'est aussi le seul chemin de sortie d'une maison en cours de saison : quitter le serveur Discord fait
-disparaître le compte, donc l'appartenance. L'API ne propose « Quitter » qu'en vacances, et rien d'autre ne
-supprime une ligne de `house_members` pendant la saison.
+⚠ **Cette purge n'est plus commentée**, contrairement à ce que disait cette étape (et `CLAUDE.md`, corrigé au
+passage). `CleanService.removeUsersWhoLeft` tourne, gardée par `debug` — un run de dev n'agit jamais sur les
+drapeaux de départ, puisqu'en debug le bot ne sait pas qui est encore sur le serveur — et par un délai de grâce
+d'un jour qui couvre aussi le départ-retour. L'ajout n'est donc pas inerte : en prod, quitter le Discord
+supprimera bien l'appartenance. C'est le comportement voulu, mais il fallait le dire dans ce sens.
 
-**Santé** — rien à faire. Les deux services s'enregistrent seuls dans `ServiceRegistry` depuis
-`PeriodicFlowService.start()`, et remontent donc dans `GET /gold/api/health`. Vérifier qu'ils y apparaissent
-et qu'ils sont sains ; avec 30 s et 600 s d'intervalle, les seuils de péremption sont 150 s et 3000 s.
+C'est aussi le seul chemin de sortie d'une maison en cours de saison. L'API ne propose « Quitter » qu'en
+vacances, et rien d'autre ne supprime une ligne de `house_members` pendant la saison.
 
-**Config** — reporter la nouvelle clé (`house.period.override`, la seule)
-dans les trois fichiers de `modules/common/src/main/resources/` : `config.properties.dev`,
-`config.properties.prod`, et la copie de travail `config.properties`. Les trois, pas seulement les deux
-variantes : seul `config.properties` est sur le classpath, donc une clé ajoutée aux variantes sans être
-recopiée n'existe pas pour l'application qui tourne en local.
+**Santé** — rien à faire, et vérifié : les deux services remontent dans `GET /gold/api/health`, qui répond 200
+avec les dix services sains. Les seuils de péremption sont **240 s et 3120 s**, pas 150 s et 3000 s comme
+l'annonçait cette étape : la formule est `max(intervalle × 5, 60 s) + délai initial`, et les délais initiaux de
+90 s et 120 s avaient été oubliés.
+
+**Config** — rien à faire, c'était déjà en place : `house.period.override` est présente, vide, dans les trois
+fichiers de `modules/common/src/main/resources/` — `config.properties.dev`, `config.properties.prod` et la copie
+de travail `config.properties`. Les trois, pas seulement les deux variantes : seul `config.properties` est sur le
+classpath, donc une clé ajoutée aux variantes sans être recopiée n'existe pas pour l'application qui tourne en
+local. C'est la seule clé du module, et la seule du projet à être lue par `Config.getOrNull` plutôt que
+`Config.get` — donc la seule qui puisse rester vide sans faire tomber un service.
 
 Le suffixe se place après `.properties` et pas avant. `release.sh` copie `config.properties.dev` et
 `config.properties.prod` par nom exact ; un fichier nommé `dev.config.properties` casse la release sans
 message d'erreur. Aucun `GitConfig.kt` à mettre à jour, il n'existe plus — les identifiants vivent dans ces
 trois fichiers depuis leur suppression.
 
-**Documentation** — dans `CLAUDE.md` : ajouter le module à la liste, les nouvelles clés à l'énumération des
-clés requises, les intervalles au paragraphe sur l'étalement des ticks, et une ligne sur le flux de données.
-Dans `doc/changelog.txt`, une entrée en français — le changelog annonçait déjà « le remplaçant arrive
-bientôt » à propos de la disparition de l'Exam Hunter.
+**Documentation** — fait. Dans `CLAUDE.md` : `house` dans l'ordre d'`init()` (avant `api`, qui en dépend),
+`house.period.override` à l'énumération des clés, les intervalles et les délais initiaux au paragraphe sur
+l'étalement des ticks, un point 4 sur les maisons dans le flux de données, et deux corrections au passage — le
+point sur l'API disait que tout sortait de deux vues, ce qui n'est plus vrai des routes maisons, et celui sur
+`CleanService` disait la purge commentée.
 
-**Version** — bump de `fulgurogo.version.name` dans `gradle.properties`.
+Dans `doc/changelog.txt`, trois lignes en français dans le style du fichier — le changelog annonçait déjà « le
+remplaçant arrive bientôt » à propos de la disparition de l'Exam Hunter, promesse que les maisons tiennent.
+⚠ Le fichier est une liste à plat sans marqueur de version : les lignes ajoutées cohabitent donc avec celles de
+8.8 sans qu'on puisse les distinguer. À voir s'il faut le remettre à zéro pour 8.9.
 
-**Vérification** : `./gradlew build`, puis `./gradlew :app:run` et `curl` sur `/gold/api/health`.
+**Version** — `fulgurogo.version.name` passe de 8.8 à 8.9, et `./gradlew :app:shadowJar` produit bien
+`app-8.9-all.jar`.
+
+**Vérification** : faite. `./gradlew build` passe, `./gradlew :app:run` démarre, et `/gold/api/health` répond 200
+avec les dix services sains, `HousePointsService` et `HouseSeasonService` compris.
 
 ---
 

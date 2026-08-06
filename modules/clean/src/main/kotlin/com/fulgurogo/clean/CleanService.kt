@@ -22,9 +22,12 @@ class CleanService : PeriodicFlowService(300, 600) {
     /**
      * Deletes users Discord confirmed left the guild at least [GRACE_PERIOD_IN_DAYS] day(s) ago.
      *
-     * There is nothing to undo this with — a deleted user loses their discord row, all six platform links, their rating
-     * and their fgc validity, and has to link everything again — so the two guards below stay even though
-     * `DiscordService` is now the only writer of that flag and only writes it on an authoritative answer.
+     * There is nothing to undo this with — a deleted user loses their discord row, both platform links, their rating,
+     * their fgc validity and their house membership, and has to link everything again — so the two guards below stay
+     * even though `DiscordService` is now the only writer of that flag and only writes it on an authoritative answer.
+     *
+     * Losing the house membership is on purpose: it is the only way out of a house mid-season, since the API only offers
+     * "leave" during the summer break. The points earned for that house stay in the register.
      */
     private fun removeUsersWhoLeft() {
         // Dev runs against the production database, and in debug the bot cannot tell who is still on the server, so the
