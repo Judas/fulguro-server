@@ -22,13 +22,9 @@ import com.fulgurogo.house.db.model.ranked
  * formatter that reached for the database to decide whether to speak would be much harder to reason about.
  */
 object HouseNotifier {
+    // TODO Emoji update when ready
     private const val EMOJI = ":shield:"
-
-    /**
-     * ⚠ Assumed, not agreed: the website lives in another repository and this path is not part of any contract yet. A
-     * wrong guess is a dead link in every ranking message, so it is worth one check against the site's routes.
-     */
-    private const val HOUSES_PATH = "/maisons"
+    private const val HOUSES_PATH = "/houses"
 
     /**
      * A player joining a house, from whichever of the two paths put them there: `POST /gold/api/house/join` during the

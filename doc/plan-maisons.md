@@ -683,9 +683,8 @@ Trois décisions d'implémentation qui ne sont pas dans la description des annon
   plus dur à relire. Une ligne de log par annonce, en revanche, est indispensable : `queue()` ne rend rien, donc
   sans elle on ne peut pas répondre après coup à « le récap est-il parti ? ».
 
-⚠ **À valider** : `HOUSES_PATH` vaut `/maisons`, deviné et pas négocié — le site vit dans un autre dépôt et un
-mauvais chemin fait un lien mort dans chaque classement. Une vérification contre ses routes suffit (cf. point
-ouvert 5).
+**Tranché** : `HOUSES_PATH` vaut `/houses`, confirmé contre les routes du site — et pas `/maisons` comme le
+supposait la première écriture. Le lien du classement complet pointe donc au bon endroit.
 
 **Vérification** : faite, contre `fg_dev` et le bot de dev, en trois passes. Le texte a été capturé en logguant
 temporairement le corps des messages, instrumentation retirée depuis — le rendu final dans Discord reste à
@@ -756,7 +755,7 @@ bientôt » à propos de la disparition de l'Exam Hunter.
 2. ~~**Taille du lot du scanner** (étape 5)~~ — 50.
 3. ~~**Intervalles**~~ — 90/30 pour le scanner (étape 5), 120/600 pour la saison (étape 9), tous retenus.
 4. ~~**Formulation des messages Discord** (étape 10), et contenu du classement quotidien~~ — écrits et vérifiés,
-   cf. étape 10. Reste ⚠ `HOUSES_PATH` (`/maisons`), à confirmer avec les routes du site.
+   cf. étape 10. `HOUSES_PATH` est confirmé à `/houses`.
 5. **Contrat avec le dépôt du site** — la forme des réponses de `/gold/api/houses` et `/gold/api/house/{slug}`
    est écrite à l'étape 6 et implémentée, mais ⚠ elle n'a pas été confirmée avec le front : c'est un contrat
    posé, pas un contrat négocié. Reste entière la convention de nommage des blasons à partir du slug, que le
