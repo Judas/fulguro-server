@@ -35,6 +35,9 @@ object ApiModule {
                 // Houses: plural for the list, singular for one house, as with players and games
                 get("/gold/api/houses", api::getHouses)
                 get("/gold/api/house/{slug}", api::getHouse)
+                // Mutations. No collision with the GET above: Javalin matches on the method too
+                post("/gold/api/house/join", api::joinHouse)
+                post("/gold/api/house/choice", api::setHouseChoice)
 
                 // Service liveness: 200 when every background service is healthy, 503 otherwise
                 get("/gold/api/health", api::getHealth)

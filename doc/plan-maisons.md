@@ -464,6 +464,32 @@ plus tard.
 L'annonce Discord de l'arrivée dans une maison se branche ici, mais elle est écrite à l'étape 10 avec les
 deux autres, pour que les trois messages soient rédigés d'un bloc.
 
+**Forme du 200 de `join`** — la maison attribuée, son RP seul, sans effectif ni total :
+
+```json
+{ "slug": "gardiens", "name": "Les Gardiens", "tagline": "…", "color": "#3366cc", "description": "…" }
+```
+
+Sous-ensemble strict de la forme `house` de l'étape 6, mêmes noms de champs, pour que le site l'affiche avec le
+même code. Les chiffres sont omis plutôt que remplis : un `join` répond sur la maison tirée, un effectif relu
+juste après serait une deuxième question que personne n'a posée. `choice` ne renvoie pas de corps (204).
+
+Trois choix d'implémentation qui ne sont pas dans les codes de retour :
+
+- **Le 409 est répondu deux fois.** La lecture de `member` en fait la réponse normale, et `addMember` le
+  reconfirme depuis la clé primaire — la seule des deux qui tienne si deux `join` du même joueur arrivent
+  ensemble. Même contrat que `addGame` : c'est la clé qui arbitre, pas l'hypothèse d'un seul écrivain.
+- **Le 404 de `choice` vient d'une lecture, pas du nombre de lignes touchées.** MySQL rapporte 0 ligne
+  modifiée aussi bien pour un membre inconnu que pour une intention déjà à cette valeur : un 404 déduit de là
+  répondrait « inconnu » à un joueur qui enregistre `LEAVE` deux fois.
+- **`HouseAction` est un enum**, et c'est lui le vocabulaire de la colonne `pending_action`. Le corps de requête
+  garde un `String` parce que Gson mappe un nom d'enum inconnu sur null sans un mot, alors qu'une action
+  inconnue doit ressortir en 400. La comparaison ignore la casse et les espaces autour.
+
+`HouseAssignment.draw(excluding)` porte le tirage, dans le module maison et pas dans le handler : l'étape 9 tire
+de la même façon pour les `CHANGE`, et deux tirages divergeraient. La restriction à l'effectif minimum se fait
+*après* l'exclusion, sinon le tirage d'un changement n'est plus équilibré sur les trois maisons restantes.
+
 **Vérification** : override de période sur `SEASON`, `join` sur un compte de test, vérifier que la maison
 tombe bien sur un effectif minimum ; override sur `VACATION`, vérifier que `join` répond 403 et que `choice`
 écrit bien `pending_action`.

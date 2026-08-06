@@ -28,6 +28,14 @@ fun Context.badRequest() {
     status(400)
 }
 
+/**
+ * The request is well formed and the caller known, but the calendar forbids it — joining a house during the summer
+ * break, or recording a holiday choice outside it. Not an authentication failure: nothing here is authenticated.
+ */
+fun Context.forbidden() {
+    status(403)
+}
+
 /** The request was understood but conflicts with stored state, e.g. an account already linked to someone. */
 fun Context.conflict() {
     status(409)

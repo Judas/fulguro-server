@@ -31,6 +31,21 @@ object GoldDatabaseAccessor {
         }
     }
 
+    /**
+     * The player's ladder row, or null when they have none.
+     *
+     * A row exists as soon as one account is linked ([addPlayer] is called from the link handler), so "null" reads as
+     * "no linked account" — which is what the houses use to tell an eligible player from a bare Discord account.
+     */
+    fun player(discordId: String): GoldPlayer? = DatabaseAccessor.withDao { connection ->
+        val query = "SELECT * FROM $RATINGS_TABLE WHERE discord_id = :discordId LIMIT 1"
+        connection
+            .query(query)
+            .throwOnMappingFailure(false)
+            .addParameter("discordId", discordId)
+            .executeAndFetchFirst(GoldPlayer::class.java)
+    }
+
     fun userRanks(stale: GoldPlayer): UserRanks? = DatabaseAccessor.withDao { connection ->
         val query = "SELECT * FROM $RANKS_VIEW WHERE discord_id = :discordId"
         connection

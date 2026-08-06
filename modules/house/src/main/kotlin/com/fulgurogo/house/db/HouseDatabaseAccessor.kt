@@ -7,7 +7,7 @@ import org.sql2o.Connection
 import java.util.*
 
 /**
- * Every read the house module makes, plus the scanner's one write. The mutation paths arrive with the API.
+ * Every read the house module makes, plus the writes: the scanner's points, and joining or recording an intention.
  *
  * The aggregates take the season as a parameter, which is why they are queries here and not views: a view cannot be
  * told which season is current, and that is computed in Kotlin.
@@ -298,6 +298,51 @@ object HouseDatabaseAccessor {
                 if (connection.result == 1) inserted++
             }
             inserted
+        }
+    }
+
+    /**
+     * Puts a player in a house, stamping `joined` with the database clock, and answers whether this call is the one that
+     * did it.
+     *
+     * A false means the player already had a house — which the API also checks by reading first, but only the primary key
+     * can answer it without a race. Two joins landing at once would otherwise both read "no house" and the second would
+     * either overwrite the first or blow up on the duplicate key; here it comes back false and the caller answers 409.
+     *
+     * `ON DUPLICATE KEY UPDATE discord_id = discord_id` and not `INSERT IGNORE`, for the reason [addPoints] spells out:
+     * a genuine failure must not be downgraded to a warning nobody reads.
+     */
+    fun addMember(discordId: String, houseId: Int): Boolean = DatabaseAccessor.withDao { connection ->
+        val query = "INSERT INTO $MEMBERS_TABLE(discord_id, house_id, joined) " +
+                " VALUES (:discordId, :houseId, NOW()) " +
+                " ON DUPLICATE KEY UPDATE discord_id = discord_id "
+        connection
+            .query(query)
+            .addParameter("discordId", discordId)
+            .addParameter("houseId", houseId)
+            .executeUpdate()
+
+        // 1 on an insert, 0 when the row was already there and the update changed nothing.
+        connection.result == 1
+    }
+
+    /**
+     * Records what a member wants for next season, or clears it with a null [action]. Nothing is applied here — the
+     * season transition is what reads these back.
+     *
+     * Returns nothing on purpose. The obvious signal, the number of rows the UPDATE touched, cannot tell "no such
+     * member" from "already set to that value": MySQL reports 0 rows changed for both, so a caller using it for its 404
+     * would answer 404 to a player recording `LEAVE` twice. Existence is the caller's [member] read; the write is then
+     * best-effort, and a membership deleted in between simply updates nothing.
+     */
+    fun setPendingAction(discordId: String, action: String?) {
+        DatabaseAccessor.withDao { connection ->
+            val query = "UPDATE $MEMBERS_TABLE SET pending_action = :action WHERE discord_id = :discordId "
+            connection
+                .query(query)
+                .addParameter("action", action)
+                .addParameter("discordId", discordId)
+                .executeUpdate()
         }
     }
 
