@@ -11,10 +11,12 @@ object HouseModule {
     const val TAG = "HSE"
 
     private val housePointsService = HousePointsService()
+    private val houseSeasonService = HouseSeasonService()
 
     fun init() {
         logCalendar()
         housePointsService.start()
+        houseSeasonService.start()
     }
 
     /**

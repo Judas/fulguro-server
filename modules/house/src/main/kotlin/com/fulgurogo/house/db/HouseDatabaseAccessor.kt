@@ -20,6 +20,7 @@ object HouseDatabaseAccessor {
     private const val HOUSES_TABLE = "houses"
     private const val MEMBERS_TABLE = "house_members"
     private const val POINTS_TABLE = "house_points"
+    private const val SEASONS_TABLE = "house_seasons"
     private const val GAMES_VIEW = "house_games"
     private const val DISCORD_TABLE = "discord_user_info"
 
@@ -326,6 +327,114 @@ object HouseDatabaseAccessor {
                 .query(query)
                 .addParameter("action", action)
                 .addParameter("discordId", discordId)
+                .executeUpdate()
+        }
+    }
+
+    /** How far along its lifecycle a season is, or null when nothing has ever happened to it. */
+    fun seasonState(season: String): HouseSeasonState? = DatabaseAccessor.withDao { connection ->
+        val query = "SELECT * FROM $SEASONS_TABLE WHERE season = :season LIMIT 1"
+        connection
+            .query(query)
+            .throwOnMappingFailure(false)
+            .addParameter("season", season)
+            .executeAndFetchFirst(HouseSeasonState::class.java)
+    }
+
+    /**
+     * Stamps a season as opened and answers whether this call is the one that did it. False means it was already open.
+     *
+     * Two statements because the row may not exist at all: `INSERT IGNORE` makes sure it does without disturbing one
+     * that already did, then the UPDATE claims it.
+     *
+     * The row count is trustworthy here, unlike in [setPendingAction], and for a reason worth stating: the guard
+     * `opened IS NULL` sits in the WHERE, and the SET is what makes it false. So a row matched is necessarily a row
+     * changed, and it does not matter that the app's JDBC url reports rows *matched* rather than rows changed — both
+     * counts agree. A second caller matches nothing and gets false.
+     */
+    fun openSeason(season: String): Boolean = DatabaseAccessor.withDao { connection ->
+        connection
+            .query("INSERT IGNORE INTO $SEASONS_TABLE(season) VALUES (:season)")
+            .addParameter("season", season)
+            .executeUpdate()
+
+        connection
+            .query("UPDATE $SEASONS_TABLE SET opened = NOW() WHERE season = :season AND opened IS NULL")
+            .addParameter("season", season)
+            .executeUpdate()
+
+        connection.result == 1
+    }
+
+    /**
+     * Stamps a season as closed and answers whether this call is the one that did it.
+     *
+     * `opened IS NOT NULL` is in the WHERE rather than checked by the caller, so a season that never ran cannot be
+     * closed even by a caller that forgot to look — which is the whole of the first-deployment guard. Row count reads as
+     * in [openSeason]: the predicate is in the WHERE and the SET falsifies it, so matched and changed coincide.
+     */
+    fun closeSeason(season: String): Boolean = DatabaseAccessor.withDao { connection ->
+        val query = "UPDATE $SEASONS_TABLE SET closed = NOW() " +
+                " WHERE season = :season AND opened IS NOT NULL AND closed IS NULL "
+        connection
+            .query(query)
+            .addParameter("season", season)
+            .executeUpdate()
+
+        connection.result == 1
+    }
+
+    /** The members who recorded an intention for next season, in no particular order. */
+    fun pendingMembers(): List<HouseMember> = DatabaseAccessor.withDao { connection ->
+        connection
+            .query("SELECT * FROM $MEMBERS_TABLE WHERE pending_action IS NOT NULL")
+            .throwOnMappingFailure(false)
+            .executeAndFetch(HouseMember::class.java)
+            ?: listOf()
+    }
+
+    /**
+     * Moves a member to [houseId], restamps `joined` and clears their intention, all in one statement.
+     *
+     * One statement on purpose. It makes applying a `CHANGE` atomic per member, so a season opening interrupted halfway
+     * through leaves every member either fully moved or untouched, and the next tick — which selects on
+     * `pending_action IS NOT NULL` — picks up exactly the ones still owed a move. Clearing the intention in a separate
+     * pass would leave a window where a restart moves the same player twice, into a second house.
+     *
+     * `joined` is restamped because it is what the scanner filters games on: the player earns for the new house from now,
+     * and the points they earned for the old one stay where they are.
+     */
+    fun changeHouse(discordId: String, houseId: Int) {
+        DatabaseAccessor.withDao { connection ->
+            val query = "UPDATE $MEMBERS_TABLE " +
+                    " SET house_id = :houseId, joined = NOW(), pending_action = NULL " +
+                    " WHERE discord_id = :discordId "
+            connection
+                .query(query)
+                .addParameter("houseId", houseId)
+                .addParameter("discordId", discordId)
+                .executeUpdate()
+        }
+    }
+
+    /** Removes a membership. The player's points stay in the register, credited to the house they were earned for. */
+    fun removeMember(discordId: String) {
+        DatabaseAccessor.withDao { connection ->
+            connection
+                .query("DELETE FROM $MEMBERS_TABLE WHERE discord_id = :discordId")
+                .addParameter("discordId", discordId)
+                .executeUpdate()
+        }
+    }
+
+    /**
+     * Clears every remaining intention, which by then is every `STAY` — the two acted-on ones clear themselves as they
+     * are applied. Idempotent, so a repeated season opening costs nothing.
+     */
+    fun clearPendingActions() {
+        DatabaseAccessor.withDao { connection ->
+            connection
+                .query("UPDATE $MEMBERS_TABLE SET pending_action = NULL WHERE pending_action IS NOT NULL")
                 .executeUpdate()
         }
     }

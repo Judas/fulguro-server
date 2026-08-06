@@ -16,3 +16,25 @@ data class HouseStanding(
     val totalPoints: Int,
     val leader: HouseRankedMember? = null
 )
+
+/**
+ * The four houses best first — the one order in which houses are ever shown.
+ *
+ * Here rather than at each call site because there are three of them and they have to agree: the `houses` route, the
+ * end-of-season recap and the daily ranking would otherwise each sort their own way, and a podium that changes between
+ * the website and the bot is the kind of thing nobody reports as a bug.
+ *
+ * Ties go to the **smaller** house: an equal total reached with fewer players is the better performance, and it offsets
+ * the standing advantage of simply having more people scoring. The name only settles a tie on both. Note that this makes
+ * the order depend on [memberCount], which counts *current* members while [totalPoints] keeps the points of those who
+ * left — so a departure can reshuffle two tied houses without either of them scoring.
+ *
+ * No rank is attached, unlike a member ranking. With four houses a tie is not unlikely, and a rank counted off the list
+ * would print a 2nd and a 3rd where the truth is two 2nds — which is also why the tiebreaks here are for display order
+ * only and do not claim one house beat the other.
+ */
+fun List<HouseStanding>.ranked(): List<HouseStanding> = sortedWith(
+    compareByDescending<HouseStanding> { it.totalPoints }
+        .thenBy { it.memberCount }
+        .thenBy { it.house.name }
+)

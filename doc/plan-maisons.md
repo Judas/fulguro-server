@@ -409,9 +409,15 @@ Quatre points de ce contrat qui ne se devinent pas :
 - **`total` est dans la réponse.** C'est le seul endroit où l'API le calcule, et il vient de
   `HousePointsBreakdown.total()`. Sans lui chaque consommateur additionnerait les sept colonnes lui-même, et un
   barème qui gagne une colonne serait faux sur le site en restant juste sur le serveur.
-- **`houses` est trié par total décroissant, égalités départagées par le nom** — le même ordre et le même
-  départage que le classement des membres d'une maison. Pas de rang sur les maisons : à quatre, une égalité
-  n'est pas improbable, et un rang compté sur la position afficherait un 2e et un 3e là où il y a deux 2es.
+- **`houses` est trié par total décroissant, puis effectif croissant, puis nom.** À total égal, la plus petite
+  maison passe devant : le même total atteint avec moins de joueurs est la meilleure performance, et ça compense
+  l'avantage mécanique d'avoir plus de monde qui marque. Le nom ne départage que l'égalité sur les deux. Conséquence
+  à connaître : l'ordre dépend donc de `memberCount`, qui ne compte que les membres actuels alors que `totalPoints`
+  garde les points de ceux qui sont partis — un départ peut réordonner deux maisons à égalité sans que personne
+  n'ait marqué. L'ordre n'est pas celui du classement des membres d'une maison, qui ne départage que sur le nom.
+  Pas de rang sur les maisons : à quatre, une égalité n'est pas improbable, et un rang compté sur la position
+  afficherait un 2e et un 3e là où il y a deux 2es — c'est aussi pourquoi ces départages ne sont qu'un ordre
+  d'affichage et ne prétendent pas qu'une maison a battu l'autre.
 - **`rank` est un rang de compétition** (1, 2, 2, 4), pas la position dans la liste : le site l'affiche, il ne
   le recompte pas.
 - **Les nulls sont explicites.** Une maison vide renvoie `"leader": null`, pas une clé absente — c'est le
@@ -578,9 +584,52 @@ clôture d'une saison vide.
 Les points ne sont pas effacés : ils portent leur saison et les lectures filtrent dessus. L'historique existe
 donc sans travail supplémentaire.
 
-**Vérification** : difficile à déclencher naturellement. Tester en forçant l'override de période et en
-remettant à la main `opened` / `closed` à `NULL` sur une ligne de `house_seasons`. À faire sur des comptes de
-test, en gardant en tête que la base est celle de prod.
+Quatre points d'implémentation qui ne sont pas dans la description des deux bascules :
+
+- **L'ordre des deux écritures est inversé entre les branches, exprès.** La clôture annonce *puis* écrit
+  `closed` : un crash entre les deux réannonce le récap au tick suivant, alors qu'écrire d'abord brûlerait le
+  garde-fou et perdrait le récap pour de bon. Un doublon se voit et se supprime, un message de fin de saison
+  manquant se remarque un an plus tard. L'ouverture, elle, réclame `opened` en **dernier** : chaque intention
+  s'efface en s'appliquant, donc un tick interrompu laisse chaque membre soit traité soit encore porteur de son
+  intention, et le tick suivant reprend exactement le reste. Réclamer l'ouverture d'abord les laisserait en
+  plan — garde-fou dépensé, personne déplacé.
+- **`CHANGE` est une seule requête** : `house_id`, `joined` et `pending_action = NULL` ensemble. En deux passes,
+  un redémarrage entre les deux redéplacerait le joueur, dans une deuxième maison.
+- **Le compte de lignes est fiable pour `opened` et `closed`**, contrairement à ce que dit `setPendingAction` :
+  le prédicat (`opened IS NULL`, `closed IS NULL`) est dans le `WHERE` et le `SET` le rend faux, donc une ligne
+  *matchée* est forcément une ligne *changée* et les deux sémantiques de MySQL tombent d'accord. Ça donne un
+  « c'est moi qui l'ai fait » utilisable sans dépendre de `useAffectedRows`.
+- **L'ordre d'affichage des maisons est factorisé** dans `List<HouseStanding>.ranked()`, côté module maison :
+  total décroissant, puis effectif croissant, puis nom (cf. étape 6). Il y a désormais trois lecteurs — la route
+  `houses`, le récap de clôture, le classement quotidien de l'étape 10 — et un podium qui diffère entre le site et
+  le bot n'est pas le genre de bug que quelqu'un signale.
+
+Un `pending_action` illisible est laissé tel quel plutôt que deviné : `HouseAction.from` répond null, une ligne
+de log le dit, et le nettoyage groupé de fin d'ouverture l'efface. Le traiter comme un `STAY` arriverait au même
+endroit, mais en silence.
+
+**Vérification** : faite, contre `fg_dev`, en quatre passes — quatre membres, un par intention (`STAY`,
+`CHANGE`, `LEAVE`, `NULL`), et deux lignes de points dont une pour un joueur qui part.
+
+1. *Faux départ* — `VACATION`, `house_seasons` vide : le service tick (confirmé via `/gold/api/health`) et ne
+   fait rien. Aucune ligne créée, aucun récap. C'est le garde-fou `opened IS NOT NULL` du premier déploiement.
+2. *Ouverture* — override sur `SEASON` : le `STAY` garde sa maison, le `CHANGE` est redessiné hors de la sienne
+   avec `joined` restampé, le `LEAVE` disparaît, le membre sans intention n'est pas touché, tous les
+   `pending_action` retombent à `NULL`, et `opened` est écrit.
+3. *Clôture* — override retiré, donc `VACATION` : `Closing season 2025-2026: FILS_DU_FROID 11,
+   SABRE_SILENCIEUX 5, LUNAIRES_AETHER 0, NEXUS_ALPHA 0`, puis `closed` écrit. L'ordre est bien celui de
+   `ranked()`, et surtout `SABRE_SILENCIEUX` affiche 5 points avec zéro membre : les points du joueur parti sont
+   restés à la maison, ce qui vérifie la décision au passage. ⚠ Ce relevé date d'avant le passage au départage
+   par effectif ; les deux maisons à 0 y sont encore départagées par le nom seul, et avec la règle actuelle
+   `NEXUS_ALPHA` (0 membre) passerait devant `LUNAIRES_AETHER` (1 membre après le `CHANGE`).
+4. *Idempotence* — redémarrage, nouveau tick : rien, les deux garde-fous tiennent.
+
+Le tirage du `CHANGE` n'est pas déterministe et n'a pas à l'être : le seed laissait deux maisons vides, le
+tirage a pris l'une des deux. Ce qui est vérifié, c'est qu'il exclut la maison d'origine et qu'il tire à
+effectif minimum. Ce passage est aussi la première exécution réelle de `HouseAssignment.draw`, que l'étape 7
+avait laissée non vérifiée faute de base accessible.
+
+Lignes de test supprimées après coup.
 
 ---
 
@@ -665,7 +714,7 @@ bientôt » à propos de la disparition de l'Exam Hunter.
 
 1. ~~**`house.scanner.enabled`** (étape 5)~~ — écarté : `fg_dev` isole déjà les écritures locales, cf. étape 5.
 2. ~~**Taille du lot du scanner** (étape 5)~~ — 50.
-3. **Intervalles** — 90/30 pour le scanner, retenu à l'étape 5. Reste 120/600 pour la saison (étape 9).
+3. ~~**Intervalles**~~ — 90/30 pour le scanner (étape 5), 120/600 pour la saison (étape 9), tous retenus.
 4. **Formulation des messages Discord** (étape 10), et contenu du classement quotidien.
 5. **Contrat avec le dépôt du site** — la forme des réponses de `/gold/api/houses` et `/gold/api/house/{slug}`
    est écrite à l'étape 6 et implémentée, mais ⚠ elle n'a pas été confirmée avec le front : c'est un contrat
