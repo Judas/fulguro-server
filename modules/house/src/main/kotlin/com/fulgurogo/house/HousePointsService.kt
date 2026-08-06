@@ -25,26 +25,7 @@ import java.time.ZonedDateTime
  * silently drop the end of every season.
  */
 class HousePointsService : PeriodicFlowService(INITIAL_DELAY_IN_SECONDS, INTERVAL_IN_SECONDS) {
-    /**
-     * The lock that keeps a local run from writing real points.
-     *
-     * Dev runs against the production server, so without this every `./gradlew :app:run` would score games for real,
-     * including while the scale is still being worked on. It defaults to *off* when the key is missing: a scanner that
-     * does nothing is recoverable — the games stay unscored and a later run picks them all up — whereas points written
-     * by mistake are rows in a register that is meant to be permanent.
-     *
-     * The forgotten-in-production failure is the mirror image and just as quiet, hence the startup line below.
-     */
-    private val enabled: Boolean = Config.getOrNull(ENABLED_KEY).toBoolean()
-
-    init {
-        if (enabled) log(TAG, "Scanner is ON, scoring up to $BATCH_SIZE game(s) every ${INTERVAL_IN_SECONDS}s")
-        else log(TAG, "Scanner is OFF: $ENABLED_KEY is not true, no points will be written")
-    }
-
     override suspend fun onTick() {
-        if (!enabled) return
-
         // One instant for the whole tick, so the season a game is filed under cannot differ from the window it was
         // selected by, however unlucky the timing on 1 September.
         val now = ZonedDateTime.now(DATE_ZONE)
@@ -107,8 +88,6 @@ class HousePointsService : PeriodicFlowService(INITIAL_DELAY_IN_SECONDS, INTERVA
     }
 
     companion object {
-        private const val ENABLED_KEY = "house.scanner.enabled"
-
         /** Past `GoldService`'s own start, so the two do not open their first connections at the same moment. */
         private const val INITIAL_DELAY_IN_SECONDS = 90L
 
