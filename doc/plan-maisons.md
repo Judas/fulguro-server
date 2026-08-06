@@ -24,14 +24,14 @@ l'ordre — les dépendances sont indiquées.
 | Blason / RP | Textes en BDD (slug, nom, slogan, couleur, description), blasons côté site via le slug |
 | Historique | Le registre est conservé, chaque ligne porte sa saison |
 
-## Deux risques à garder en tête
+## Un risque à garder en tête
 
 **Pas de plafond anti-farming.** Deux joueurs qui enchaînent des blitz sur OGS peuvent générer plusieurs
 centaines de points en une soirée. Le registre conserve `gold_id` et `scored_at`, donc un plafond appliqué
 a posteriori reste calculable sans migration si le besoin apparaît en cours de saison.
 
-**Le dev tape la base de prod.** Dès que les tables existent, un `./gradlew :app:run` en local écrit des points
-réels. L'étape 5 propose un verrou de config pour éviter ça ; à valider avant de lancer le scanner.
+Le scanner qui tourne en local, lui, n'est pas un risque : `config.properties.dev` pointe `db.name=fg_dev`, donc
+un `./gradlew :app:run` écrit ses points dans le schéma de dev et le ladder de prod n'est jamais touché.
 
 ## Barème retenu
 
@@ -352,13 +352,10 @@ d'une seule ligne suffit à la considérer comme traitée. C'est le comportement
 Écriture en `INSERT ... ON DUPLICATE KEY UPDATE gold_id = gold_id` ou `INSERT IGNORE`, pour que deux passages
 concurrents ne puissent pas doubler une ligne.
 
-**Retenu** : la clé `house.scanner.enabled`, `false` dans `config.properties.dev` et la copie de travail, `true`
-dans `config.properties.prod`. Sans elle, tout `./gradlew :app:run` en local écrit des points réels, y compris
-pendant qu'on met le barème au point ; la seule alternative aurait été de laisser l'override de période sur
-`VACATION`, ce qui empêche précisément de tester le scoring. Clé absente = scanner éteint : des parties non
-scorées se rattrapent au run suivant, des points écrits par erreur restent dans un registre fait pour être
-définitif. Le risque miroir — oublier la clé en prod et ne rien marquer en silence — est couvert par une ligne
-de log au démarrage qui dit ON ou OFF.
+**Écarté** : un verrou de config pour éteindre le scanner en local. Il n'a pas de raison d'être — la config de dev
+pointe `db.name=fg_dev`, donc un run local écrit dans le schéma de dev et ne touche pas les points de prod. Une clé
+de plus à tenir dans trois fichiers, avec le risque miroir de l'oublier en prod et de ne rien marquer en silence,
+pour un danger qui n'existe pas.
 
 **Retenu** : lot de 50, et pas de sortie anticipée sur la période. Le scanner tourne aussi en juillet et août,
 c'est ce qui lui fait ramasser les dernières parties de juin avant que `CleanService` ne les supprime ; la
@@ -511,7 +508,46 @@ vacances.
 Composé dans le handler à partir de `HouseDatabaseAccessor`, **pas** en modifiant la vue `api_players` :
 le calcul dépend de la saison courante, qui vient du Kotlin, et ça évite une modification de vue en prod.
 
-**Vérification** : `curl` sur le profil d'un joueur avec maison et d'un joueur sans.
+**Forme du bloc** :
+
+```json
+// GET /gold/api/player/{id}, à côté de "accounts", "rating", "games"…
+"house": {
+  "period": "SEASON", "season": "2025-2026",
+  "slug": "NEXUS_ALPHA", "name": "Nexus Alpha", "tagline": "…", "color": "#0E1A40",
+  "points": { "played": 1, "goldOpponent": 2, "rivalHouse": 2, "longGame": 2,
+              "victory": 2, "evenGame": 1, "ranked": 1, "total": 11 },
+  "rank": 1,
+  "pendingAction": null
+}
+```
+
+Quatre points de ce contrat qui ne se devinent pas :
+
+- **`period` et `season` sont dans le bloc**, ajout à ce qu'énumérait le plan. Sans la période, un
+  `pendingAction` nul est ambigu — hors vacances il n'y a rien à montrer, en vacances il veut dire « pas encore
+  choisi », et le site ne peut pas trancher sans redemander le calendrier à `/gold/api/houses`. `season` étiquette
+  les points sans que le site ait à deviner sur quoi ils sont comptés. Même raison qu'à l'étape 6 : le serveur reste
+  la seule source de vérité sur le calendrier.
+- **`pendingAction` n'est rempli qu'en `VACATION`**, et il est *parsé* en `HouseAction` au lieu d'être recopié :
+  une valeur que la colonne ne devrait jamais contenir ne ressort donc pas telle quelle vers le site.
+- **Pas de `description`, ni d'effectif, ni de total de maison.** Le bloc porte le blason (slug, nom, slogan,
+  couleur), pas la page de la maison — sinon chaque profil traînerait quatre paragraphes de RP. Les noms de champs
+  partagés sont les mêmes qu'à l'étape 6, donc le site stylise le badge avec le même code.
+- **`points` et `rank` viennent de la même lecture.** `HouseDatabaseAccessor.playerStanding` prend la ligne du
+  joueur dans le classement de sa maison au lieu de resommer ses points à part : le total affiché est par
+  construction celui qui a produit le rang. Deux sommes à une connexion d'écart pourraient encadrer un tick du
+  scanner et se contredire.
+
+Cette méthode remplace `playerPoints` et `playerRank` de l'étape 2, que rien n'avait jamais appelées et qui
+faisaient à elles deux quatre allers-retours là où une seule connexion suffit. `HousePointsTotal`, qui n'était
+mappé que par `playerPoints`, disparaît avec elles.
+
+**Vérification** : faite. Trois membres et trois lignes de points posés à la main dans `fg_dev`, deux à égalité
+sur 11 : le profil rend bien 1, 1, 3 — le rang de compétition, pas la position — un total de 11 qui est le maximum
+du barème, `pendingAction: "CHANGE"` en `VACATION` et `null` avec l'override sur `SEASON`, et `"house": null` sur
+un joueur sans maison. Les trois routes s'accordent : 11 + 11 + 5 = les 27 points que `/gold/api/houses` annonce
+pour la maison, et les rangs du classement sont ceux des profils. Lignes de test supprimées après coup.
 
 ---
 
@@ -601,7 +637,7 @@ supprime une ligne de `house_members` pendant la saison.
 `PeriodicFlowService.start()`, et remontent donc dans `GET /gold/api/health`. Vérifier qu'ils y apparaissent
 et qu'ils sont sains ; avec 30 s et 600 s d'intervalle, les seuils de péremption sont 150 s et 3000 s.
 
-**Config** — reporter les nouvelles clés (`house.period.override`, et `house.scanner.enabled` si retenue)
+**Config** — reporter la nouvelle clé (`house.period.override`, la seule)
 dans les trois fichiers de `modules/common/src/main/resources/` : `config.properties.dev`,
 `config.properties.prod`, et la copie de travail `config.properties`. Les trois, pas seulement les deux
 variantes : seul `config.properties` est sur le classpath, donc une clé ajoutée aux variantes sans être
@@ -627,7 +663,7 @@ bientôt » à propos de la disparition de l'Exam Hunter.
 
 À trancher avant ou pendant l'exécution, aucun ne bloque le démarrage :
 
-1. ~~**`house.scanner.enabled`** (étape 5)~~ — retenu, cf. étape 5.
+1. ~~**`house.scanner.enabled`** (étape 5)~~ — écarté : `fg_dev` isole déjà les écritures locales, cf. étape 5.
 2. ~~**Taille du lot du scanner** (étape 5)~~ — 50.
 3. **Intervalles** — 90/30 pour le scanner, retenu à l'étape 5. Reste 120/600 pour la saison (étape 9).
 4. **Formulation des messages Discord** (étape 10), et contenu du classement quotidien.

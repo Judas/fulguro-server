@@ -61,12 +61,7 @@ object HouseDatabaseAccessor {
 
     /** The player's membership, or null when they are in no house. */
     fun member(discordId: String): HouseMember? = DatabaseAccessor.withDao { connection ->
-        val query = "SELECT * FROM $MEMBERS_TABLE WHERE discord_id = :discordId LIMIT 1"
-        connection
-            .query(query)
-            .throwOnMappingFailure(false)
-            .addParameter("discordId", discordId)
-            .executeAndFetchFirst(HouseMember::class.java)
+        member(connection, discordId)
     }
 
     /**
@@ -179,39 +174,28 @@ object HouseDatabaseAccessor {
     }
 
     /**
-     * A player's points for the season, summed per type. All zeroes when they have no house or have scored nothing.
+     * The house block of a player's profile: their house, their line in its ranking, their pending intention. Null when
+     * they are in no house.
      *
-     * Matched on the player's current house, like [ranking], so the figure always agrees with the rank shown next to
-     * it. Within one season that match changes nothing — a house change is only ever applied when a season opens — but
-     * it costs nothing and does not rely on that staying true.
+     * The player's points are read as their row of the house's own ranking rather than summed on their own, so the total
+     * a profile prints is by construction the total its rank came from. Ranking the whole house to keep one line of it is
+     * the same trade [ranking] already makes — a house is a few dozen rows, and tie handling exists in exactly one place.
+     *
+     * Null too when the member has no `discord_user_info` row, since the ranking is an INNER JOIN on it. Unreachable from
+     * `GET /gold/api/player/{id}`, whose player came out of `api_players` — a view driven from that very table — and a
+     * house block filled with zeroes for a player who has actually scored would be worse than no block at all.
      */
-    fun playerPoints(season: String, discordId: String): HousePointsTotal = DatabaseAccessor.withDao { connection ->
-        val query = "SELECT $POINTS_SUMS " +
-                " FROM $MEMBERS_TABLE m " +
-                " LEFT JOIN $POINTS_TABLE p " +
-                "   ON p.discord_id = m.discord_id AND p.house_id = m.house_id AND p.season = :season " +
-                " WHERE m.discord_id = :discordId "
-        connection
-            .query(query)
-            .throwOnMappingFailure(false)
-            .addParameter("season", season)
-            .addParameter("discordId", discordId)
-            .executeAndFetchFirst(HousePointsTotal::class.java)
-            ?: HousePointsTotal(0, 0, 0, 0, 0, 0, 0)
-    }
+    fun playerStanding(season: String, discordId: String): HousePlayerStanding? =
+        DatabaseAccessor.withDao { connection ->
+            val member = member(connection, discordId) ?: return@withDao null
+            val house = house(connection, member.houseId) ?: return@withDao null
+            val standing = rankedMembers(connection, season, member.houseId)
+                .withRanks()
+                .firstOrNull { it.discordId == discordId }
+                ?: return@withDao null
 
-    /**
-     * The player's rank inside their own house, or null when they are in no house.
-     *
-     * Built on top of [ranking] rather than given its own SQL: the two would otherwise both have to implement tie
-     * handling and agree on it, and one house is at most a few dozen rows.
-     */
-    fun playerRank(season: String, discordId: String): Int? {
-        val member = member(discordId) ?: return null
-        return ranking(season, member.houseId)
-            .firstOrNull { it.discordId == discordId }
-            ?.rank
-    }
+            HousePlayerStanding(house = house, standing = standing, pendingAction = member.pendingAction)
+        }
 
     /**
      * The next [batchSize] games left to score, oldest first: finished, inside the season window, involving at least
@@ -345,6 +329,19 @@ object HouseDatabaseAccessor {
                 .executeUpdate()
         }
     }
+
+    private fun member(connection: Connection, discordId: String): HouseMember? = connection
+        .query("SELECT * FROM $MEMBERS_TABLE WHERE discord_id = :discordId LIMIT 1")
+        .throwOnMappingFailure(false)
+        .addParameter("discordId", discordId)
+        .executeAndFetchFirst(HouseMember::class.java)
+
+    /** By internal id, which only ever comes from a `house_members` row — the API works from the slug. */
+    private fun house(connection: Connection, id: Int): House? = connection
+        .query("SELECT * FROM $HOUSES_TABLE WHERE id = :id LIMIT 1")
+        .throwOnMappingFailure(false)
+        .addParameter("id", id)
+        .executeAndFetchFirst(House::class.java)
 
     private fun houseTotals(connection: Connection, season: String): List<HouseTotals> {
         val query = "SELECT h.id AS house_id, " +

@@ -63,11 +63,26 @@ class Api {
         context.standardResponse(players)
     }
 
+    /**
+     * One player's profile: their accounts, their rating, their games, and their house when they have one.
+     *
+     * The house block is composed here rather than added to the `api_players` view. It is counted over the current season,
+     * which is computed in Kotlin and cannot be handed to a view, and keeping it out means no view to alter on the
+     * production server.
+     */
     fun getPlayerProfile(context: Context) = context.handle("getPlayerProfile") {
         val playerId = context.pathParam("id")
         val player = ApiDatabaseAccessor.apiPlayer(playerId)
         player?.let { p ->
             p.games = ApiDatabaseAccessor.apiGamesFor(playerId)
+
+            // One clock read for both calendar questions, as everywhere else: a period and a season taken either side of
+            // midnight on 1 September would describe a season other than the one the points were summed over.
+            val now = ZonedDateTime.now(DATE_ZONE)
+            val season = HouseSeason.seasonName(now)
+            p.house = HouseDatabaseAccessor.playerStanding(season, playerId)
+                ?.let { ApiPlayerHouse.from(HouseSeason.period(now), season, it) }
+
             context.standardResponse(p)
         } ?: context.notFoundError()
     }

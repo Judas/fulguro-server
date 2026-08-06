@@ -13,5 +13,13 @@ data class ApiPlayer(
     val tierName: String? = null,
     val totalRankedGames: Int = 0,
     val goldRankedGames: Int = 0,
-    var games: List<ApiGame>? = null
+    var games: List<ApiGame>? = null,
+    /**
+     * The player's house, or null when they are in none. Filled by the profile route only, like [games], and left null on
+     * the list — a roster of every player does not need four houses' worth of RP repeated down it.
+     *
+     * Composed by the handler from `HouseDatabaseAccessor`, not added to the `api_players` view: it is counted over the
+     * current season, which only Kotlin knows, and this way there is no view to alter on the production server.
+     */
+    var house: ApiPlayerHouse? = null
 )
