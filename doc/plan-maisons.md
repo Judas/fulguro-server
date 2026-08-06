@@ -417,8 +417,12 @@ Quatre points de ce contrat qui ne se devinent pas :
   n'est pas improbable, et un rang compté sur la position afficherait un 2e et un 3e là où il y a deux 2es.
 - **`rank` est un rang de compétition** (1, 2, 2, 4), pas la position dans la liste : le site l'affiche, il ne
   le recompte pas.
-- **Gson omet les clés nulles.** Une maison vide n'a pas de clé `leader`, un membre sans profil Discord n'a pas
-  de `discordName`. C'est déjà le cas partout ailleurs dans l'API.
+- **Les nulls sont explicites.** Une maison vide renvoie `"leader": null`, pas une clé absente — c'est le
+  mapper JSON de Javalin qui sérialise les réponses, pas le Gson utilisé pour lire les corps de requête.
+  Vérifié au `curl`, contre `fg_dev`.
+- **Le slug ne tient pas compte de la casse.** `/gold/api/house/nexus_alpha` répond comme
+  `/gold/api/house/NEXUS_ALPHA` : la collation MySQL de la colonne est insensible à la casse. À ne pas prendre
+  pour une garantie de l'API — c'est la base qui le fait, pas le code.
 
 `memberCount` et `totalPoints` ne comptent pas la même population, exprès : le total somme le registre par
 maison et garde donc les points des joueurs partis, l'effectif et le leader ne voient que les membres actuels.

@@ -257,10 +257,12 @@ object HouseDatabaseAccessor {
     /**
      * Writes the register rows the scanner produced, and answers how many were new.
      *
-     * `ON DUPLICATE KEY UPDATE gold_id = gold_id` rather than `INSERT IGNORE`: both make a second pass over the same
-     * game a no-op, but `INSERT IGNORE` also turns a genuine failure — a value too wide for its column, say — into a
-     * warning nobody reads, and a point row lost that way would never be retried, since the game counts as scored the
-     * moment any row for it exists.
+     * `INSERT IGNORE`, the idiom the platform accessors already use, and not `INSERT ... ON DUPLICATE KEY UPDATE
+     * gold_id = gold_id`. Both make a second pass over the same game a no-op, but only this one lets the caller *know*:
+     * the app's JDBC url leaves `useAffectedRows` at its default, so the driver reports rows **matched** rather than
+     * rows changed, and the duplicate branch of `ON DUPLICATE KEY UPDATE` reports 1 exactly like an insert. Measured on
+     * the real database, not deduced. The cost of `INSERT IGNORE` is real and accepted: it also demotes a genuine
+     * failure, a value too wide for its column say, to a warning nobody reads.
      *
      * `scored_at` comes from `NOW()`, so the register is stamped by the database clock rather than by a JVM that might
      * be in another zone. Nothing reads it yet: with no anti-farming cap in this delivery, it is what makes one
@@ -270,12 +272,11 @@ object HouseDatabaseAccessor {
         if (points.isEmpty()) return 0
 
         return DatabaseAccessor.withDao { connection ->
-            val sql = "INSERT INTO $POINTS_TABLE( " +
+            val sql = "INSERT IGNORE INTO $POINTS_TABLE( " +
                     " gold_id, discord_id, house_id, season, " +
                     " played, gold_opponent, rival_house, long_game, victory, even_game, ranked, scored_at) " +
                     " VALUES (:goldId, :discordId, :houseId, :season, " +
-                    " :played, :goldOpponent, :rivalHouse, :longGame, :victory, :evenGame, :ranked, NOW()) " +
-                    " ON DUPLICATE KEY UPDATE gold_id = gold_id "
+                    " :played, :goldOpponent, :rivalHouse, :longGame, :victory, :evenGame, :ranked, NOW()) "
 
             var inserted = 0
             points.forEach { row ->
@@ -294,7 +295,7 @@ object HouseDatabaseAccessor {
                     .addParameter("ranked", row.ranked)
                     .executeUpdate()
 
-                // 1 on an insert, 0 when the row was already there and the update changed nothing.
+                // 1 on an insert, 0 when the row was already there and IGNORE dropped this one.
                 if (connection.result == 1) inserted++
             }
             inserted
@@ -309,20 +310,19 @@ object HouseDatabaseAccessor {
      * can answer it without a race. Two joins landing at once would otherwise both read "no house" and the second would
      * either overwrite the first or blow up on the duplicate key; here it comes back false and the caller answers 409.
      *
-     * `ON DUPLICATE KEY UPDATE discord_id = discord_id` and not `INSERT IGNORE`, for the reason [addPoints] spells out:
-     * a genuine failure must not be downgraded to a warning nobody reads.
+     * `INSERT IGNORE` for the reason [addPoints] spells out: it is the only one of the two idioms whose row count tells
+     * an insert from a duplicate, given how the app connects.
      */
     fun addMember(discordId: String, houseId: Int): Boolean = DatabaseAccessor.withDao { connection ->
-        val query = "INSERT INTO $MEMBERS_TABLE(discord_id, house_id, joined) " +
-                " VALUES (:discordId, :houseId, NOW()) " +
-                " ON DUPLICATE KEY UPDATE discord_id = discord_id "
+        val query = "INSERT IGNORE INTO $MEMBERS_TABLE(discord_id, house_id, joined) " +
+                " VALUES (:discordId, :houseId, NOW()) "
         connection
             .query(query)
             .addParameter("discordId", discordId)
             .addParameter("houseId", houseId)
             .executeUpdate()
 
-        // 1 on an insert, 0 when the row was already there and the update changed nothing.
+        // 1 on an insert, 0 when the row was already there and IGNORE dropped this one.
         connection.result == 1
     }
 
