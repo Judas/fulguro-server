@@ -386,6 +386,46 @@ réponses via les helpers de `ContextExtensions`.
 La période est incluse dans la réponse plutôt que dans un endpoint dédié, pour que le site n'ait pas à la
 recalculer ni à faire un aller-retour de plus. Le serveur reste la seule source de vérité sur le calendrier.
 
+**Forme des réponses** — ⚠ arrêtée côté serveur, pas encore confirmée avec le dépôt du site (point ouvert 5).
+
+```json
+// GET /gold/api/houses
+{
+  "period": "SEASON", "season": "2025-2026",
+  "houses": [
+    {
+      "slug": "gardiens", "name": "Les Gardiens", "tagline": "…", "color": "#3366cc", "description": "…",
+      "memberCount": 3, "totalPoints": 30,
+      "leader": { "discordId": "111", "discordName": "Alice", "discordAvatar": "…", "rank": 1,
+                  "points": { "played": 2, "goldOpponent": 4, "rivalHouse": 4, "longGame": 4,
+                              "victory": 4, "evenGame": 2, "ranked": 2, "total": 22 } }
+    }
+  ]
+}
+
+// GET /gold/api/house/{slug} : mêmes period et season, la maison sous la clé "house" (forme identique,
+// leader compris), plus "members": [ … ] — la même forme que "leader", tous les membres, meilleur d'abord.
+```
+
+Quatre points de ce contrat qui ne se devinent pas :
+
+- **`total` est dans la réponse.** C'est le seul endroit où l'API le calcule, et il vient de
+  `HousePointsBreakdown.total()`. Sans lui chaque consommateur additionnerait les sept colonnes lui-même, et un
+  barème qui gagne une colonne serait faux sur le site en restant juste sur le serveur.
+- **`houses` est trié par total décroissant, égalités départagées par le nom** — le même ordre et le même
+  départage que le classement des membres d'une maison. Pas de rang sur les maisons : à quatre, une égalité
+  n'est pas improbable, et un rang compté sur la position afficherait un 2e et un 3e là où il y a deux 2es.
+- **`rank` est un rang de compétition** (1, 2, 2, 4), pas la position dans la liste : le site l'affiche, il ne
+  le recompte pas.
+- **Gson omet les clés nulles.** Une maison vide n'a pas de clé `leader`, un membre sans profil Discord n'a pas
+  de `discordName`. C'est déjà le cas partout ailleurs dans l'API.
+
+`memberCount` et `totalPoints` ne comptent pas la même population, exprès : le total somme le registre par
+maison et garde donc les points des joueurs partis, l'effectif et le leader ne voient que les membres actuels.
+Le total est donc supérieur ou égal à la somme des totaux des membres, et une maison vide peut afficher des
+points. `members` peut aussi être plus court que `memberCount` : un membre sans ligne `discord_user_info` n'a ni
+nom ni avatar à montrer et sort du classement.
+
 **Vérification** : `curl` sur les deux routes, en local, contre la prod.
 
 ---
@@ -561,6 +601,7 @@ bientôt » à propos de la disparition de l'Exam Hunter.
 2. ~~**Taille du lot du scanner** (étape 5)~~ — 50.
 3. **Intervalles** — 90/30 pour le scanner, retenu à l'étape 5. Reste 120/600 pour la saison (étape 9).
 4. **Formulation des messages Discord** (étape 10), et contenu du classement quotidien.
-5. **Contrat avec le dépôt du site** — convention de nommage des blasons à partir du slug, et forme exacte
-   des réponses de `/gold/api/houses` et `/gold/api/house/{slug}`. À figer avec le front avant l'étape 6,
-   sinon les deux côtés partiront sur des formes différentes.
+5. **Contrat avec le dépôt du site** — la forme des réponses de `/gold/api/houses` et `/gold/api/house/{slug}`
+   est écrite à l'étape 6 et implémentée, mais ⚠ elle n'a pas été confirmée avec le front : c'est un contrat
+   posé, pas un contrat négocié. Reste entière la convention de nommage des blasons à partir du slug, que le
+   serveur n'a pas à connaître.

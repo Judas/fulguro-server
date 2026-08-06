@@ -21,6 +21,8 @@ import com.fulgurogo.discord.DiscordModule
 import com.fulgurogo.discord.db.DiscordDatabaseAccessor
 import com.fulgurogo.fgc.db.FgcDatabaseAccessor
 import com.fulgurogo.gold.db.GoldDatabaseAccessor
+import com.fulgurogo.house.HouseSeason
+import com.fulgurogo.house.db.HouseDatabaseAccessor
 import com.fulgurogo.ogs.api.OgsApiClient
 import com.google.gson.Gson
 import io.javalin.http.Context
@@ -81,6 +83,31 @@ class Api {
     fun getTiers(context: Context) = context.handle("getTiers") {
         val tiers = GoldDatabaseAccessor.tiers()
         context.standardResponse(tiers)
+    }
+
+    /**
+     * The "Houses" page: the calendar, then the four houses with their RP, their size, their total and their leader.
+     *
+     * The clock is read once and that instant passed to both calendar questions, as everywhere else the two are asked
+     * together: a period and a season read either side of midnight on 1 September would describe a season that is not
+     * the one the points were summed over.
+     */
+    fun getHouses(context: Context) = context.handle("getHouses") {
+        val now = ZonedDateTime.now(DATE_ZONE)
+        val season = HouseSeason.seasonName(now)
+        val standings = HouseDatabaseAccessor.standings(season)
+        context.standardResponse(ApiHouses.from(HouseSeason.period(now), season, standings))
+    }
+
+    /** One house's page: its RP, its figures and the ranking of its members. 404 on an unknown slug. */
+    fun getHouse(context: Context) = context.handle("getHouse") {
+        val slug = context.pathParam("slug")
+        val now = ZonedDateTime.now(DATE_ZONE)
+        val season = HouseSeason.seasonName(now)
+
+        val details = HouseDatabaseAccessor.details(season, slug)
+        details?.let { context.standardResponse(ApiHouseDetails.from(HouseSeason.period(now), season, it)) }
+            ?: context.notFoundError()
     }
 
     /**

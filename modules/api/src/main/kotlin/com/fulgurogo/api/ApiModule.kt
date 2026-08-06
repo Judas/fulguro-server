@@ -32,6 +32,10 @@ object ApiModule {
                 // Gold tiers
                 get("/gold/api/tiers", api::getTiers)
 
+                // Houses: plural for the list, singular for one house, as with players and games
+                get("/gold/api/houses", api::getHouses)
+                get("/gold/api/house/{slug}", api::getHouse)
+
                 // Service liveness: 200 when every background service is healthy, 503 otherwise
                 get("/gold/api/health", api::getHealth)
 

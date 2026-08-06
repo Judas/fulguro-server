@@ -148,6 +148,37 @@ object HouseDatabaseAccessor {
     }
 
     /**
+     * One house by slug with its figures and its full ranking, or null when no house has that slug.
+     *
+     * The three reads share a connection so that the total, the size and the ranking are all read at the same instant,
+     * and the leader is taken from the ranking rather than asked for again — see [HouseDetails].
+     *
+     * [houseTotals] is asked for all four houses and filtered here rather than given a `WHERE`: it is four rows, and one
+     * aggregate query beats two variants of it that have to keep agreeing on how a house is totalled.
+     */
+    fun details(season: String, slug: String): HouseDetails? = DatabaseAccessor.withDao { connection ->
+        val house = connection
+            .query("SELECT * FROM $HOUSES_TABLE WHERE slug = :slug LIMIT 1")
+            .throwOnMappingFailure(false)
+            .addParameter("slug", slug)
+            .executeAndFetchFirst(House::class.java)
+            ?: return@withDao null
+
+        val totals = houseTotals(connection, season).firstOrNull { it.houseId == house.id }
+        val members = rankedMembers(connection, season, house.id).withRanks()
+
+        HouseDetails(
+            standing = HouseStanding(
+                house = house,
+                memberCount = totals?.memberCount ?: 0,
+                totalPoints = totals?.totalPoints ?: 0,
+                leader = members.firstOrNull()
+            ),
+            members = members
+        )
+    }
+
+    /**
      * A player's points for the season, summed per type. All zeroes when they have no house or have scored nothing.
      *
      * Matched on the player's current house, like [ranking], so the figure always agrees with the rank shown next to
