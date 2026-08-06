@@ -3,6 +3,8 @@ package com.fulgurogo.house
 import com.fulgurogo.common.logger.log
 import com.fulgurogo.common.service.PeriodicFlowService
 import com.fulgurogo.common.utilities.DATE_ZONE
+import com.fulgurogo.common.utilities.toDate
+import com.fulgurogo.common.utilities.toStartOfDay
 import com.fulgurogo.house.HouseModule.TAG
 import com.fulgurogo.house.db.HouseDatabaseAccessor
 import com.fulgurogo.house.db.model.HouseMember
@@ -34,8 +36,29 @@ class HouseSeasonService : PeriodicFlowService(INITIAL_DELAY_IN_SECONDS, INTERVA
 
         when (HouseSeason.period(now)) {
             HousePeriod.VACATION -> closeSeason(season)
-            HousePeriod.SEASON -> openSeason(season)
+            HousePeriod.SEASON -> {
+                openSeason(season)
+                announceDailyRanking(season, now)
+            }
         }
+    }
+
+    /**
+     * The morning standing, once a day, only during the season.
+     *
+     * Two conditions, and they do different jobs. The 7am-9pm window decides *when* it is worth saying; the
+     * `last_ranking` claim decides that it is said *once*, because a ten-minute tick fits eighteen times into that
+     * window and eighteen identical messages is the failure mode this exists to prevent.
+     *
+     * Nothing is posted while the season is not open yet: the ranking is a ranking of the season, and the row the claim
+     * updates does not exist until the opening created it — so an unopened season quietly claims nothing.
+     */
+    private fun announceDailyRanking(season: String, now: ZonedDateTime) {
+        if (now.hour !in RANKING_FIRST_HOUR..RANKING_LAST_HOUR) return
+        if (!HouseDatabaseAccessor.claimDailyRanking(season, now.toStartOfDay().toDate())) return
+
+        log(TAG, "Announcing the daily ranking for season $season")
+        HouseNotifier.notifyDailyRanking(season, HouseDatabaseAccessor.standings(season))
     }
 
     /**
@@ -56,10 +79,11 @@ class HouseSeasonService : PeriodicFlowService(INITIAL_DELAY_IN_SECONDS, INTERVA
         val state = HouseDatabaseAccessor.seasonState(season)
         if (state == null || state.opened == null || state.closed != null) return
 
-        val standings = HouseDatabaseAccessor.standings(season).ranked()
-        log(TAG, "Closing season $season: " + standings.joinToString { "${it.house.slug} ${it.totalPoints}" })
+        val standings = HouseDatabaseAccessor.standings(season)
+        log(TAG, "Closing season $season: " +
+                standings.ranked().joinToString { "${it.house.slug} ${it.totalPoints}" })
 
-        // TODO Announce the end-of-season recap on Discord (step 10)
+        HouseNotifier.notifySeasonRecap(season, standings)
 
         if (HouseDatabaseAccessor.closeSeason(season)) log(TAG, "Season $season closed")
     }
@@ -118,7 +142,8 @@ class HouseSeasonService : PeriodicFlowService(INITIAL_DELAY_IN_SECONDS, INTERVA
 
                 HouseDatabaseAccessor.changeHouse(member.discordId, house.id)
                 log(TAG, "${member.discordId} changed to ${house.slug}")
-                // TODO Announce the arrival on Discord (step 10, the same announcement a join makes)
+                // The same announcement a join makes, from the same function, so the two cannot drift apart
+                HouseNotifier.notifyArrival(member.discordId, house)
             }
         }
     }
@@ -129,5 +154,9 @@ class HouseSeasonService : PeriodicFlowService(INITIAL_DELAY_IN_SECONDS, INTERVA
 
         /** Ten minutes, as `ping` and `clean` use: these are events dated to the day, not to the second. */
         private const val INTERVAL_IN_SECONDS = 600L
+
+        /** The morning window for the daily ranking, inclusive on both ends, so 7:00 to 9:59. */
+        private const val RANKING_FIRST_HOUR = 7
+        private const val RANKING_LAST_HOUR = 9
     }
 }

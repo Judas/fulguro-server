@@ -24,6 +24,7 @@ import com.fulgurogo.fgc.db.FgcDatabaseAccessor
 import com.fulgurogo.gold.db.GoldDatabaseAccessor
 import com.fulgurogo.house.HouseAction
 import com.fulgurogo.house.HouseAssignment
+import com.fulgurogo.house.HouseNotifier
 import com.fulgurogo.house.HousePeriod
 import com.fulgurogo.house.HouseSeason
 import com.fulgurogo.house.db.HouseDatabaseAccessor
@@ -179,7 +180,9 @@ class Api {
         }
 
         log(TAG, "joinHouse $discordId joined ${house.slug}")
-        // TODO Announce the arrival on Discord (step 10, shared with the CHANGE intentions of the season opening)
+        // Announced only past the write that decided it, and only by the caller that won it -- the addMember guard above
+        // is what makes two simultaneous joins produce one arrival message instead of two.
+        HouseNotifier.notifyArrival(discordId, house)
         context.standardResponse(ApiHouseIdentity.from(house))
     }
 

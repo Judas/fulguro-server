@@ -384,6 +384,33 @@ object HouseDatabaseAccessor {
         connection.result == 1
     }
 
+    /**
+     * Claims the right to post today's ranking, and answers whether this call got it.
+     *
+     * The claim is made *before* the message is sent, which is the opposite trade from the season closure, and for a
+     * reason worth writing down. This fires daily: a duplicate is spam, a miss is invisible. The closure fires yearly:
+     * a duplicate is noise, a miss is a lost recap. So this one claims first and that one announces first.
+     *
+     * The trade is cheaper than it looks, because there is nothing to wait for anyway — `sendMessageEmbeds` hands the
+     * message to JDA's queue and returns, so "write it after sending" would only ever mean "after enqueuing" and would
+     * confirm nothing about delivery. Claiming first has the same meaning and cannot double-post.
+     *
+     * Row count reads as in [openSeason]: the predicate is in the WHERE and the SET falsifies it — `NOW()` is never
+     * before the start of today — so matched and changed coincide. The 18 ticks that fit in a 7am-9am window therefore
+     * produce one message, not 18.
+     */
+    fun claimDailyRanking(season: String, startOfDay: Date): Boolean = DatabaseAccessor.withDao { connection ->
+        val query = "UPDATE $SEASONS_TABLE SET last_ranking = NOW() " +
+                " WHERE season = :season AND (last_ranking IS NULL OR last_ranking < :startOfDay) "
+        connection
+            .query(query)
+            .addParameter("season", season)
+            .addParameter("startOfDay", startOfDay)
+            .executeUpdate()
+
+        connection.result == 1
+    }
+
     /** The members who recorded an intention for next season, in no particular order. */
     fun pendingMembers(): List<HouseMember> = DatabaseAccessor.withDao { connection ->
         connection

@@ -642,7 +642,7 @@ nouvelle clé de config.
 
 Trois annonces, pas plus.
 
-**Classement quotidien** — un message le matin, entre 7h et 9h : total des 4 maisons et top joueurs.
+**Classement quotidien** — un message le matin, entre 7h et 9h : total des 4 maisons et meilleur membre de chacune.
 Garde-fou obligatoire : `house_seasons.last_ranking`. Avec un tick de 600 s, la fenêtre 7h–9h contient 18
 ticks ; sans le garde-fou, ça fait 18 messages. Condition : `last_ranking IS NULL` ou antérieur à minuit du
 jour courant. Écrire `last_ranking` juste après l'envoi. Porté par `HouseSeasonService`.
@@ -662,10 +662,50 @@ Textes en français, c'est du contenu vu par les joueurs. Ton et longueur à cal
 `ExamPointsService` (`git show 9c973cf^:app/src/main/kotlin/com/fulgurogo/features/exam/ExamPointsService.kt`),
 qui donne le registre attendu sur ce serveur.
 
-⚠ **À valider** : la formulation exacte des trois messages, et si le classement quotidien liste des joueurs
-ou seulement les 4 maisons.
+**Tranché** : le classement quotidien liste les 4 maisons **et** le meilleur membre de chacune, pas un top
+joueurs global. C'est ce que `standings()` renvoie déjà — un top N inter-maisons aurait demandé une requête de
+plus pour une information que la page des maisons donne mieux.
 
-**Vérification** : envoyer sur un salon de test avant de pointer la vraie clé.
+Trois décisions d'implémentation qui ne sont pas dans la description des annonces :
+
+- **Le classement quotidien réclame `last_ranking` *avant* d'envoyer**, à l'inverse de la clôture. Les deux
+  fréquences n'ont pas le même pire cas : quotidien, un doublon est du spam et un oubli est invisible ; annuel,
+  un doublon est du bruit et un oubli est un récap perdu. Le compromis coûte d'ailleurs moins qu'il n'y paraît,
+  parce qu'il n'y a rien à attendre : `sendMessageEmbeds` passe le message à la file de JDA et rend la main, donc
+  « écrire après l'envoi » n'aurait jamais voulu dire qu'« après la mise en file » et n'aurait rien confirmé sur
+  la réception. Réclamer d'abord a le même sens et ne peut pas doubler.
+- **Les maisons ne sont pas numérotées** dans les messages. L'ordre porte le classement, et un numéro compté sur
+  la position afficherait un 2e et un 3e là où deux maisons sont à égalité — même raison qu'à l'étape 6. La
+  maison gagnante du récap est lue sur les totaux et pas sur la première ligne, donc une vraie égalité est
+  annoncée comme telle au lieu de couronner celle qui a trié première.
+- **`HouseNotifier` ne fait que du texte.** Le *quand* reste dans les appelants, parce que les garde-fous sont des
+  lignes de `house_seasons` et qu'un formateur qui irait interroger la base pour décider s'il parle serait bien
+  plus dur à relire. Une ligne de log par annonce, en revanche, est indispensable : `queue()` ne rend rien, donc
+  sans elle on ne peut pas répondre après coup à « le récap est-il parti ? ».
+
+⚠ **À valider** : `HOUSES_PATH` vaut `/maisons`, deviné et pas négocié — le site vit dans un autre dépôt et un
+mauvais chemin fait un lien mort dans chaque classement. Une vérification contre ses routes suffit (cf. point
+ouvert 5).
+
+**Vérification** : faite, contre `fg_dev` et le bot de dev, en trois passes. Le texte a été capturé en logguant
+temporairement le corps des messages, instrumentation retirée depuis — le rendu final dans Discord reste à
+regarder de visu, c'est la seule chose que le serveur ne peut pas contrôler lui-même.
+
+1. *Ouverture* — l'arrivée d'un `CHANGE` et le classement quotidien partent tous les deux. Ordre affiché :
+   `Fils du Froid 12 (2 membres)`, `Nexus Alpha 7 (0 membre)`, `Sabre Silencieux 0 (0 membre)`,
+   `Lunaires d'Æther 0 (1 membre)` — les deux maisons à 0 sont bien départagées par l'effectif. Singuliers et
+   pluriels corrects (`0 point`, `1 membre`, `2 membres`), et `Nexus Alpha` garde ses 7 points avec 0 membre.
+2. *Garde-fou* — redémarrage, nouveau tick le même jour : **aucun** classement renvoyé. Puis
+   `POST /gold/api/house/join` sur un compte libre : une ligne `joinHouse`, une annonce d'arrivée, et un second
+   POST identique répond 409. Ce passage vérifie au réel `addMember`, son 409 et `GoldDatabaseAccessor.player`,
+   que l'étape 7 avait laissés non vérifiés.
+3. *Clôture* — `Les **Fils du Froid** remportent la saison 2025-2026 !`, le classement final des 4 et le meilleur
+   membre de chacune, puis `closed` écrit.
+
+Deux corrections trouvées à l'écriture des messages, pas à la relecture : la ligne du meilleur membre était
+indentée avec des **espaces insécables** (U+00A0) entrées par accident, remplacées par un préfixe `↳` — Discord
+les aurait probablement rendues, mais une indentation invisible dans le source qui dépend du client pour
+s'afficher n'est pas quelque chose à livrer. Le reste du module a été scanné, aucun autre invisible.
 
 ---
 
@@ -715,7 +755,8 @@ bientôt » à propos de la disparition de l'Exam Hunter.
 1. ~~**`house.scanner.enabled`** (étape 5)~~ — écarté : `fg_dev` isole déjà les écritures locales, cf. étape 5.
 2. ~~**Taille du lot du scanner** (étape 5)~~ — 50.
 3. ~~**Intervalles**~~ — 90/30 pour le scanner (étape 5), 120/600 pour la saison (étape 9), tous retenus.
-4. **Formulation des messages Discord** (étape 10), et contenu du classement quotidien.
+4. ~~**Formulation des messages Discord** (étape 10), et contenu du classement quotidien~~ — écrits et vérifiés,
+   cf. étape 10. Reste ⚠ `HOUSES_PATH` (`/maisons`), à confirmer avec les routes du site.
 5. **Contrat avec le dépôt du site** — la forme des réponses de `/gold/api/houses` et `/gold/api/house/{slug}`
    est écrite à l'étape 6 et implémentée, mais ⚠ elle n'a pas été confirmée avec le front : c'est un contrat
    posé, pas un contrat négocié. Reste entière la convention de nommage des blasons à partir du slug, que le
