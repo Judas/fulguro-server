@@ -8,6 +8,18 @@ application {
     mainClass.set(providers.gradleProperty("fulgurogo.main.class").get())
 }
 
+/**
+ * Run from the repository root, not from `app/`.
+ *
+ * `ssh.private.key.file` in config.properties is a path relative to the root, and JavaExec would otherwise resolve it
+ * against this subproject — so the debug SSH tunnel died on a FileNotFoundException, the pool never reached MySQL and
+ * every service stopped on its first tick. IntelliJ already runs from the root, which is why the failure only ever
+ * showed up from Gradle.
+ */
+tasks.named<JavaExec>("run") {
+    workingDir = rootProject.projectDir
+}
+
 dependencies {
     implementation(project(":modules:common"))
     implementation(project(":modules:discord"))

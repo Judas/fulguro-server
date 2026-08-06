@@ -21,7 +21,7 @@ compiling and running.
 ./gradlew build                  # compile everything
 ./gradlew :modules:ogs:build     # compile a single module
 ./gradlew :app:run               # run the whole app locally (needs config.properties, see below)
-./gradlew :app:shadowJar         # fat jar -> app/build/libs/app-<version>-all.jar
+./gradlew :app:shadowJar         # fat jar -> app/build/libs/app-<version>-all.jar (ships; do NOT run it locally)
 ./release.sh                     # prod build: swaps in prod config, shadowJar, moves to export/, restores dev config
 ```
 
@@ -51,6 +51,26 @@ against a prod config does not NPE.
 When `debug=true`, `App.main` opens an SSH tunnel (`SSHConnector`, jsch, key at `ssh.private.key.file`) because the
 server's MySQL only accepts local connections; `DatabaseAccessor` then connects to `ssh.forwarded.port` instead of
 `db.port`.
+
+**Run it with `./gradlew :app:run`, or from IntelliJ. Never from the fat jar.** The `run` task pins
+`workingDir` to the repository root (`app/build.gradle.kts`) because `ssh.private.key.file` is a path relative to the
+root and JavaExec defaults to the subproject — IntelliJ already runs from the root, which is why this only ever broke
+from Gradle. The fat jar is worse and fails in a way no working directory fixes: jsch ships as a **multi-release jar**
+and shadowJar copies its `META-INF/versions/**` classes without carrying `Multi-Release: true` into the merged
+manifest, so the JVM silently uses the Java 8 baseline classes, which have no modern EdDSA — the ed25519 key then
+fails as `Auth fail for methods 'publickey,password'` while `ssh -i` with that same key works. Production never
+notices because it runs `debug=false` and connects to MySQL directly.
+
+Each failure mode is quiet in its own way, and both look like a broken change rather than a broken launch: no tunnel
+means Hikari cannot reach MySQL, so every service dies on its first tick and every DB-backed route answers 500 while
+`/gold/api/health` reports the whole registry unhealthy. Check the startup log for
+`Forwarded port localhost:… -> localhost:3306` before believing anything else. And do read it on the console:
+`simplelogger.properties` points `logFile` at the production path `/root/logs/…`, which does not exist locally, so
+slf4j-simple prints a `FileNotFoundException` at startup and then logs to stderr anyway.
+
+If the tunnel is the only thing in the way, `ssh -i app/src/main/resources/id_ed25519 -N -L 9876:localhost:3306
+root@<ssh.host>` opens it by hand: `SSHConnector` swallows its own failure and the app connects to
+`ssh.forwarded.port` regardless of who opened it.
 
 The tunnel goes to the prod server either way, but the two configs pick different schemas on it: `db.name=fg_dev` in
 `config.properties.dev`, `db.name=fg_prod` in `config.properties.prod`. So a local `./gradlew :app:run` writes to
