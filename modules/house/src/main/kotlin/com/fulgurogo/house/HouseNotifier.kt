@@ -23,7 +23,7 @@ import com.fulgurogo.house.db.model.ranked
  */
 object HouseNotifier {
     // TODO Emoji update when ready
-    private const val EMOJI = ":shield:"
+    private const val EMOJI = ":homes:"
     private const val HOUSES_PATH = "/houses"
 
     /**
@@ -35,13 +35,13 @@ object HouseNotifier {
      */
     fun notifyArrival(discordId: String, house: House) = send(
         title = "$EMOJI Une nouvelle recrue chez les ${house.name} !",
-        message = "**${nameOf(discordId)}** rejoint les **${house.name}**.\n*${house.tagline}*"
+        message = "**${nameOf(discordId)}** rejoint la maison **${house.name}**.\n*${house.tagline}*"
     )
 
     /** Today's standing: the four houses in order, each with its best current member. */
     fun notifyDailyRanking(season: String, standings: List<HouseStanding>) = send(
         title = "$EMOJI Classement des Maisons",
-        message = standings.ranked().joinToString("\n") { line(it) } + "\n\n" + fullRankingLink()
+        message = standings.ranked().joinToString("\n\n") { line(it) } + "\n\n" + fullRankingLink()
     )
 
     /**
@@ -58,14 +58,14 @@ object HouseNotifier {
 
         val headline = when {
             best == 0 -> "Aucune maison n'a marqué cette saison."
-            winners.size == 1 -> "Les **${winners.first().house.name}** remportent la saison $season !"
-            else -> "La saison $season se termine sur une égalité entre " +
-                    winners.joinToString(" et ") { "les **${it.house.name}**" } + " !"
+            winners.size == 1 -> "La maison **${winners.first().house.name}** remporte la saison $season !"
+            else -> "La saison $season se termine sur une égalité entre les maisons " +
+                    winners.joinToString(" et ") { "**${it.house.name}**" } + " !"
         }
 
         send(
             title = "$EMOJI Fin de la saison $season",
-            message = headline + "\n\n" + ordered.joinToString("\n") { line(it) } + "\n\n" + fullRankingLink()
+            message = headline + "\n\n" + ordered.joinToString("\n\n") { line(it) } + "\n\n" + fullRankingLink()
         )
     }
 
@@ -88,7 +88,7 @@ object HouseNotifier {
      * the client collapses it, and it is the one part of these messages the server cannot check for itself.
      */
     private fun leaderLine(leader: HouseRankedMember): String =
-        "↳ En tête : ${leader.discordName ?: "?"} *(${points(leader.total())})*"
+        "↳ Leader : ${leader.discordName ?: "?"} *(${points(leader.total())})*"
 
     private fun points(total: Int): String = "**$total point${if (total > 1) "s" else ""}**"
 
