@@ -171,7 +171,16 @@ house services start at 90s and 120s, behind `GoldService`, so a cold start does
    overridable for dev with `house.period.override`), July and August are the break, and the once-a-year events —
    applying the summer intentions, closing a season, posting the daily ranking — are each guarded by a column of
    `house_seasons` rather than by the calendar, because the calendar cannot say whether something has already been
-   done. Announcements go through `HouseNotifier`.
+   done. Announcements go through `HouseNotifier`, and the Discord role that goes with a membership through
+   `HouseRoles` — both have the same three callers (the `join` route, and the `CHANGE` and `LEAVE` intentions), which is
+   why they sit side by side. The four role ids are config, `house.role.<slug lowercased>`, next to the `bot.*` keys and
+   split between dev and prod the same way: a role id only means anything on the guild `bot.guild.id` names, so a local
+   run dresses players on the test server by construction. An empty value means the house hands out no role, logged and
+   skipped. Granting is best-effort by design — the database is the record of who is in which house, so a disconnected
+   bot or a role sitting above the bot's own in the hierarchy costs a log line, never a failed join, and roles can
+   therefore drift from `house_members`. Two things have to hold on the guild or every grant fails the same way: the bot
+   needs **Manage Roles**, and its own role has to sit **above** the four house roles — `DiscordBot` checks the second
+   up front (`canInteract`) and names it in the log, since it is the one nobody guesses.
 5. `ApiModule` starts Javalin on `gold.api.port`. The players and games routes come almost entirely out of two MySQL
    views, `api_players` and `api_games`. The house routes do not: their figures are counted over the *current* season,
    which only Kotlin knows, so they are hand-written queries in `HouseDatabaseAccessor` and the `house` block of a

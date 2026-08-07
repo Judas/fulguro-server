@@ -60,6 +60,14 @@ object HouseDatabaseAccessor {
             .executeAndFetchFirst(House::class.java)
     }
 
+    /**
+     * One house by internal id, or null when no house has it.
+     *
+     * The id-keyed counterpart of [house], for the callers that hold a `house_members` row rather than a slug — the
+     * season transition needs the house a member is leaving, and only its id is written down.
+     */
+    fun house(id: Int): House? = DatabaseAccessor.withDao { connection -> house(connection, id) }
+
     /** The player's membership, or null when they are in no house. */
     fun member(discordId: String): HouseMember? = DatabaseAccessor.withDao { connection ->
         member(connection, discordId)

@@ -26,6 +26,7 @@ import com.fulgurogo.house.HouseAction
 import com.fulgurogo.house.HouseAssignment
 import com.fulgurogo.house.HouseNotifier
 import com.fulgurogo.house.HousePeriod
+import com.fulgurogo.house.HouseRoles
 import com.fulgurogo.house.HouseSeason
 import com.fulgurogo.house.db.HouseDatabaseAccessor
 import com.fulgurogo.ogs.api.OgsApiClient
@@ -180,9 +181,10 @@ class Api {
         }
 
         log(TAG, "joinHouse $discordId joined ${house.slug}")
-        // Announced only past the write that decided it, and only by the caller that won it -- the addMember guard above
-        // is what makes two simultaneous joins produce one arrival message instead of two.
+        // Announced and dressed only past the write that decided it, and only by the caller that won it -- the addMember
+        // guard above is what makes two simultaneous joins produce one arrival message and one role grant, not two.
         HouseNotifier.notifyArrival(discordId, house)
+        HouseRoles.grant(discordId, house)
         context.standardResponse(ApiHouseIdentity.from(house))
     }
 

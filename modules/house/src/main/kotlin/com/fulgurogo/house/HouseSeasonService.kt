@@ -126,6 +126,10 @@ class HouseSeasonService : PeriodicFlowService(INITIAL_DELAY_IN_SECONDS, INTERVA
             HouseAction.LEAVE -> {
                 HouseDatabaseAccessor.removeMember(member.discordId)
                 log(TAG, "${member.discordId} left house ${member.houseId}")
+                // The role goes with the membership. Nothing announces a departure -- a player leaving quietly is the
+                // point of the summer choice -- but leaving them wearing the crest of a house they are no longer in
+                // would make the roles say something the ladder does not.
+                HouseRoles.revoke(member.discordId, member.houseId)
             }
 
             HouseAction.CHANGE -> {
@@ -144,6 +148,11 @@ class HouseSeasonService : PeriodicFlowService(INITIAL_DELAY_IN_SECONDS, INTERVA
                 log(TAG, "${member.discordId} changed to ${house.slug}")
                 // The same announcement a join makes, from the same function, so the two cannot drift apart
                 HouseNotifier.notifyArrival(member.discordId, house)
+                // Both roles, in that order, and both after the write that decided the move -- `member` is the snapshot
+                // taken before it, so it still names the house being left. A crash between the two leaves the player
+                // wearing two crests, which is visible and fixable; revoking first would risk leaving them with none.
+                HouseRoles.revoke(member.discordId, member.houseId)
+                HouseRoles.grant(member.discordId, house)
             }
         }
     }
