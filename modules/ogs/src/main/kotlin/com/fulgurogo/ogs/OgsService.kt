@@ -53,19 +53,17 @@ class OgsService : StalestFirstService<OgsUserInfo>(0, 15, TAG) {
 
     private fun fetchPlayerGames(stale: OgsUserInfo): List<OgsGame> {
         // OGS puts ongoing correspondence games at the top of the list
-        // So we parse results until we get a page with live games
-        var pageIndex = 0
-        var games: MutableList<OgsApiGame>
-        do {
-            pageIndex++
-            val route = "${Config.get("ogs.api.url")}/players/${stale.ogsId}/games?ordering=-ended&page=$pageIndex"
-            games = ogsApiClient.get(route, OgsApiGameList::class.java).results.toMutableList()
-        } while (games.all { it.isCorrespondence() })
+        // So we parse results until we get a page with live games.
+        // Paging follows the `next` URL the API hands us rather than a page counter we build ourselves: a player with
+        // few games has no page 2, and asking for one is a 404.
+        val firstRoute = "${Config.get("ogs.api.url")}/players/${stale.ogsId}/games?ordering=-ended"
+        var page = ogsApiClient.get(firstRoute, OgsApiGameList::class.java)
+        while (page.nextRoute() != null && page.results.all { it.isCorrespondence() })
+            page = ogsApiClient.get(page.nextRoute()!!, OgsApiGameList::class.java)
 
         // Then we get the following page, this ensures having AT LEAST 1 full page of live games
-        pageIndex++
-        val route = "${Config.get("ogs.api.url")}/players/${stale.ogsId}/games?ordering=-ended&page=$pageIndex"
-        games.addAll(ogsApiClient.get(route, OgsApiGameList::class.java).results)
+        val games = page.results.toMutableList()
+        page.nextRoute()?.let { games.addAll(ogsApiClient.get(it, OgsApiGameList::class.java).results) }
 
         return games.mapNotNull {
             // Skip cancelled games
