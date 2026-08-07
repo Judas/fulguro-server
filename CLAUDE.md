@@ -40,9 +40,10 @@ name, so `dev.config.properties` or `config.properties.dev.properties` silently 
 `Config.get(key)` reads that file with no defaults and no error handling, so a missing key surfaces as an NPE deep in
 a service. Keys currently required include `debug`, `db.*`, `ssh.*`, `bot.*`, `user.agent`,
 `global.read.timeout.ms`, `gold.api.port`, `gold.discord.auth.*`, the per-platform blocks (`kgs.archives.url`,
-`kgs.game.link`, `ogs.*`) and `frontend.url`. `house.period.override` is the one exception to "no defaults": it is read
-through `Config.getOrNull` and may be empty, which is what it is set to in all three files — see the houses in the data
-flow below. The authoritative values are the ones deployed on the prod server; both
+`kgs.game.link`, `kgs.login.*`, `ogs.*`) and `frontend.url`. Two blocks are the exception to "no defaults", both read
+through `Config.getOrNull` and both allowed to be empty: `house.period.override`, which is empty in all three files, and
+the four `house.role.*` keys, where an empty value means that house gives its members no Discord role — see the houses in
+the data flow below. The authoritative values are the ones deployed on the prod server; both
 variant files hold real credentials in plaintext, which is why the gitignore pattern has to match every
 `config.properties*` name.
 
@@ -242,6 +243,20 @@ Scraping is fragile and rate-sensitive. `common/utilities/HttpUtilities.kt` cent
 jsoup `scrap(url)` helper, which sends a full browser-like header set and the configured `user.agent`. Services add
 their own throttling (`ensureSpamDelay()` in `KgsService`) and retry-once-then-give-up patterns. Reuse these rather
 than building new clients; changes to headers/timings here have broken scrapers before.
+
+`gameArchives.jsp` is **behind a KGS login** — a servlet form login, `user`/`password` posted to `login.jsp`, session
+kept in a `JSESSIONID` cookie. `KgsSession` owns it: it scraps, notices a login page, authenticates and retries once,
+so the session lifetime never has to be known and an expired one costs a single wasted request. One login covers every
+archive page whichever player and month, KGS keeps the same `JSESSIONID` across the login rather than reissuing it, and
+several sessions on one account coexist, so a dev run and prod can share the `kgs.login.user` account. Jsoup holds no
+session state of its own and the `okHttpClient` cookie jar is a different stack, hence the cookie map threaded through
+`scrap`/`postForm` by hand. The SGF files on `files.gokgs.com` are *not* gated, which is why `fetchSgf` still needs
+none of this.
+
+Detection has to read the body: the wall answers **200** with a login page, and so does a rejected password. Left
+unnoticed that parses as an archive page with no games table, and a tick "succeeds" having imported nothing and set
+every rank back to `'?'` — the same shape of silent failure as the French-page bug below. `KgsSession` keys on
+`form[action*=login.jsp]` rather than on the page title, and throws when a login does not take.
 
 `Accept-Language` is the sharpest of those edges and is now English. gokgs.com honours it, and the French value it
 used to carry (for the FFG and EGF sites, both gone) made it serve French archive pages, where `KgsService` dropped

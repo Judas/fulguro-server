@@ -5,7 +5,6 @@ import com.fulgurogo.common.logger.log
 import com.fulgurogo.common.service.StalestFirstService
 import com.fulgurogo.common.utilities.DATE_ZONE
 import com.fulgurogo.common.utilities.okHttpClient
-import com.fulgurogo.common.utilities.scrap
 import com.fulgurogo.common.utilities.sgfProperty
 import com.fulgurogo.common.utilities.toDate
 import com.fulgurogo.discord.reconcileGames
@@ -22,11 +21,12 @@ import java.text.ParsePosition
 import java.text.SimpleDateFormat
 import java.time.ZonedDateTime
 import java.util.*
+import kotlin.time.Duration.Companion.milliseconds
 
 private const val UNKNOWN_RANK = "?"
 
 /** How many archive pages beyond the two a refresh already fetches may be read looking for a settled rank. */
-private const val MAX_EXTRA_RANK_PAGES = 3
+private const val MAX_EXTRA_RANK_PAGES = 6
 private val MONTH_LINK_YEAR = Regex("[?&]year=(\\d+)")
 private val MONTH_LINK_MONTH = Regex("[?&]month=(\\d+)")
 
@@ -106,8 +106,9 @@ class KgsService : StalestFirstService<KgsUserInfo>(0, 60, TAG) {
             }
     }
 
-    private fun scrapArchives(kgsId: String, year: Int, month: Int): Document = try {
-        scrap("${Config.get("kgs.archives.url")}?user=$kgsId&year=$year&month=$month")
+    /** Archive pages are behind a KGS login — [KgsSession] holds the session and renews it on its own. */
+    private suspend fun scrapArchives(kgsId: String, year: Int, month: Int): Document = try {
+        KgsSession.scrap("${Config.get("kgs.archives.url")}?user=$kgsId&year=$year&month=$month") { ensureSpamDelay() }
     } catch (e: IOException) {
         log(TAG, "scrapArchives FAILURE ${e.message}")
         throw Exception(e)
@@ -270,7 +271,7 @@ class KgsService : StalestFirstService<KgsUserInfo>(0, 60, TAG) {
         }
 
         // Retry once after delay
-        delay(1000)
+        delay(1000.milliseconds)
         log(TAG, "Fetching SGF ERROR: Waiting then retrying")
         return fetchSgf(sgfLink, false)
     }
@@ -296,10 +297,10 @@ class KgsService : StalestFirstService<KgsUserInfo>(0, 60, TAG) {
     private fun String.isSettledRank(): Boolean = !endsWith("?") && any { it.isDigit() }
 
     private suspend fun ensureSpamDelay() {
-        // Delay to avoid spamming OGS API: ensure between 500ms & 1500ms free time
+        // Delay to avoid spamming KGS API: ensure between 500ms & 1500ms free time
         val now = ZonedDateTime.now(DATE_ZONE)
         if (lastNetworkCallTime.plusSeconds(1).isAfter(now))
-            delay(500)
+            delay(500.milliseconds)
         lastNetworkCallTime = ZonedDateTime.now(DATE_ZONE)
     }
 }

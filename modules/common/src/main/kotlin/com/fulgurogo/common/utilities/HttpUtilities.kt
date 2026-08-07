@@ -25,8 +25,31 @@ val okHttpClient: OkHttpClient by lazy {
         .build()
 }
 
-fun scrap(url: String): Document {
-    val response: Connection.Response = Jsoup.connect(url)
+/**
+ * Fetches [url] as a browser would, sending [cookies] and returning the response so its own cookies can be kept.
+ *
+ * Jsoup carries no session state of its own — every connection starts empty, and the [okHttpClient] cookie jar is a
+ * different stack entirely — so anything behind a login has to thread its cookies through here by hand. `KgsSession`
+ * is the one caller that does; [scrap] with no cookies is the stateless call for everything else.
+ */
+fun scrapResponse(url: String, cookies: Map<String, String> = mapOf()): Connection.Response =
+    browserConnection(url)
+        .cookies(cookies)
+        .method(Connection.Method.GET)
+        .execute()
+
+fun scrap(url: String, cookies: Map<String, String> = mapOf()): Document = scrapResponse(url, cookies).parse()
+
+/** Posts [data] as a form, for the login forms that stand in front of a scraped page. */
+fun postForm(url: String, data: Map<String, String>, cookies: Map<String, String> = mapOf()): Connection.Response =
+    browserConnection(url)
+        .cookies(cookies)
+        .data(data)
+        .method(Connection.Method.POST)
+        .execute()
+
+private fun browserConnection(url: String): Connection {
+    return Jsoup.connect(url)
         .header(
             "Accept",
             "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8"
@@ -51,8 +74,4 @@ fun scrap(url: String): Document {
         .userAgent(Config.get("user.agent"))
         .referrer("https://www.google.com")
         .timeout(Config.get("global.read.timeout.ms").toInt())
-        .method(Connection.Method.GET)
-        .execute()
-
-    return response.parse()
 }
