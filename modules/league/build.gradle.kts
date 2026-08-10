@@ -7,4 +7,5 @@ dependencies {
     implementation(project(":modules:house"))
     implementation(project(":modules:gold"))
     implementation(project(":modules:ogs"))
+    implementation(libs.gson)
 }

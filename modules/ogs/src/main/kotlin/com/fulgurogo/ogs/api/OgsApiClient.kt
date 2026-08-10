@@ -35,12 +35,19 @@ class OgsApiClient {
     fun <T : Any> post(route: String, body: Any, className: Class<T>): T =
         gson.fromJson(post(route, gson.toJson(body)), className)
 
-    fun get(route: String): String {
+    /**
+     * [headers] is additive and empty by default, which is what keeps `OgsService` and `OgsRealTimeService` behaving
+     * exactly as before. It exists for the league, whose endpoints need the two `X-OGS-LEAGUE*` headers on every request.
+     *
+     * `User-Agent` is set first so a caller passing one of its own overrides it rather than duplicating it.
+     */
+    fun get(route: String, headers: Map<String, String> = mapOf()): String {
         ensureSpamDelay()
 
         val request = Request.Builder()
             .url(route)
             .header("User-Agent", Config.get("user.agent"))
+            .apply { headers.forEach { (name, value) -> header(name, value) } }
             .get().build()
 
         return okHttpClient.newCall(request).execute().use { response ->
@@ -53,18 +60,40 @@ class OgsApiClient {
         }
     }
 
-    fun post(route: String, body: String): String {
+    fun post(route: String, body: String, headers: Map<String, String> = mapOf()): String {
         ensureSpamDelay()
 
         val requestBody = body.toRequestBody("application/json".toMediaType())
         val request = Request.Builder()
             .url(route)
             .header("User-Agent", Config.get("user.agent"))
+            .apply { headers.forEach { (name, value) -> header(name, value) } }
             .post(requestBody).build()
 
         return okHttpClient.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
                 val error = Exception("POST FAILURE ${response.code} on $route")
+                log(TAG, error.message!!)
+                throw error
+            }
+            response.body.string()
+        }
+    }
+
+    /** Only the league uses this: `PUT /member/{id}` is how a member is registered, and it has no other caller. */
+    fun put(route: String, body: String, headers: Map<String, String> = mapOf()): String {
+        ensureSpamDelay()
+
+        val requestBody = body.toRequestBody("application/json".toMediaType())
+        val request = Request.Builder()
+            .url(route)
+            .header("User-Agent", Config.get("user.agent"))
+            .apply { headers.forEach { (name, value) -> header(name, value) } }
+            .put(requestBody).build()
+
+        return okHttpClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                val error = Exception("PUT FAILURE ${response.code} on $route")
                 log(TAG, error.message!!)
                 throw error
             }

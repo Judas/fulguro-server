@@ -90,6 +90,24 @@ joueurs.
 ✅ **`league_rating` reste `null`** et le rating envoyé apparaît dans `pending_rating_change` : il ne s'applique donc
 qu'à la liaison du compte. OGS entretient ensuite son propre classement de ligue.
 
+✅ **Et voici les deux mêmes champs une fois le compte lié**, mesuré le 10 août au soir, après que JudasImov ait cliqué
+son lien d'invitation :
+
+```json
+{"membership_id": "a84de96992186b8ae3528bbb083fe951",
+ "league_rating": {"rating": 1500.0, "deviation": 350.0, "volatility": 0.06},
+ "ogs_player": "JudasImov",
+ "pending_rating_change": {"rating": 1500}}
+```
+
+Deux choses utiles. `ogs_player` porte le **pseudo OGS** du joueur, donc un `GET /member/{id}` suffit à savoir si un
+membre a réellement connecté son compte — sans rien demander à l'API des parties. Et `league_rating` est un objet
+Glicko complet, pas un entier : c'est bien OGS qui tient ce classement.
+
+⚠ En revanche `pending_rating_change` **reste renseigné après la liaison**, et rien ne dit quand il est consommé. Un
+`PUT /member` rejoué sur un membre déjà lié laisse donc un changement de rating en attente. Tant que la question n'est
+pas tranchée, ne re-`PUT`er que les membres dont on n'a pas encore l'inscription — ce que fait `ogs_registered`.
+
 `DELETE /member/{member_id}` existe (spec, non essayé). Un membre **peut** donc être retiré d'une ligue, contrairement
 à ce que le wiki laisse croire.
 
@@ -226,7 +244,11 @@ n'accepte que la lecture.
 
 ## Ce qui reste inconnu
 
-- Le type réel de `black_lost` / `white_lost` / `outcome` sur une rencontre terminée, et la forme d'`outcome`.
+- Le type réel de `black_lost` / `white_lost` / `outcome` sur une rencontre terminée, et la forme d'`outcome`. Sur une
+  rencontre non commencée les trois sont `null`, donc `OgsLeagueMatch` les mappe en `String?` — Gson y lit indifféremment
+  un booléen, un nombre ou une chaîne, ce qui dégrade une surprise en valeur bizarre plutôt qu'en tick perdu.
+- Quand `pending_rating_change` est consommé, et si un `PUT /member` rejoué après la liaison peut réinitialiser le
+  `league_rating` d'un joueur en cours de saison.
 - Ce que `game` contient exactement, et le `speed` que la partie créée déclare — ce qui décide si une partie de ligue
   est vue comme `live` par les consommateurs de `ogs_games`.
 - Ce que fait `PUT /matches/`, et sur quelle clé il retrouve la rencontre.
