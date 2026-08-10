@@ -1,0 +1,261 @@
+# L'API Custom OGS Online Leagues, telle qu'elle est
+
+Référence de l'API que la Ligue d'Aurak utilise (`doc/plan-ligue.md`). Elle existe parce que les deux sources
+publiques sont incomplètes ou trompeuses prises séparément, et parce qu'une partie de ce qui suit a été **mesurée**,
+pas lue.
+
+**Sources**
+
+| Source | Ce qu'elle donne | Ce qu'elle ne donne pas |
+|---|---|---|
+| [Wiki : Custom OGS Online Leagues](https://github.com/online-go/online-go.com/wiki/Custom-OGS-Online-Leagues) | Le mode d'emploi, l'authentification, les quatre appels du parcours normal, le contact pour obtenir une clé | 4 champs sur 35 en réponse, rien sur l'idempotence, les méthodes, la pagination, le filtrage |
+| [Doc d'API](https://online-go.com/api-docs/) — spec brute sur [`/api-docs/schema/?format=json`](https://online-go.com/api-docs/schema/?format=json) | La spec OpenAPI 3.0.3 complète : tous les champs, lesquels sont `readOnly`, tous les endpoints | Aucun exemple, aucune sémantique — et elle expose des endpoints dangereux sans le dire |
+| Le dépôt [`online-go/online-go.com`](https://github.com/online-go/online-go.com) | Les types du frontend (`src/models/onlineleague.d.ts`), le parcours joueur | Le backend est **fermé** : 8 dépôts publics dans l'organisation, aucun n'est le serveur |
+
+La page `/api-docs/` est rendue en JavaScript : un `curl` dessus ne rend que l'en-tête. La spec exploitable est sur
+`/api-docs/schema/?format=json`, ~590 Ko.
+
+**Vérifié le 10 août 2026**, contre la ligue de production `FulguroGo`. Ce qui est marqué ✅ a été exécuté ; le reste
+est lu dans la spec.
+
+---
+
+## Authentification
+
+Deux en-têtes sur chaque requête :
+
+```
+X-OGS-LEAGUE:      <ogs.league.id>
+X-OGS-LEAGUE-AUTH: <ogs.league.auth>
+```
+
+Les valeurs sont dans `config.properties` (gitignoré), sous ces deux clés. ✅ Sans les en-têtes, les endpoints
+d'organisateur répondent **403**. Conséquence utile : les liens d'invitation, qui sont des secrets de joueur, ne
+peuvent pas être moissonnés par un tiers via l'API.
+
+L'hôte est `https://online-go.com/api/v1/online_league`. ✅ Le wiki documente ses exemples sur
+`beta.online-go.com`, mais la production répond aussi bien — `ogs.api.url` de `config.properties` convient donc comme
+base, le code ajoutant `/online_league`.
+
+⚠ **Deux régimes d'authentification cohabitent.** `/matches/...` (pluriel) est l'API de l'organisateur et attend les
+deux en-têtes. `/match/{id}` (singulier) est l'API du joueur et attend un compte utilisateur OGS : ✅ un
+`DELETE /match/13688` avec les en-têtes de ligue répond **401** « Authentication credentials were not provided ». Ne
+pas confondre les deux en lisant le frontend, qui n'utilise que le singulier.
+
+---
+
+## Surface complète
+
+Méthodes confirmées par `OPTIONS` ✅ et par la spec.
+
+| Endpoint | Méthodes | Usage |
+|---|---|---|
+| `GET,PUT,DELETE /member/{member_id}` | ✅ GET, PUT, DELETE | Inscrire un membre, lire son état, le retirer |
+| `GET,POST /matches/` | ✅ GET, POST | Lister et créer des rencontres |
+| `PUT,DELETE /matches/` | spec seulement | ⚠ voir les dangers plus bas |
+| `GET /matches/{match_id}` | ✅ GET, HEAD, OPTIONS | Lire une rencontre. **Ni PUT ni DELETE ici** |
+| `GET,PUT,PATCH /callback` | ✅ GET, PUT, PATCH | Le callback de fin de partie |
+| `GET,POST,DELETE /leagues/` | spec seulement | Créer et supprimer des ligues |
+| `GET,PUT /commence` | spec seulement | Le parcours joueur, appelé par le navigateur du joueur — **jamais par nous** |
+| `GET /match/{id}` | ✅ GET | Le même objet, côté joueur |
+
+---
+
+## `PUT /member/{member_id}`
+
+Le `member_id` est **choisi par l'appelant** : il est dans l'URL, pas retourné. L'API ne demande jamais l'identifiant
+OGS du joueur.
+
+```json
+{"rating": 1500}
+```
+
+Réponse :
+
+```json
+{"membership_id": "<le member_id envoyé>",
+ "league_rating": null,
+ "ogs_player": null,
+ "pending_rating_change": {"rating": 1500}}
+```
+
+✅ **Idempotent, et le code HTTP distingue les deux cas** : **201** à la création, **200** aux appels suivants, corps
+identique. Un `PUT` rejoué est donc sans effet de bord — ce qui autorise à ne rien mémoriser de plus qu'un booléen
+« déjà inscrit » de son côté, et à le perdre sans dommage.
+
+✅ **`ogs_player` reste `null` après inscription.** Le lien avec un vrai compte OGS se fait quand le joueur clique son
+lien d'invitation et se connecte, pas ici. C'est la propriété qui rend inutile de connaître l'identifiant OGS des
+joueurs.
+
+✅ **`league_rating` reste `null`** et le rating envoyé apparaît dans `pending_rating_change` : il ne s'applique donc
+qu'à la liaison du compte. OGS entretient ensuite son propre classement de ligue.
+
+`DELETE /member/{member_id}` existe (spec, non essayé). Un membre **peut** donc être retiré d'une ligue, contrairement
+à ce que le wiki laisse croire.
+
+---
+
+## `POST /matches/`
+
+Champs modifiables, d'après la spec. Tout le reste de l'objet est `readOnly`.
+
+| Champ | Type | Note |
+|---|---|---|
+| `league_match_id` | string, nullable | L'identifiant de l'appelant. C'est la clé de l'idempotence |
+| `name` | string, nullable | Aussi utilisé comme nom de la partie |
+| `black_member_id` | string, **requis** | |
+| `white_member_id` | string, **requis** | |
+| `rules` | string, nullable | `japanese`, … |
+| `handicap` | int, nullable | `0` pour une partie à égalité |
+| `height`, `width` | int, nullable | `19` |
+| `time_control` | string, nullable | `byoyomi`, `canadian`, `fischer`, `simple`, `absolute` |
+| `main_time`, `periods`, `period_time` | int, nullable | Paramètres de `byoyomi` |
+| `stones_per_period` | int, nullable | `canadian` |
+| `time_increment`, `initial_time`, `max_time` | int, nullable | `fischer` |
+| `per_move` | int, nullable | `simple` |
+| `total_time` | int, nullable | `absolute` |
+| `game`, `started`, `finished`, `cancelled` | int / bool, nullable | ⚠ modifiables, voir les dangers |
+
+✅ **Les réglages de partie sont donc ceux de l'appelant, rencontre par rencontre**, et non une configuration figée sur
+la ligue. Le wiki ne documente que `handicap` et laisse croire le contraire.
+
+✅ **La validation est réelle et croisée.** `time_control: "byoyomi"` sans `periods` répond **400** :
+`{"error": "Missing parameters for byoyomi time control (periods, period_time, main_time)"}`.
+
+✅ **Idempotent sur `league_match_id`**, avec la même sémantique que `PUT /member` : **201** à la création, **200**
+ensuite, **même `id`, mêmes liens d'invitation, corps strictement identique**. Reprendre une création interrompue se
+réduit donc à rejouer le `POST`.
+
+⚠ **`league_match_id` est la seule clé de cette idempotence.** Deux appels qui portent le même `league_match_id` avec
+des joueurs différents renvoient donc la **première** rencontre, en répondant 200 comme si tout allait bien. C'est
+silencieux, et c'est pourquoi cet identifiant doit être unique par ce qu'il désigne réellement — pas seulement par
+saison et par joueur, mais aussi par environnement, si plusieurs environnements partagent une ligue.
+
+Exemple de réponse, ✅ celle de la sonde `13688` (liens d'invitation tronqués, ce sont des secrets de joueur) :
+
+```json
+{ "id": 13688,
+  "league_match_id": "probe_idempotence_01",
+  "name": "Test Match Ligue #01",
+  "black_member_id": "a84de96992186b8ae3528bbb083fe951",
+  "black_invite": "https://online-go.com/online-league/league-player?side=black&id=<clé 22 car.>",
+  "white_member_id": "ee78396dd886726c7292e259389f180a",
+  "white_invite": "https://online-go.com/online-league/league-player?side=white&id=<clé 22 car.>",
+  "spectator_link": "https://online-go.com/online-league/league-game/13688",
+  "league": "FulguroGo",
+  "rules": "japanese", "handicap": 0, "height": 19, "width": 19,
+  "time_control": "byoyomi", "main_time": 2400, "periods": 5, "period_time": 30,
+  "stones_per_period": null, "time_increment": null, "initial_time": null,
+  "max_time": null, "per_move": null, "total_time": null,
+  "game": null, "started": false, "finished": false, "cancelled": false,
+  "outcome": null, "black_lost": null, "white_lost": null,
+  "annulled": null, "moderator_annulled": null, "annulment_reason": null,
+  "rating_complete": false, "black_member_rating": null, "white_member_rating": null }
+```
+
+`id` est un **entier**. Les deux liens joueurs portent une clé courte de 22 caractères ; le lien spectateur ne contient
+que l'`id` de la rencontre, donc lui seul est publiable.
+
+**Les neuf champs `readOnly` du résultat** — `outcome`, `black_lost`, `white_lost`, `annulled`,
+`moderator_annulled`, `annulment_reason`, `rating_complete`, `black_member_rating`, `white_member_rating` — sont
+écrits par OGS. Ils suffisent à connaître l'issue d'une rencontre **et son annulation** sans passer par
+`/api/v1/games/{id}` ni par une ingestion de parties. ⚠ La spec les type `string`, ce qui est douteux pour
+`black_lost` / `white_lost` ; leur type réel reste à constater sur une rencontre terminée.
+
+---
+
+## `GET /matches/`
+
+✅ Pagination DRF : `{"count": n, "next": null, "previous": null, "results": [...]}`. Paramètres `page`, `page_size`,
+`ordering`.
+
+✅ **Le filtre `?league_match_id=` existe et est honoré** : une valeur inconnue renvoie `count: 0`.
+
+`GET /matches/{match_id}` ✅ renvoie **exactement le même objet** que le `POST` — un seul modèle à mapper pour les
+trois appels.
+
+---
+
+## `GET|PUT|PATCH /callback`
+
+```json
+{"callback_url_template": "https://<host>/<chemin>/{id}"}
+```
+
+OGS fait un `GET` sur cette URL à la fin de chaque partie, en substituant l'`id`. L'endpoint appelé **doit répondre
+200**, y compris pour un identifiant inconnu : OGS teste l'URL avec `id=0` au moment de l'enregistrement.
+
+✅ **`GET /callback` permet de lire la configuration en place sans la modifier.** À utiliser avant tout `PUT` : le
+`callback_url_template` est **global à la ligue**, donc un `PUT` malencontreux coupe les callbacks de tout le monde.
+Au 10 août 2026, il vaut `{"callback_url_template": null}` — aucun callback n'est enregistré.
+
+---
+
+## `POST|DELETE /leagues/`
+
+```json
+{"name": "<nom>", "auth_key": "<clé>"}
+```
+
+Une ligue **peut** être créée par l'API (spec, non essayé), contrairement à ce que le wiki laisse entendre en
+renvoyant vers anoek ou GreenAsJade. `member_count` est annoncé requis mais `readOnly`, ce qui est une bizarrerie de
+sérialisation DRF. `DELETE /leagues/` existe aussi.
+
+Non essayé, volontairement : créer ou supprimer une ligue avec la clé d'une ligue existante est le genre d'appel dont
+on ne veut pas découvrir la portée par l'expérience.
+
+---
+
+## Les dangers
+
+Trois endpoints à ne jamais appeler sans savoir précisément ce qu'ils font, tous absents du wiki :
+
+1. ⚠ **`DELETE /matches/`** — sur la **collection**, et **sans corps de requête** d'après la spec. Rien ne dit ce
+   qu'il supprime. L'hypothèse la plus naturelle, pour une collection, est « toutes les rencontres de la ligue ».
+   **Ne pas essayer, ne pas coder.** À noter que `DELETE /matches/{match_id}` sur l'élément, lui, répond ✅ **405** :
+   la suppression d'une rencontre précise n'existe pas.
+2. ⚠ **`PUT /matches/`** — sur la collection, avec le même corps qu'un `POST`. Permet vraisemblablement de modifier
+   une rencontre existante, y compris ses champs `started`, `finished` et `cancelled`, qui sont modifiables. C'est
+   probablement la façon d'annuler une rencontre — et probablement aussi celle de fausser un résultat.
+3. ⚠ **`DELETE /leagues/`** — voir plus haut.
+
+Une rencontre créée est donc, en pratique et sauf à explorer `PUT /matches/`, **définitive** : `/matches/{match_id}`
+n'accepte que la lecture.
+
+---
+
+## Ce qui reste inconnu
+
+- Le type réel de `black_lost` / `white_lost` / `outcome` sur une rencontre terminée, et la forme d'`outcome`.
+- Ce que `game` contient exactement, et le `speed` que la partie créée déclare — ce qui décide si une partie de ligue
+  est vue comme `live` par les consommateurs de `ogs_games`.
+- Ce que fait `PUT /matches/`, et sur quelle clé il retrouve la rencontre.
+- Ce que supprime `DELETE /matches/`.
+- Si `PATCH /callback` diffère de `PUT`.
+
+---
+
+## Journal de la sonde du 10 août 2026
+
+Exécutée contre la ligue de production `FulguroGo`, qui ne contenait aucune rencontre avant.
+
+| # | Appel | Résultat |
+|---|---|---|
+| 1 | `PUT /member/ee78396dd886726c7292e259389f180a` (Drooxi) | 201 |
+| 2 | `PUT /member/a84de96992186b8ae3528bbb083fe951` (JudasImov) | 201 |
+| 3 | `PUT /member/…` Drooxi, à nouveau | **200**, corps identique |
+| 4 | `POST /matches/` sans `periods` | **400**, message de validation |
+| 5 | `POST /matches/` complet | **201**, rencontre `13688` |
+| 6 | `POST /matches/` identique | **200**, `13688`, corps identique |
+| 7 | `GET /matches/13688` | 200, même objet que le `POST` |
+| 8 | `GET /matches/` | `count: 1` |
+| 9 | `GET /matches/?league_match_id=zzz_inexistant` | `count: 0` |
+| 10 | `GET /matches/13688` sans en-têtes | **403** |
+| 11 | `DELETE /matches/13688` | **405** |
+| 12 | `DELETE /match/13688` | **401** |
+| 13 | `OPTIONS` sur les quatre endpoints | cf. la surface plus haut |
+| 14 | `GET /callback` | `{"callback_url_template": null}` |
+
+**Ce que la sonde laisse derrière elle, définitivement** : deux membres — Drooxi et JudasImov, dont les `member_id`
+sont ceux que la production utilisera — et la rencontre `13688`, `probe_idempotence_01`, jamais jouée. Les deux
+`member_id` dérivent de `league.member.salt`, donc ils resteront valides tant que ce sel ne change pas.
