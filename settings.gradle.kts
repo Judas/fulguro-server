@@ -8,6 +8,7 @@ include(":modules:ogs")
 include(":modules:gold")
 include(":modules:fgc")
 include(":modules:house")
+include(":modules:league")
 include(":modules:api")
 
 include(":modules:ping")

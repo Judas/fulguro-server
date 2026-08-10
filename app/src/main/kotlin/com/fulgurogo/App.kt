@@ -9,6 +9,7 @@ import com.fulgurogo.fgc.FgcModule
 import com.fulgurogo.gold.GoldModule
 import com.fulgurogo.house.HouseModule
 import com.fulgurogo.kgs.KgsModule
+import com.fulgurogo.league.LeagueModule
 import com.fulgurogo.ogs.OgsModule
 import com.fulgurogo.ping.PingModule
 
@@ -27,6 +28,7 @@ fun main() {
     GoldModule.init()
     FgcModule.init()
     HouseModule.init()
+    LeagueModule.init()
     ApiModule.init(isDebug)
 
     // TODO CardsModule
