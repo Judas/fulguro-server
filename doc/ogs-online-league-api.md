@@ -212,7 +212,38 @@ que l'`id` de la rencontre, donc lui seul est publiable.
 ✅ Pagination DRF : `{"count": n, "next": null, "previous": null, "results": [...]}`. Paramètres `page`, `page_size`,
 `ordering`.
 
-✅ **Le filtre `?league_match_id=` existe et est honoré** : une valeur inconnue renvoie `count: 0`.
+✅ **`results` contient l'objet complet**, les 35 champs, `finished`, `started`, `game`, `outcome`, `black_lost`,
+`annulled` compris. La collection donne donc tout ce que donne `GET /matches/{id}`, pour toutes les rencontres à la fois.
+C'est ce qui rend un balayage en **un seul appel** possible, et le callback superflu.
+
+✅ **N'importe quel champ du modèle est un filtre**, et la spec n'en déclare aucun — elle ne liste que `page`,
+`page_size` et `ordering`. Mesuré sur une ligue ne contenant qu'une rencontre non terminée :
+
+| Requête | `count` | Lecture |
+|---|---|---|
+| `?finished=true` | 0 | filtre honoré |
+| `?finished=false` | 1 | filtre honoré |
+| `?started=true`, `?cancelled=true` | 0 | honorés |
+| `?league_match_id=probe_idempotence_01` | 1 | honoré |
+| `?league_match_id=zzz_inexistant` | 0 | honoré |
+| `?league_match_id__startswith=probe` | 1 | **lookup `__startswith` honoré** |
+| `?league_match_id__startswith=zzz` | 0 | honoré |
+| `?game__isnull=true` | 1 | lookup `__isnull` honoré |
+| `?nawak=xyz` | — | **400** `{"detail":"OnlineLeagueMatches has no field named 'nawak'"}` |
+| `?league_match_id__contains=…`, `?…__in=…` | — | 400, même message : les lookups sont une liste blanche |
+
+✅ **Le point rassurant, c'est la dernière ligne** : un champ inconnu est une **erreur**, pas un filtre ignoré. Le mode de
+panne redouté — construire un balayage sur `?finished=false`, voir le filtre silencieusement ignoré et croire avoir
+filtré — n'existe pas. `ordering`, en revanche, est permissif : `?ordering=nawak` répond 200 et ne trie rien.
+
+⚠ `?page=2` sur un résultat d'une seule page répond **400** `{"detail":"Invalid page."}`, pas une page vide. Une boucle
+de pagination doit suivre `next` et jamais incrémenter `page` à l'aveugle.
+
+Conséquence pour la ligue : puisque `league_match_id` est préfixé `<db.name>_<saison>_<session>_`, un
+`?league_match_id__startswith=fg_prod_2026-2027_8_` rend **exactement les rencontres d'une session, d'une saison et d'un
+environnement**, objets complets. Un appel par balayage, borné pour toujours — il ne grossit pas avec l'historique de la
+ligue — et dev ne voit par construction que ses propres rencontres. Le préfixe, introduit pour éviter les collisions
+d'identifiants, sert donc aussi de clé de requête.
 
 `GET /matches/{match_id}` ✅ renvoie **exactement le même objet** que le `POST` — un seul modèle à mapper pour les
 trois appels.
