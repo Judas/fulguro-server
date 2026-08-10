@@ -144,10 +144,35 @@ la ligue. Le wiki ne documente que `handicap` et laisse croire le contraire.
 ensuite, **même `id`, mêmes liens d'invitation, corps strictement identique**. Reprendre une création interrompue se
 réduit donc à rejouer le `POST`.
 
-⚠ **`league_match_id` est la seule clé de cette idempotence.** Deux appels qui portent le même `league_match_id` avec
-des joueurs différents renvoient donc la **première** rencontre, en répondant 200 comme si tout allait bien. C'est
-silencieux, et c'est pourquoi cet identifiant doit être unique par ce qu'il désigne réellement — pas seulement par
-saison et par joueur, mais aussi par environnement, si plusieurs environnements partagent une ligue.
+✅ **Mais l'idempotence porte sur le payload entier, pas sur le seul `league_match_id`.** Mesuré le 10 août au soir, en
+rejouant `probe_idempotence_01` champ par champ : **tout champ fourni qui diffère de la rencontre stockée est un 400**,
+et le message nomme le champ.
+
+```
+{"error":"that league_match already exists, with different name"}
+{"error":"that league_match already exists, with different handicap"}
+{"error":"that league_match already exists, with different height"}
+{"error":"that league_match already exists, with different rules"}
+{"error":"that league_match already exists, with different main_time"}
+{"error":"that league_match already exists, with different black_member_id"}
+```
+
+Un champ **absent** n'est en revanche pas comparé : le même `POST` sans `name` répond 200 et renvoie la rencontre avec
+son nom stocké. La règle est donc « chaque champ envoyé doit correspondre », pas « le corps doit être identique ».
+
+Trois conséquences :
+
+- **Rejouer une création interrompue reste sûr**, à condition que le payload soit déterministe. Le nôtre l'est : les
+  réglages sont des constantes, et le nom se déduit de la saison et de la session.
+- **Les réglages d'une rencontre sont donc gelés pour sa durée de vie.** Changer une constante en cours de saison —
+  `main_time`, la taille du plateau, le format du nom — ferait échouer en 400 tout rejeu portant sur une rencontre déjà
+  créée, et pas seulement la prochaine création.
+- ⚠ **Une version précédente de ce document affirmait le contraire** : que deux appels de même `league_match_id` avec des
+  joueurs différents renverraient silencieusement la première rencontre. C'est faux, et dans le bon sens : OGS répond
+  400 en nommant `black_member_id`. Le cas réellement silencieux est plus étroit — **deux payloads identiques**, ce qui
+  arrive exactement si dev et prod apparient les mêmes joueurs, dans la même session, avec les mêmes couleurs. Les deux
+  environnements se partageraient alors une seule rencontre et ses liens, sans rien voir. C'est ce qui justifie encore
+  le préfixe `db.name` dans `league_match_id`.
 
 Exemple de réponse, ✅ celle de la sonde `13688` (liens d'invitation tronqués, ce sont des secrets de joueur) :
 

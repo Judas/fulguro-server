@@ -9,6 +9,7 @@ import com.google.gson.Gson
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
 import java.time.ZonedDateTime
 
 class OgsApiClient {
@@ -52,7 +53,7 @@ class OgsApiClient {
 
         return okHttpClient.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
-                val error = Exception("GET FAILURE ${response.code} on $route")
+                val error = Exception("GET FAILURE ${response.code} on $route ${response.explain()}")
                 log(TAG, error.message!!)
                 throw error
             }
@@ -72,7 +73,7 @@ class OgsApiClient {
 
         return okHttpClient.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
-                val error = Exception("POST FAILURE ${response.code} on $route")
+                val error = Exception("POST FAILURE ${response.code} on $route ${response.explain()}")
                 log(TAG, error.message!!)
                 throw error
             }
@@ -93,11 +94,27 @@ class OgsApiClient {
 
         return okHttpClient.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
-                val error = Exception("PUT FAILURE ${response.code} on $route")
+                val error = Exception("PUT FAILURE ${response.code} on $route ${response.explain()}")
                 log(TAG, error.message!!)
                 throw error
             }
             response.body.string()
         }
     }
+}
+
+/**
+ * The first 500 characters of an error body, for the message of a failed call.
+ *
+ * Without this a rejection is a bare status code, and OGS says exactly what is wrong in the body — a `byoyomi` with no
+ * `periods` answers `{"error": "Missing parameters for byoyomi time control (periods, period_time, main_time)"}`. Reading
+ * a 400 used to mean reproducing the call by hand with curl.
+ *
+ * Only ever called on a failure, so no successful response is read twice, and truncated because an OGS error page can be
+ * a full HTML document.
+ */
+private fun Response.explain(): String = try {
+    body.string().take(500).replace(Regex("\\s+"), " ").trim()
+} catch (e: Exception) {
+    "<body unreadable: ${e.message}>"
 }

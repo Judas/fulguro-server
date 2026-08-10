@@ -96,6 +96,7 @@ l'application. Ce sont des constantes de `OgsLeagueClient`, envoyées à chaque 
 | `time_control` | **`byoyomi`** | Le système que `isLongGame()` sait lire à partir de `main_time` |
 | `main_time` | **2400** (40 min) | Deux seuils du code existant, aucun négociable. `isLongGame()` demande `main_time >= 1200` pour le bonus `long_game` des maisons, **et** `speed == "live"` : `OgsService` écarte les parties en correspondance à l'ingestion et le WebSocket ne voit que le live, donc une ligue en correspondance serait invisible de tout le pipeline |
 | `periods`, `period_time` | **5** et **30** | 5×30 s. `periods` est obligatoire dès que `time_control` vaut `byoyomi`, et son absence est un 400 |
+| `name` | **`Ligue d'Aurak — Saison 2026 - 2027 — Session 08`** | Le seul champ du payload qu'un joueur lise — OGS s'en sert aussi comme nom de la partie —, donc le seul en français. Session sur deux chiffres pour que les noms d'une saison aient tous la même forme. 47 caractères pour un `maxLength` de 255 : au-delà, ce serait un 400 sur **chaque** création d'un tirage, pas un défaut cosmétique |
 
 Une partie de ligue coche donc **tous** les bonus du barème des maisons sauf `rival_house`, qui dépend de l'adversaire
 et qui est acquis par construction puisque le tirage interdit les paires intra-maison. Autrement dit une partie de
@@ -427,6 +428,14 @@ vrais membres de la communauté, donc ils seront aussi tirés en production — 
 attendue. `db.name` est le discriminant qui existe déjà, il est garanti présent et il diffère par construction entre
 les deux environnements.
 
+⚠ Correction apportée par la mesure du 10 août au soir : l'idempotence d'OGS porte sur **tout le payload**, pas sur le
+seul `league_match_id`. Un rejeu dont un champ diffère répond 400 en nommant le champ, ce qui rend la plupart des
+collisions bruyantes plutôt que silencieuses. Le préfixe reste néanmoins nécessaire, parce que le cas silencieux
+subsiste exactement là où il fait mal : deux payloads **identiques** — mêmes joueurs, même session, mêmes couleurs —
+partageraient une seule rencontre entre dev et prod. Et ce même mécanisme gèle les réglages d'une rencontre pour sa
+durée de vie : changer une constante de `OgsLeagueClient` en cours de saison ferait échouer tout rejeu sur les
+rencontres déjà créées. Détail dans `doc/ogs-online-league-api.md`.
+
 `black_house_id` / `white_house_id` sont figées à l'écriture, pour la même raison que dans `house_points` : le total
 d'une académie ne doit pas bouger quand un joueur change de maison ou la quitte.
 
@@ -736,9 +745,15 @@ Dépend de : 1. Le contrat est connu et vérifié, la clé est en main — cf. `
 
 ```kotlin
 fun registerMember(memberId: String): Boolean
-fun createMatch(blackMemberId: String, whiteMemberId: String, leagueMatchId: String): OgsLeagueMatch?
+fun createMatch(
+    blackMemberId: String, whiteMemberId: String, leagueMatchId: String, season: String, sessionNumber: Int
+): OgsLeagueMatch?
 fun matchStatus(ogsMatchId: Int): OgsLeagueMatch?
 ```
+
+La saison et la session ne servent qu'à **nommer** la rencontre — `Ligue d'Aurak — Saison 2026 - 2027 — Session 08`, le
+seul champ du payload qu'un joueur lise, et donc le seul en français. Elles ne font pas partie de l'identité de l'appel,
+qui est `league_match_id` seul.
 
 Trois appels, et **pas de `findMatch`** : la sonde du 10 août a montré que `POST /matches/` est idempotent sur
 `league_match_id` — 201 à la création, 200 ensuite, même `id` et mêmes liens. Reprendre une création interrompue se

@@ -57,12 +57,31 @@ class OgsLeagueClient(private val client: OgsApiClient = OgsApiClient()) {
      * ⚠ [leagueMatchId] is the **only** key of that idempotence: two calls carrying the same id with different players
      * return the first match, answering 200 as though all were well. So the id has to be unique per what it actually
      * designates — which is why it is prefixed with the database name, dev and prod sharing one league.
+     *
+     * [season] and [sessionNumber] are here only to name the match, which is what players see on OGS.
+     *
+     * ⚠ **OGS compares every field it is sent against the stored match, not just [leagueMatchId].** A replay whose name,
+     * handicap, board size, rules, time or players differ answers 400 and names the offending field. Two things follow,
+     * and the second is the one that bites:
+     *
+     * - Replaying an interrupted creation is safe **because this payload is deterministic** — the settings are constants
+     *   and the name is derived from the season and the session. Nothing here may become time- or state-dependent.
+     * - The settings of a match are therefore **frozen for its lifetime**. Changing a constant below, or the format of
+     *   [matchName], mid-season would not merely apply to new matches: it would make every replay touching an already
+     *   created match fail with a 400, which is exactly the path a draw uses to recover.
      */
-    fun createMatch(blackMemberId: String, whiteMemberId: String, leagueMatchId: String): OgsLeagueMatch? = try {
+    fun createMatch(
+        blackMemberId: String,
+        whiteMemberId: String,
+        leagueMatchId: String,
+        season: String,
+        sessionNumber: Int
+    ): OgsLeagueMatch? = try {
         val request = OgsLeagueMatchRequest(
             blackMemberId = blackMemberId,
             whiteMemberId = whiteMemberId,
             leagueMatchId = leagueMatchId,
+            name = matchName(season, sessionNumber),
             rules = RULES,
             handicap = HANDICAP,
             height = BOARD_SIZE,
@@ -90,6 +109,19 @@ class OgsLeagueClient(private val client: OgsApiClient = OgsApiClient()) {
         log(TAG, "matchStatus $ogsMatchId FAILURE ${e.message}", e)
         null
     }
+
+    /**
+     * The name of the match, and therefore of the game: `Ligue d'Aurak — Saison 2026 - 2027 — Session 08`.
+     *
+     * French, because unlike every other field of the payload this one is read by players, on OGS and in their game list.
+     * The season is spaced out from the `2026-2027` the code works with, and the session is padded to two digits so the
+     * names of one season all have the same shape and sort in order.
+     *
+     * 47 characters against the 255 the spec allows, so there is no truncation to worry about — worth stating, because a
+     * name over the limit would be a 400 on every single creation of a draw rather than a cosmetic problem.
+     */
+    private fun matchName(season: String, sessionNumber: Int): String =
+        "Ligue d'Aurak — Saison ${season.replace("-", " - ")} — Session ${sessionNumber.toString().padStart(2, '0')}"
 
     /**
      * The two organiser headers, on every request. Without them these endpoints answer 403 — which is also what keeps

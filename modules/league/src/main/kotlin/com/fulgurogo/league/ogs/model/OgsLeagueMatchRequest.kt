@@ -17,6 +17,11 @@ data class OgsLeagueMatchRequest(
     @SerializedName("black_member_id") val blackMemberId: String,
     @SerializedName("white_member_id") val whiteMemberId: String,
     @SerializedName("league_match_id") val leagueMatchId: String,
+    /**
+     * Also used as the name of the game itself, so it is the one field of this payload players actually read — hence
+     * French, like everything else they see. Built by `OgsLeagueClient.matchName`.
+     */
+    val name: String,
     val rules: String,
     val handicap: Int,
     val height: Int,
