@@ -217,8 +217,8 @@ object HouseDatabaseAccessor {
      *   tick, fill the batch and stall the scan for good once there are [batchSize] of them.
      * - **`g.date >= m.joined`** is what stops back-scoring: a player who joins in November earns nothing on the
      *   October games still inside CleanService's 32-day window.
-     * - **The season window** puts July and August games permanently out of reach, which is "no points outside the
-     *   season" with no extra state. It is a window over the *game* date, so a late-June game scanned in July still
+     * - **The season window** puts June, July and August games permanently out of reach, which is "no points outside
+     *   the season" with no extra state. It is a window over the *game* date, so a late-May game scanned in June still
      *   scores — which is why the scanner keeps running through the summer instead of stopping on the period.
      *
      * `DISTINCT` because the join matches twice on a game between two members, and a duplicate would waste a slot in

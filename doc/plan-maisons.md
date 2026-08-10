@@ -262,17 +262,17 @@ facile à relire.
 `modules/house/src/main/kotlin/com/fulgurogo/house/HouseSeason.kt` :
 
 - `enum class HousePeriod { SEASON, VACATION }`
-- `period(now): HousePeriod` — `VACATION` en juillet et août, `SEASON` sinon
-- `seasonName(now): String` — `"2026-2027"`. À partir de septembre : `YYYY-(YYYY+1)`. Jusqu'en juin :
-  `(YYYY-1)-YYYY`. En juillet et août, renvoie la saison qui vient de finir.
-- `seasonWindow(season): Pair<ZonedDateTime, ZonedDateTime>` — du 1er septembre 00:00 au 1er juillet 00:00
+- `period(now): HousePeriod` — `VACATION` en juin, juillet et août, `SEASON` sinon
+- `seasonName(now): String` — `"2026-2027"`. À partir de septembre : `YYYY-(YYYY+1)`. Jusqu'en mai :
+  `(YYYY-1)-YYYY`. En juin, juillet et août, renvoie la saison qui vient de finir.
+- `seasonWindow(season): Pair<ZonedDateTime, ZonedDateTime>` — du 1er septembre 00:00 au 1er juin 00:00
 
 Tout passe par `ZonedDateTime.now(DATE_ZONE)` et les helpers de `ZonedDateTimeExtensions.kt`, jamais `now()` nu.
 
-Pendant les vacances, `seasonName` désigne la saison écoulée : c'est volontaire. Une partie du 30 juin
-scannée le 1er juillet tombe encore dans la fenêtre et compte, alors qu'une partie du 15 juillet est hors
+Pendant les vacances, `seasonName` désigne la saison écoulée : c'est volontaire. Une partie du 31 mai
+scannée le 1er juin tombe encore dans la fenêtre et compte, alors qu'une partie du 15 juin est hors
 fenêtre et ne comptera jamais. La règle « pas de points hors saison » porte sur la **date de la partie**,
-pas sur la date du scan, et c'est ce qui évite de perdre les dernières parties de juin.
+pas sur la date du scan, et c'est ce qui évite de perdre les dernières parties de mai.
 
 **Override de dev** : on est le 28 juillet 2026, donc en `VACATION` — le parcours « Rejoindre une maison »
 est inatteignable sans triche. Clé optionnelle `house.period.override` valant `SEASON`, `VACATION` ou vide.
@@ -280,7 +280,7 @@ Lue une fois, ignorée si vide, et journalisée au démarrage quand elle est act
 en prod.
 
 **Vérification** : un `main` jetable, ou un log au démarrage affichant période et saison courantes. À contrôler
-au moins pour le 31 août, le 1er septembre, le 30 juin et le 1er juillet.
+au moins pour le 31 août, le 1er septembre, le 31 mai et le 1er juin.
 
 ---
 
@@ -342,7 +342,7 @@ Trois propriétés à ne pas casser :
   reviendraient à chaque tick, rempliraient le lot et bloqueraient la progression.
 - **`g.date >= m.joined`** interdit le rattrapage : un joueur qui rejoint en novembre ne marque pas sur les
   parties d'octobre encore présentes dans la fenêtre de 32 jours.
-- **La fenêtre de saison** rend les parties de juillet et août définitivement inatteignables, ce qui
+- **La fenêtre de saison** rend les parties de juin, juillet et août définitivement inatteignables, ce qui
   implémente « pas de points hors saison » sans état supplémentaire.
 
 Conséquence assumée : le scan est marqué au grain de la partie, l'éligibilité au grain du joueur. Si A est
@@ -357,8 +357,8 @@ pointe `db.name=fg_dev`, donc un run local écrit dans le schéma de dev et ne t
 de plus à tenir dans trois fichiers, avec le risque miroir de l'oublier en prod et de ne rien marquer en silence,
 pour un danger qui n'existe pas.
 
-**Retenu** : lot de 50, et pas de sortie anticipée sur la période. Le scanner tourne aussi en juillet et août,
-c'est ce qui lui fait ramasser les dernières parties de juin avant que `CleanService` ne les supprime ; la
+**Retenu** : lot de 50, et pas de sortie anticipée sur la période. Le scanner tourne aussi en juin, juillet et
+août, c'est ce qui lui fait ramasser les dernières parties de mai avant que `CleanService` ne les supprime ; la
 fenêtre de saison suffit à écarter les parties de l'été.
 
 **Vérification** : démarrer avec un log par partie scorée, comparer à la main le contenu de `house_points`

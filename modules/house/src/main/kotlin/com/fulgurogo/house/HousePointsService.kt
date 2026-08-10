@@ -20,9 +20,9 @@ import java.time.ZonedDateTime
  * database on every tick, so it needs no state of its own and a restart costs nothing.
  *
  * The period is deliberately *not* consulted. A season's window is a window over the date of the game, so the scanner
- * keeps running through July and August, where it still picks up the last games of June — which have not been deleted
- * yet — while a game played in July falls outside the window and can never be scored. Stopping on `VACATION` would
- * silently drop the end of every season.
+ * keeps running through June, July and August, where it still picks up the last games of May — which have not been
+ * deleted yet — while a game played in June falls outside the window and can never be scored. Stopping on `VACATION`
+ * would silently drop the end of every season.
  */
 class HousePointsService : PeriodicFlowService(INITIAL_DELAY_IN_SECONDS, INTERVAL_IN_SECONDS) {
     override suspend fun onTick() {

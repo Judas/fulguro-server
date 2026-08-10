@@ -167,8 +167,8 @@ house services start at 90s and 120s, behind `GoldService`, so a cold start does
    scale is in `HousePointsCalculator`, and the primary key `(gold_id, discord_id)` is the whole of the idempotence,
    so there is no cursor and nothing to reset. Every row carries its `season` and its `house_id` frozen at write time,
    which is what makes a house's total survive a player leaving it, and why `CleanService` purges `house_members` but
-   never `house_points`. `HouseSeasonService` runs the calendar: a season is 1 September to 30 June (`HouseSeason`,
-   overridable for dev with `house.period.override`), July and August are the break, and the once-a-year events —
+   never `house_points`. `HouseSeasonService` runs the calendar: a season is 1 September to 31 May (`HouseSeason`,
+   overridable for dev with `house.period.override`), June to August is the break, and the once-a-year events —
    applying the summer intentions, closing a season, posting the daily ranking — are each guarded by a column of
    `house_seasons` rather than by the calendar, because the calendar cannot say whether something has already been
    done. Announcements go through `HouseNotifier`, and the Discord role that goes with a membership through
