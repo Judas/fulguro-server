@@ -232,6 +232,24 @@ OGS fait un `GET` sur cette URL à la fin de chaque partie, en substituant l'`id
 `callback_url_template` est **global à la ligue**, donc un `PUT` malencontreux coupe les callbacks de tout le monde.
 Au 10 août 2026, il vaut `{"callback_url_template": null}` — aucun callback n'est enregistré.
 
+**Sur quoi repose « global à la ligue »**, puisque tout le traitement du callback en dépend :
+
+- Le schéma `OnlineLeagueCallback` de la spec n'a **qu'une seule propriété**, `callback_url_template`, une chaîne
+  nullable de 255 caractères au plus. Il n'y a donc aucun endroit où un second template pourrait vivre.
+- Rien dans la requête ne désigne un environnement : la seule clé est le couple d'en-têtes, qui identifie la ligue.
+- ✅ Le `GET` mesuré renvoie bien un scalaire unique, pas une collection.
+
+⚠ Ce qui n'est **pas** mesuré : aucun `PUT` ni `PATCH` n'a jamais été passé sur cet endpoint. « Un `PUT` depuis un poste
+de dev écraserait le template de la production » est donc une déduction — la seule lecture raisonnable d'un champ scalaire
+unique —, pas une observation. Elle n'a pas été vérifiée exprès : la vérifier demanderait précisément d'écraser le
+template de production, et la panne serait silencieuse.
+
+⚠ **Deux pièges de la spec sur cet endpoint.** Son bloc `security` autorise l'anonyme sur le `GET` (un `{}` dans la
+liste) : c'est faux, ✅ un `GET` sans en-têtes répond **403**. Les blocs `security` de cette spec ne sont donc pas fiables
+— classique d'un schéma généré par DRF quand les classes de permission sont personnalisées. Et le chemin y figure comme
+`/api/v1/online_league/{var}callback`, avec un paramètre `{var}` requis et sans séparateur : c'est un artefact, `{var}`
+vide est ce qui fonctionne (✅ `/xcallback` répond 404).
+
 ---
 
 ## `POST|DELETE /leagues/`
