@@ -9,6 +9,7 @@ dependencies {
     implementation(project(":modules:gold"))
     implementation(project(":modules:fgc"))
     implementation(project(":modules:house"))
+    implementation(project(":modules:league"))
 
     implementation(libs.gson)
     implementation(libs.javalin)

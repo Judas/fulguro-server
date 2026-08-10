@@ -39,6 +39,10 @@ object ApiModule {
                 post("/gold/api/house/join", api::joinHouse)
                 post("/gold/api/house/choice", api::setHouseChoice)
 
+                // League: joining and leaving an academy. The standings and the sessions come with a later step
+                post("/gold/api/league/join", api::joinLeague)
+                post("/gold/api/league/leave", api::leaveLeague)
+
                 // Service liveness: 200 when every background service is healthy, 503 otherwise
                 get("/gold/api/health", api::getHealth)
 

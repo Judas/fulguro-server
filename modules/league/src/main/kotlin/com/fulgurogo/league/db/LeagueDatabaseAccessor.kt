@@ -3,6 +3,7 @@ package com.fulgurogo.league.db
 import com.fulgurogo.common.db.DatabaseAccessor
 import com.fulgurogo.common.db.query
 import com.fulgurogo.league.LeagueSession
+import com.fulgurogo.league.LeagueTestPlayers
 import com.fulgurogo.league.db.model.*
 import org.sql2o.Connection
 import java.util.*
@@ -305,12 +306,15 @@ object LeagueDatabaseAccessor {
      * linked player, so an unrated one sits at 0 and would be dragged to the bottom of the ladder and paired against the
      * same wrong opponent every session.
      *
-     * ⚠ The dev sandbox — `league.test.players` — is not applied here yet. It belongs with the join route of step 4,
-     * where it is also the answer a human gets, and it has to be repeated here because this is the guarantee about the
-     * draw rather than about one request.
+     * The dev sandbox is applied here **as well as** in the join route. Two places, but they answer two different
+     * questions: the route owes a human an explicit 403, while this is the guarantee about the draw itself — the one that
+     * has to hold even for a membership that got in by another path, a hand-written row included. Both read the same list
+     * from [LeagueTestPlayers].
      */
     fun candidates(season: String): List<LeagueCandidate> = DatabaseAccessor.withDao { connection ->
-        val query = "SELECT m.discord_id, h.house_id, g.rating " +
+        // `IN ()` is a syntax error in MySQL, and an unrestricted sandbox is the normal production case.
+        val sandbox = if (LeagueTestPlayers.isActive()) " AND m.discord_id IN (:testPlayers) " else ""
+        val sql = "SELECT m.discord_id, h.house_id, g.rating " +
                 " FROM $MEMBERS_TABLE m " +
                 " JOIN $HOUSE_MEMBERS_TABLE h ON h.discord_id = m.discord_id " +
                 " JOIN $OGS_USER_TABLE o ON o.discord_id = m.discord_id " +
@@ -318,13 +322,56 @@ object LeagueDatabaseAccessor {
                 " JOIN $PLAYERS_TABLE p ON p.discord_id = m.discord_id " +
                 " WHERE m.season = :season AND m.active = 1 " +
                 "   AND p.ogs_registered IS NOT NULL " +
-                "   AND g.rating > 0 AND g.error = 0 "
-        connection
-            .query(query)
+                "   AND g.rating > 0 AND g.error = 0 " +
+                sandbox
+
+        val query = connection
+            .query(sql)
             .throwOnMappingFailure(false)
             .addParameter("season", season)
-            .executeAndFetch(LeagueCandidate::class.java)
-            ?: listOf()
+        if (LeagueTestPlayers.isActive()) query.addParameter("testPlayers", LeagueTestPlayers.ids)
+
+        query.executeAndFetch(LeagueCandidate::class.java) ?: listOf()
+    }
+
+    /**
+     * Whether the player has an OGS account linked, which the join route needs and no other module exposes by Discord id
+     * — `OgsDatabaseAccessor.user` is keyed on the OGS id.
+     *
+     * Read here rather than by adding a method to the ogs module, for consistency with [candidates], which already joins
+     * this table: the league reads the four tables its eligibility depends on, and does so in one file.
+     */
+    fun isLinkedToOgs(discordId: String): Boolean = DatabaseAccessor.withDao { connection ->
+        val query = "SELECT COUNT(*) FROM $OGS_USER_TABLE WHERE discord_id = :discordId"
+        (connection.query(query).addParameter("discordId", discordId).executeScalar(Int::class.java) ?: 0) > 0
+    }
+
+    /**
+     * Drops the members who are no longer eligible — no OGS account, or no house — and answers how many.
+     *
+     * A state reconciliation rather than a call to make from each exit path, and that is the point: it works **however
+     * the row disappeared**, including through a future unlink route nobody thought to wire into the league. The cost is
+     * up to one tick of latency, which nothing notices since only the draw reads `active`.
+     *
+     * The real trigger is not hypothetical. `CleanService.removeDeletedAccounts` runs every tick and does
+     * `DELETE FROM ogs_user_info WHERE ogs_name LIKE 'deleted-%'` without touching anything else, so a player who deletes
+     * their OGS account loses the link while keeping their academy row. There is no unlink route in the API at all —
+     * `Api.link` adds, nothing removes — so this is the path that actually happens.
+     *
+     * Leaving Discord is handled elsewhere, by `CleanDatabaseAccessor.removeAllFrom`, which deletes the academy row
+     * outright.
+     */
+    fun deactivateIneligible(season: String): Int = DatabaseAccessor.withDao { connection ->
+        val query = "UPDATE $MEMBERS_TABLE m SET m.active = 0, m.left_since = NOW() " +
+                " WHERE m.season = :season AND m.active = 1 " +
+                "   AND (NOT EXISTS (SELECT 1 FROM $OGS_USER_TABLE o WHERE o.discord_id = m.discord_id) " +
+                "     OR NOT EXISTS (SELECT 1 FROM $HOUSE_MEMBERS_TABLE h WHERE h.discord_id = m.discord_id)) "
+        connection
+            .query(query)
+            .addParameter("season", season)
+            .executeUpdate()
+
+        connection.result
     }
 
     // ---------------------------------------------------------------------------------------------------------------

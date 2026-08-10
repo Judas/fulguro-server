@@ -29,6 +29,8 @@ import com.fulgurogo.house.HousePeriod
 import com.fulgurogo.house.HouseRoles
 import com.fulgurogo.house.HouseSeason
 import com.fulgurogo.house.db.HouseDatabaseAccessor
+import com.fulgurogo.league.LeagueTestPlayers
+import com.fulgurogo.league.db.LeagueDatabaseAccessor
 import com.fulgurogo.ogs.api.OgsApiClient
 import com.google.gson.Gson
 import io.javalin.http.Context
@@ -218,6 +220,110 @@ class Api {
 
         HouseDatabaseAccessor.setPendingAction(discordId, action.name)
         log(TAG, "setHouseChoice $discordId chose $action")
+        context.standardResponse()
+    }
+
+    /**
+     * Joins the league: 400 on a bad body, 403 outside the season or when the dev sandbox excludes the player, 404 on an
+     * unknown player or one with no house or no linked OGS account, 409 when they are already an active member, 200 with
+     * where they now stand.
+     *
+     * Two writes, and no network call. The `PUT member/{id}` OGS needs is left to the tick, for two reasons: joining must
+     * not fail because OGS is momentarily down, and this handler would otherwise be the second place in the project where
+     * an outbound request blocks an inbound one.
+     *
+     * A player who joined, left and came back lands on their existing row with `active` back to 1, which is why this is an
+     * `INSERT IGNORE` followed by [LeagueDatabaseAccessor.setActive] rather than a bare insert. Their `joined` is not
+     * restamped and the renown they already earned stays on their matches.
+     *
+     * The sandbox is **refused** here rather than filtered in silence. A test account that is not on the list has to get
+     * an explicit 403, or one spends an evening looking for why it never appears in a draw.
+     */
+    fun joinLeague(context: Context) = context.handle("joinLeague") {
+        // Gson does not honour Kotlin nullability, so treat every field as possibly absent.
+        val body = gson.fromJson(context.body(), LeagueMembershipRequestBody::class.java)
+        val discordId = body?.discordId
+        if (discordId.isNullOrBlank()) {
+            context.badRequest()
+            return@handle
+        }
+
+        if (HouseSeason.period() == HousePeriod.VACATION) {
+            context.forbidden()  // The academies are formed at the start of a season, not during the break
+            return@handle
+        }
+
+        if (!LeagueTestPlayers.isAllowed(discordId)) {
+            log(TAG, "joinLeague REFUSED $discordId is not in the dev sandbox")
+            context.forbidden()
+            return@handle
+        }
+
+        // The three eligibility conditions, in the order the plan words them
+        val known = DiscordDatabaseAccessor.user(discordId) != null
+        val housed = HouseDatabaseAccessor.member(discordId) != null
+        if (!known || !housed || !LeagueDatabaseAccessor.isLinkedToOgs(discordId)) {
+            context.notFoundError()
+            return@handle
+        }
+
+        val season = HouseSeason.seasonName()
+        // Only an *active* membership is a conflict: an inactive one is exactly what a returning player rejoins.
+        if (LeagueDatabaseAccessor.member(season, discordId)?.active == true) {
+            context.conflict()
+            return@handle
+        }
+
+        val created = LeagueDatabaseAccessor.addMember(season, discordId)
+        LeagueDatabaseAccessor.setActive(season, discordId, true)
+        // Their OGS row survives leaving and rejoining, so this only ever creates one the first time round.
+        LeagueDatabaseAccessor.addPlayer(discordId)
+
+        val member = LeagueDatabaseAccessor.member(season, discordId)
+        if (member == null) {
+            // The row was written and cannot be read back: nothing the caller did, and nothing they can fix.
+            log(TAG, "joinLeague FAILURE $discordId membership not readable after write")
+            context.internalError()
+            return@handle
+        }
+
+        log(TAG, "joinLeague $discordId ${if (created) "joined" else "rejoined"} the league for $season")
+        val registered = LeagueDatabaseAccessor.player(discordId)?.ogsRegistered != null
+        context.standardResponse(ApiLeagueMembership.from(member, registered))
+    }
+
+    /**
+     * Leaves the league: 400 on a bad body, 404 when the player is not a member of this season, 204 once recorded.
+     *
+     * Unlike the houses, leaving is possible **during** the season. Nothing is withdrawn on the OGS side — a
+     * `DELETE /member/{id}` does exist, but a player is meant to stay in the OGS league — and nothing is withdrawn here
+     * either: a player who leaves mid-session keeps the match already drawn for them. They are free to play it, and if
+     * they do not, the unplayed rule applies to them as to everyone.
+     *
+     * No period check, unlike [joinLeague]: there is nothing to protect against out of season, and refusing would leave a
+     * player who wants out waiting until September.
+     *
+     * The log line names the player on purpose. With no identity check on the body this is the only trace of who was
+     * dropped and when, and it is what makes a sabotage reconstructible after the fact.
+     */
+    fun leaveLeague(context: Context) = context.handle("leaveLeague") {
+        val body = gson.fromJson(context.body(), LeagueMembershipRequestBody::class.java)
+        val discordId = body?.discordId
+        if (discordId.isNullOrBlank()) {
+            context.badRequest()
+            return@handle
+        }
+
+        val season = HouseSeason.seasonName()
+        // The existence check the write cannot make: an UPDATE reports 0 rows both for an unknown member and for one
+        // already inactive, so a 404 read off it would fire on leaving twice.
+        if (LeagueDatabaseAccessor.member(season, discordId) == null) {
+            context.notFoundError()
+            return@handle
+        }
+
+        LeagueDatabaseAccessor.setActive(season, discordId, false)
+        log(TAG, "leaveLeague $discordId left the league for $season")
         context.standardResponse()
     }
 

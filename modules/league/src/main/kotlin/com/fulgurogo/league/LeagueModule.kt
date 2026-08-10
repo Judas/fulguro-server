@@ -18,6 +18,7 @@ object LeagueModule {
 
     fun init() {
         logCalendar()
+        LeagueTestPlayers.logState()
     }
 
     /**
