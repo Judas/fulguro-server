@@ -4,21 +4,22 @@ import com.fulgurogo.common.config.Config
 import com.fulgurogo.common.logger.log
 import com.fulgurogo.league.LeagueModule.TAG
 import com.fulgurogo.league.ogs.model.OgsLeagueMatch
+import com.fulgurogo.league.ogs.model.OgsLeagueMatchPage
 import com.fulgurogo.league.ogs.model.OgsLeagueMatchRequest
 import com.fulgurogo.league.ogs.model.OgsLeagueMemberRequest
 import com.fulgurogo.ogs.api.OgsApiClient
 import com.google.gson.Gson
 
 /**
- * The three calls the server makes to the OGS online-league API, and nothing else.
+ * The calls the server makes to the OGS online-league API, and nothing else.
  *
  * There is deliberately no `findMatch`: `POST /matches/` is idempotent on `league_match_id` — 201 on creation, 200
  * afterwards, same id and same invitation links — so resuming an interrupted creation is just replaying the call. That
  * removes the read-before-write this was first designed with, and halves a draw's OGS traffic.
  *
- * The fourth call of the contract, `PUT /callback`, is **not** here. It is passed by hand, once, from production: the
- * template is global to the league, and the league is shared with dev, so a registration from a developer's machine
- * would repoint production's callbacks at an unreachable localhost. See `doc/migration ligue.sql`.
+ * There is no end-of-game callback either, and `PUT /callback` is nowhere in the project. It carried no data — a bare
+ * GET on a URL of ours with a match id — so it could only ever have triggered the very call [sessionMatches] already
+ * makes. Step 8 of `doc/plan-ligue.md` argues it at length.
  *
  * Its own [OgsApiClient] instance, like `OgsService` and `OgsRealTimeService` have theirs, because `ensureSpamDelay` is
  * instance state. Sharing one would give a real global rate guarantee but would change the behaviour of code already in
@@ -54,9 +55,10 @@ class OgsLeagueClient(private val client: OgsApiClient = OgsApiClient()) {
     /**
      * Creates the challenge for a pairing, or returns the existing one when [leagueMatchId] has already been used.
      *
-     * ⚠ [leagueMatchId] is the **only** key of that idempotence: two calls carrying the same id with different players
-     * return the first match, answering 200 as though all were well. So the id has to be unique per what it actually
-     * designates — which is why it is prefixed with the database name, dev and prod sharing one league.
+     * [leagueMatchId] has to be unique per what it actually designates, which is why it is prefixed with the database
+     * name, dev and prod sharing one league. Two environments sending the **same** id with the same players, session and
+     * colours would otherwise share one challenge and its links without either noticing — the one case OGS cannot catch,
+     * since the payloads are identical.
      *
      * [season] and [sessionNumber] are here only to name the match, which is what players see on OGS.
      *
@@ -101,13 +103,52 @@ class OgsLeagueClient(private val client: OgsApiClient = OgsApiClient()) {
         null
     }
 
-    /** The state and result of a match, for the catch-up that runs when no callback arrived. */
+    /**
+     * One match by its OGS id. Kept for diagnosing a single match by hand; the sweep uses [sessionMatches].
+     */
     fun matchStatus(ogsMatchId: Int): OgsLeagueMatch? = try {
         val response = client.get("$baseUrl/matches/$ogsMatchId", headers())
         gson.fromJson(response, OgsLeagueMatch::class.java)
     } catch (e: Exception) {
         log(TAG, "matchStatus $ogsMatchId FAILURE ${e.message}", e)
         null
+    }
+
+    /**
+     * Every match whose `league_match_id` starts with [prefix], with its full status — this is how results arrive.
+     *
+     * One request instead of one per match, which is what makes a callback pointless. Our ids being
+     * `<db.name>_<season>_<session>_<black>`, a prefix of `fg_prod_2026-2027_8_` returns exactly one session, of one
+     * season, of one environment: bounded whatever the league's history, and a dev run sees only its own matches.
+     *
+     * `__startswith` is honoured, and — the part that makes this safe to build on — an unknown field name is a **400**,
+     * not a filter silently ignored. Measured; see `doc/ogs-online-league-api.md`.
+     *
+     * Pagination follows `next` and never increments a page number, because a page past the last answers 400 rather than
+     * an empty page. [MAX_PAGES] is a backstop against a server that always returns a `next`, not an expected limit: at
+     * [PAGE_SIZE] per page, one session fits in the first page many times over, which is precisely why the loop has to be
+     * right the first time — nothing will exercise it.
+     *
+     * An empty list on failure, like the rest of this client. A sweep that comes back empty writes nothing, and the next
+     * tick tries again.
+     */
+    fun sessionMatches(prefix: String): List<OgsLeagueMatch> = try {
+        val matches = mutableListOf<OgsLeagueMatch>()
+        var url: String? = "$baseUrl/matches/?league_match_id__startswith=$prefix&page_size=$PAGE_SIZE"
+        var pages = 0
+
+        while (url != null && pages < MAX_PAGES) {
+            val page = gson.fromJson(client.get(url, headers()), OgsLeagueMatchPage::class.java)
+            matches += page.results
+            url = page.next
+            pages++
+        }
+        if (url != null) log(TAG, "sessionMatches $prefix STOPPED after $MAX_PAGES pages, ${matches.size} matches")
+
+        matches
+    } catch (e: Exception) {
+        log(TAG, "sessionMatches $prefix FAILURE ${e.message}", e)
+        listOf()
     }
 
     /**
@@ -169,5 +210,11 @@ class OgsLeagueClient(private val client: OgsApiClient = OgsApiClient()) {
         const val MAIN_TIME_SECONDS = 2400
         const val PERIODS = 5
         const val PERIOD_TIME_SECONDS = 30
+
+        /** Comfortably more than a session holds, so [OgsLeagueClient.sessionMatches] is one request in practice. */
+        const val PAGE_SIZE = 100
+
+        /** A backstop, not a limit: it exists so a misbehaving `next` cannot loop forever. */
+        const val MAX_PAGES = 20
     }
 }

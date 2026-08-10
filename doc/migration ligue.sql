@@ -140,8 +140,10 @@ CREATE TABLE IF NOT EXISTS `league_members` (
 -- `black_house_id` / `white_house_id` are frozen at write time, for the same reason as in `house_points`: an academy's
 -- total must not move when a player changes house or leaves it.
 --
--- `ogs_match_id` is an INT because an OGS match id is one, and it is indexed because THE CALLBACK ARRIVES ON IT --
--- OGS calls `game_update/{id}` with the id of the match.
+-- `ogs_match_id` is an INT because an OGS match id is one. The index is kept although nothing looks a match up by it
+-- today: results arrive through a sweep that filters on the `league_match_id` prefix and matches rows back by that
+-- column, which the UNIQUE key already serves. It costs nothing on a table this size and is the index any by-id lookup
+-- would want. `league_match_id` is what the sweep joins on; `ogs_match_id` is what a human quotes when reading OGS.
 --
 -- The three links are never cleared, contrary to what the brief suggested ("saved for the duration of the session"):
 -- they are the only way to resend a link to a player whose DM failed, and that resend is done by hand, possibly days
@@ -226,43 +228,27 @@ CREATE TABLE IF NOT EXISTS `league_exemptions` (
 -- ---------------------------------------------------------------------------------------------------------------
 
 -- ---------------------------------------------------------------------------------------------------------------
--- The OGS callback, to register by hand
+-- Nothing else to do by hand. In particular, NO OGS CALLBACK TO REGISTER
 --
--- Not SQL, and not in the application code either. It belongs here because it is the other thing that has to be done
--- by hand on the server, once, and forgetting it is silent: the results would then only ever arrive through the
--- catch-up poll.
+-- Earlier versions of this file carried a `PUT /online_league/callback` to run once from production. It is gone, and
+-- deliberately: the callback was dropped from the design. Do not put it back from the git history without reading why.
 --
--- There is one league and therefore ONE `callback_url_template`, a setting global to the league, and it points at the
--- production server.
+-- The callback carries no data. It is a bare GET on a URL of ours with a match id substituted, so the result still has
+-- to be read back from OGS afterwards — which is the very call the sweep already makes. It was therefore never a source
+-- of results, only a notification that one was ready.
 --
--- First read what is in place. The call exists, and changes nothing:
+-- And the sweep is not a fallback: `GET /matches/?league_match_id__startswith=<db.name>_<season>_<session>_` returns
+-- every match of one session, of one season, of one environment, with the full 35-field object — status, game id,
+-- outcome and annulment included. One request per sweep, and it does not grow with the league's history. Measured;
+-- see `doc/ogs-online-league-api.md`.
 --
---   curl https://online-go.com/api/v1/online_league/callback \
---     -H "X-OGS-LEAGUE: <ogs.league.id>" -H "X-OGS-LEAGUE-AUTH: <ogs.league.auth>"
+-- What dropping it removes from this deploy: a manual production-only step whose omission was silent, a public
+-- unauthenticated route obliged to answer 200 to any id including 0, and a coupling between the production hostname
+-- and state stored at OGS — moving the server would have meant remembering to re-PUT the template.
 --
--- On 10 August 2026 it answered {"callback_url_template": null} -- nothing registered yet.
---
--- Then register it, ONCE, FROM PRODUCTION:
---
---   curl -X PUT https://online-go.com/api/v1/online_league/callback \
---     -H "X-OGS-LEAGUE: <ogs.league.id>" -H "X-OGS-LEAGUE-AUTH: <ogs.league.auth>" \
---     -H "Content-Type: application/json" \
---     -d '{"callback_url_template":"https://<our-host>/gold/api/league/game_update/{id}"}'
---
--- Two conditions, both easy to miss:
---
---   * Only AFTER the route of step 8 is deployed. OGS tests the URL at registration time with id=0 and requires a
---     200, so `game_update/0` has to answer 200 while finding nothing in the database.
---   * NEVER from a dev machine. The template is global to the league and the league is shared, so repointing it at an
---     unreachable localhost would cut production's callbacks, and production would only get its results through the
---     catch-up. That is the whole reason this call is not in the code.
---
--- In dev, no callback ever arrives. The catch-up of step 8 is what makes the league testable locally, which is also
--- why it cannot be treated as a secondary path.
---
--- The credentials are NOT in this file. It is tracked by git; `ogs.league.auth` is an API key and lives in
--- config.properties, which is gitignored precisely for that -- like `bot.token`, `db.password` and
--- `kgs.login.password`. Substitute the two headers from that file when running the commands above.
+-- There is consequently nothing to run against OGS at deploy time. If you ever want to check what is registered, the
+-- read is harmless: `GET /online_league/callback` with the two `X-OGS-LEAGUE*` headers. It should answer
+-- {"callback_url_template": null}. If it does not, someone registered one, and a stale URL is worth clearing.
 -- ---------------------------------------------------------------------------------------------------------------
 
 -- ---------------------------------------------------------------------------------------------------------------

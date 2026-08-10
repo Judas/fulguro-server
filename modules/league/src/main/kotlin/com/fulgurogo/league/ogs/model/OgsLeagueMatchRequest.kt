@@ -34,3 +34,17 @@ data class OgsLeagueMatchRequest(
 
 /** The body of `PUT /member/{member_id}`: one required field, and we tell it nothing meaningful. See the client. */
 data class OgsLeagueMemberRequest(val rating: Int)
+
+/**
+ * One page of `GET /matches/`, in Django REST Framework's envelope.
+ *
+ * [next] is an absolute URL or null, and it is the **only** safe way to paginate here: asking for a page beyond the last
+ * answers 400 `Invalid page.` rather than an empty page, so a loop incrementing a page number walks off the end into an
+ * error.
+ */
+data class OgsLeagueMatchPage(
+    val count: Int = 0,
+    val next: String? = null,
+    val previous: String? = null,
+    val results: List<OgsLeagueMatch> = listOf()
+)

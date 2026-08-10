@@ -57,8 +57,9 @@ détaillée dans `doc/ogs-online-league-api.md`.
 |---|---|---|
 | 1 | `PUT /api/v1/online_league/member/{member_id}` — corps `{"rating": <int>}` | Inscrit un membre, ou met à jour son rating de départ |
 | 2 | `POST /api/v1/online_league/matches/` — les deux `*_member_id`, notre `league_match_id`, et **tous les réglages de la partie** | Crée une rencontre, ou renvoie l'existante. Rend `id`, `black_invite`, `white_invite`, `spectator_link` |
-| 3 | `GET /api/v1/online_league/matches/{id}` | État et résultat d'une rencontre |
-| 4 | `PUT /api/v1/online_league/callback` — corps `{"callback_url_template": "http://…/game_update/{id}"}` | Enregistre le callback de fin de partie |
+| 3 | `GET /api/v1/online_league/matches/?league_match_id__startswith=…` | État et résultat de **toutes** les rencontres d'une session, en un appel |
+
+Trois appels, et **pas de callback**. `PUT /callback` existe, et il a été écarté : voir la conséquence dédiée plus bas.
 
 Cinq conséquences qui déplacent le plan par rapport à une lecture naïve du brief :
 
@@ -74,9 +75,15 @@ Cinq conséquences qui déplacent le plan par rapport à une lecture naïve du b
 - **Le `league_match_id` est le nôtre aussi**, et c'est la clé de l'idempotence : un `POST /matches/` rejoué avec le
   même `league_match_id` répond **200** au lieu de **201** et renvoie la rencontre existante, mêmes liens compris.
   Mesuré. Reprendre une création interrompue se réduit donc à rejouer l'appel.
-- **Le callback existe bel et bien**, et c'est un simple `GET` sur une URL à nous, avec l'`id` substitué. Deux détails
-  à ne pas rater : l'endpoint doit répondre **200**, et il doit être joignable **au moment de l'enregistrement**, OGS
-  le testant avec `id=0`. Donc `game_update/0` doit répondre 200 sans rien trouver en base.
+- **Le callback existe, et il est écarté.** C'est un simple `GET` sur une URL à nous avec l'`id` substitué : il ne
+  transporte **aucune donnée**, donc il faut de toute façon relire le résultat chez OGS — exactement l'appel que le
+  balayage fait déjà. Il n'était donc jamais une source de résultats, seulement une notification. Or `GET /matches/`
+  rend l'objet complet des 35 champs pour toutes les rencontres à la fois, et **tout champ du modèle est un filtre**,
+  `__startswith` compris : un `?league_match_id__startswith=fg_prod_2026-2027_8_` rend exactement les rencontres d'une
+  session, d'une saison et d'un environnement. Un appel par balayage, borné pour toujours. Le callback n'achetait donc
+  que de la latence, sur un classement réglé une fois par quinzaine — contre une route publique tenue de répondre 200 à
+  n'importe quel id, une étape de déploiement manuelle dont l'oubli était silencieux, et l'inconnue « quel id OGS
+  envoie-t-il ? ». Décision 18.
 - **Les réglages de partie sont les nôtres**, rencontre par rencontre. Le wiki ne documente que `handicap` et laisse
   croire le contraire ; la spec OpenAPI et la sonde disent autrement — `rules`, `height`, `width`, `time_control`,
   `main_time`, `periods`, `period_time` et leurs équivalents pour les autres systèmes de temps sont tous modifiables, et
@@ -135,11 +142,12 @@ précaution supplémentaire :
   dans le schéma de dev, donc le classement de prod ne bouge pas. Ce qui fuit vers la production, c'est le côté OGS —
   des rencontres et des liens dans la vraie ligue, pour les deux comptes de test.
 
-- **Le callback ne s'enregistre qu'une fois, depuis la prod**, et il n'est **pas** dans le code. Avec une ligue unique,
-  ce n'est plus de la prudence : le `callback_url_template` est un réglage **global à la ligue**, donc un
-  enregistrement lancé depuis un poste de dev repointerait le callback de la production vers un `localhost` injoignable,
-  et les résultats de la vraie ligue ne remonteraient plus que par le rattrapage. C'est un `curl` d'une ligne, écrit
-  dans `doc/migration ligue.sql` avec les tables, et à ne passer qu'en production.
+- **Il n'y a rien à enregistrer chez OGS**, et c'est une conséquence directe de la ligue unique. Le
+  `callback_url_template` est un réglage **global à la ligue** : un enregistrement lancé depuis un poste de dev
+  repointerait le callback de la production vers un `localhost` injoignable. Ce danger a pesé dans l'abandon du
+  callback — il ne restait plus un chemin secondaire à protéger, mais une étape de déploiement fragile au service d'un
+  gain de latence nul. Le balayage de l'étape 8 ne dépend d'aucun réglage stocké chez OGS, donc dev et prod y sont
+  isolés par construction : chacun ne demande que les rencontres de son propre préfixe `db.name`.
 
 ⚠ **Les identifiants ne vont pas dans ce fichier.** `doc/plan-ligue.md` est suivi par git ; `ogs.league.auth` est une
 clé d'API et va dans `config.properties`, qui est gitignoré précisément pour ça — comme `bot.token`, `db.password` et
@@ -154,13 +162,14 @@ La clé est en main, la ligue existe, et la sonde du 10 août a répondu à tout
 |---|---|
 | Deux ligues, dev et prod | ✅ tranché autrement : **une seule ligue**, `FulguroGo`, partagée |
 | La configuration des parties | ✅ sans objet : les réglages partent dans le payload de chaque rencontre |
-| `league_match_id` est-il unique de votre côté ? | ✅ **oui**, et le `POST` est idempotent dessus — 201 puis 200 |
-| `GET /matches` filtre-t-il sur `league_match_id` ? | ✅ **oui**, honoré |
+| `league_match_id` est-il unique de votre côté ? | ✅ **oui**, et le `POST` est idempotent — 201 puis 200. ⚠ mais la comparaison porte sur **tout le payload** : un champ envoyé qui diffère est un 400 nommant le champ |
+| `GET /matches` filtre-t-il sur `league_match_id` ? | ✅ **oui**, honoré, et **tout champ du modèle est un filtre**, `__startswith` compris. Un champ inconnu est un 400, pas un filtre ignoré. C'est ce qui a permis d'écarter le callback |
 | Peut-on annuler une rencontre ? | ⚠ pas sur `/matches/{id}`, qui est en lecture seule (405). Un `PUT /matches/` existe sur la collection et pourrait le faire, non essayé |
 | Le nom d'une ligue est-il modifiable ? | ⚠ sans objet : la ligue est unique et sans année |
 
-Rien ne bloque donc plus l'écriture du code. Il reste deux constats à faire sur la **première partie réellement jouée**,
-que ni la spec ni la sonde ne peuvent donner : le type réel des champs de résultat, et le `speed` que la partie déclare.
+Rien ne bloque donc plus l'écriture du code. Il reste trois constats à faire sur la **première partie réellement jouée**,
+que ni la spec ni la sonde ne peuvent donner : le type réel des champs de résultat, ce que contient `game` — l'hypothèse
+étant l'`id` de la partie OGS, ce qui fonde `gold_id = "OGS_<game>"` — et le `speed` que la partie déclare.
 
 ---
 
@@ -262,8 +271,8 @@ pas quand un joueur la quitte, exactement comme `house_points`.
 
 ## Étape 0 — Schéma BDD
 
-Aucun code. Produit le SQL à appliquer à la main sur le serveur, comme les migrations précédentes, plus le `curl`
-d'enregistrement du callback.
+Aucun code. Produit le SQL à appliquer à la main sur le serveur, comme les migrations précédentes. Et rien d'autre :
+il n'y a **aucun appel à passer à OGS** au déploiement, le callback ayant été écarté.
 
 **Fichier** : `doc/migration ligue.sql`
 
@@ -439,8 +448,10 @@ rencontres déjà créées. Détail dans `doc/ogs-online-league-api.md`.
 `black_house_id` / `white_house_id` sont figées à l'écriture, pour la même raison que dans `house_points` : le total
 d'une académie ne doit pas bouger quand un joueur change de maison ou la quitte.
 
-`ogs_match_id` est un **entier** — l'`id` d'une rencontre OGS en est un — et il est indexé parce que **le callback
-arrive dessus** : OGS appelle `game_update/{id}` avec l'id de la rencontre.
+`ogs_match_id` est un **entier** — l'`id` d'une rencontre OGS en est un. L'index est conservé bien que plus rien ne
+cherche un match dessus depuis l'abandon du callback : le balayage filtre sur le préfixe de `league_match_id` et
+rapproche ses résultats par cette colonne, que la clé unique sert déjà. Il ne coûte rien sur une table de cette taille,
+et c'est l'index qu'une recherche par id voudrait. `ogs_match_id` reste ce qu'un humain cite en lisant OGS.
 
 Les trois liens **ne sont jamais effacés**, contrairement à ce que suggérait le brief (« sauvegardés le temps de la
 session ») : ils sont la seule façon de renvoyer son lien à un joueur dont le MP a échoué, et ce renvoi se fait à la
@@ -495,34 +506,16 @@ Aucune. Le classement dépend de la saison courante, calculée en Kotlin — mê
 pas recevoir la saison. Les agrégats sont des requêtes dans `LeagueDatabaseAccessor`, et il n'y a donc rien à modifier
 en prod sur les cinq vues existantes.
 
-### Le callback, à enregistrer à la main
+### Rien à enregistrer chez OGS
 
-Dans le même fichier, en commentaire, la commande à passer **une seule fois, depuis la production**. Il n'y a qu'une
-ligue, donc qu'un `callback_url_template`, et il pointe le serveur de prod :
+Le fichier ne porte **aucun appel sortant**. Une version précédente y mettait un `PUT /online_league/callback` à passer
+une fois depuis la production ; le callback est écarté, et l'étape 8 dit pourquoi. Ce qui disparaît du déploiement :
+une étape manuelle réservée à la prod dont l'oubli était silencieux, et le risque miroir qu'un poste de dev repointe le
+template de la ligue partagée vers un `localhost` injoignable.
 
-```
-curl -X PUT https://online-go.com/api/v1/online_league/callback \
-  -H "X-OGS-LEAGUE: <league>" -H "X-OGS-LEAGUE-AUTH: <key>" \
-  -H "Content-Type: application/json" \
-  -d '{"callback_url_template":"https://<notre-host>/gold/api/league/game_update/{id}"}'
-```
-
-Et avant de la passer, **lire ce qui est en place** — l'appel existe et ne modifie rien :
-
-```
-curl https://online-go.com/api/v1/online_league/callback -H "X-OGS-LEAGUE: …" -H "X-OGS-LEAGUE-AUTH: …"
-```
-
-Au 10 août 2026 il répond `{"callback_url_template": null}` : aucun callback n'est encore enregistré.
-
-À ne passer qu'**après** le déploiement de la route de l'étape 8 : OGS teste l'URL avec `id=0` et exige un 200.
-
-⚠ **Et à ne jamais passer depuis un poste de dev.** Le `callback_url_template` est global à la ligue, et la ligue est
-partagée : le repointer vers un `localhost` injoignable couperait les callbacks de la production, qui ne recevrait plus
-ses résultats que par le rattrapage. C'est la raison pour laquelle cet appel n'est pas dans le code du tout.
-
-En dev, aucun callback n'arrive donc jamais — c'est le rattrapage de l'étape 8 qui rend la ligue testable en local, et
-c'est aussi pourquoi il ne peut pas être considéré comme un chemin secondaire.
+Un seul contrôle facultatif, en lecture et sans effet : `GET /online_league/callback` avec les deux en-têtes doit
+répondre `{"callback_url_template": null}`. Au 10 août 2026 c'était le cas. S'il répond autre chose, quelqu'un en a
+enregistré un, et une URL périmée mérite d'être effacée.
 
 **Vérification** : appliquer sur `fg_dev`, puis `SHOW TABLES LIKE 'league_%'` renvoie 6 lignes, et
 `information_schema.TABLES` les donne toutes en `Dynamic` avec 0 vue ajoutée. Puis, parce que c'est le seul endroit où
@@ -616,8 +609,9 @@ Lectures :
   compte OGS, un `member_id` enregistré chez OGS, et un rating **exploitable**, c'est-à-dire
   `gold.rating > 0 AND gold.error = 0`
 - `matches(season)`, `matches(season, session)`, `matchesOf(season, discordId)`
-- `matchByOgsId(ogsMatchId)` et `matchByLeagueId(leagueMatchId)` — les deux entrées du callback, dont on ne sait pas
-  laquelle OGS utilise
+- `matchByLeagueId(leagueMatchId)` — comment une rencontre rendue par le balayage retrouve sa ligne. `matchByOgsId`
+  existe aussi, mais plus aucun chemin ne s'en sert depuis l'abandon du callback : le balayage charge la session entière
+  par `matches(season, session)` et rapproche en Kotlin, une requête au lieu de N
 - `pendingMatches(season, session)` — les matchs sans `result`, pour le rattrapage et la clôture
 - `unnotifiedMatches(season, session)` — ceux dont un MP n'est pas parti
 - `pastOpponents(season)` → `Map<Pair<String, String>, Int>`, les rencontres déjà tirées par paire, pour la pénalité
@@ -760,8 +754,9 @@ Trois appels, et **pas de `findMatch`** : la sonde du 10 août a montré que `PO
 réduit donc à rejouer l'appel, ce qui supprime la lecture préalable que ce plan prévoyait et divise par deux le trafic
 OGS d'un tirage.
 
-Le quatrième appel du contrat, `PUT /callback`, n'est **pas** dans le client : il est passé à la main, une fois, en
-production (étape 0).
+`PUT /callback` n'est pas dans le client, et n'est plus nulle part : le callback est écarté. Le client n'a donc que ces
+trois méthodes, et `matchStatus` sert au diagnostic d'une rencontre précise — le balayage de l'étape 8 interroge la
+collection.
 
 Cinq points d'implémentation :
 
@@ -1028,46 +1023,62 @@ exactement une ligne.
 
 ## Étape 8 — Résultats et renommée
 
-Dépend de : 7. **Trois chemins d'écriture, et il faut les trois.**
+Dépend de : 7. **Deux chemins d'écriture, et il faut les deux** : le balayage, qui apporte les résultats, et le
+règlement, qui ferme ce qui n'est pas arrivé.
 
-### Le callback
+### Pourquoi il n'y a pas de callback
 
-`GET /gold/api/league/game_update/{id}` — OGS l'appelle quand une partie de ligue se termine, avec l'id de la
-rencontre.
+OGS propose un callback de fin de partie, un `GET` sur une URL à nous avec l'`id` de la rencontre substitué. Le plan
+l'a longtemps prévu. Il est écarté, et l'argument est court : **il ne transporte aucune donnée.** Le handler n'aurait rien
+pu faire d'autre que relire la vérité chez OGS — sa charge utile est un id, pas un résultat — donc il aurait déclenché
+exactement l'appel que le balayage fait déjà. Ce n'était jamais une source, seulement une notification.
 
-Le handler ne fait **pas** confiance à l'appelant : la route est publique et non authentifiée, comme tout le reste de
-cette API, donc n'importe qui peut la déclencher avec n'importe quel id. Il se contente de **relire la vérité chez
-OGS** — `matchStatus(id)` — et d'écrire ce qu'OGS répond. Un appel forgé coûte donc une requête sortante, jamais une
-fausse victoire.
+Et il ne pouvait pas non plus être le chemin principal : aucun callback n'arrive en dev, puisque le
+`callback_url_template` est global à la ligue et pointerait la production. Le balayage était donc obligatoire de toute
+façon, ce qui faisait du callback un second chemin redondant vers la même donnée.
 
-Quatre obligations du contrat OGS :
+Restait un seul argument sérieux, le trafic : interroger chaque rencontre en attente une par une, c'est N requêtes par
+passage, donc une cadence lente et une latence de l'ordre de l'heure. Il tombe avec la mesure du 10 août au soir —
+`GET /matches/` rend l'objet complet de **toutes** les rencontres, et tout champ du modèle est un filtre, `__startswith`
+compris. Un balayage est donc **un appel**, et on peut le passer à chaque tick.
 
-- **Répondre 200, toujours**, y compris pour un id inconnu. OGS teste l'URL avec `id=0` au moment de l'enregistrement,
-  et un 404 casse le paramétrage.
-- **La lecture se fait sur les deux colonnes**, `ogs_match_id` puis `league_match_id`. Le wiki dit « substituting the
-  match `id` », et le mot est ambigu : dans `MatchDetails`, `id` est la clé primaire OGS de la rencontre, mais notre
-  `league_match_id` est aussi « l'identifiant du match » vu de l'organisateur. ⚠ Rien ne tranche, et seul un vrai
-  callback le dira — le backend d'OGS est fermé (décision 18). Les deux colonnes sont indexées exprès, donc essayer les
-  deux ne coûte rien et fonctionne quelle que soit la convention d'OGS, y compris si elle change.
+Ce que l'abandon supprime, et qui n'était pas rien : une route publique non authentifiée tenue de répondre 200 à
+n'importe quel id, `0` compris ; une étape de déploiement manuelle réservée à la production, dont l'oubli était
+silencieux ; l'inconnue « quel id OGS substitue-t-il, le sien ou le nôtre ? », qui imposait deux colonnes indexées et
+deux `SELECT` par appel ; et un couplage entre le nom d'hôte de production et un état stocké chez OGS — déménager le
+serveur aurait voulu dire penser à re-`PUT`er.
 
-  Se tromper aurait été discret plutôt que bruyant, ce qui est la vraie raison de ne pas parier : un callback dont on ne
-  retrouve pas le match répond 200 et ne fait rien, le rattrapage récupère le résultat dix minutes plus tard, et
-  personne ne remarque jamais que le callback ne sert à rien.
-- **Un callback sur un match déjà `'unplayed'` est ignoré.** C'est le cas qui arrive quand deux joueurs jouent leur
-  partie après la fin de la session : OGS nous prévient de bonne foi, et notre règle est que ça ne compte plus.
-  Une ligne de log, parce que c'est le genre de chose dont un joueur viendra parler.
-- Le rate limit de `Api.handle` (60/min par IP+méthode+route) s'applique. À 20 matchs par session, aucun risque, mais
-  c'est à savoir : un tournoi plus gros y toucherait.
+⚠ Ce que ça ne change pas : le résultat vient toujours d'OGS et non de `ogs_games`, et les deux inconnues qui restent —
+ce que contient `game`, et le type réel des champs de résultat sur une rencontre terminée — pèsent identiquement sur les
+deux conceptions, puisque les deux lisent la même réponse.
 
-### Le rattrapage
+### Le balayage
 
-Un callback peut être perdu, et il n'arrive **jamais** en dev, puisque le seul `callback_url_template` de la ligue
-pointe la production. Il faut donc un chemin qui ne dépende de personne, dans le tick de l'étape 7, pour les matchs de
-la session en cours dont `result IS NULL` :
+Dans le tick de l'étape 7, pour la session en cours, **un seul appel** :
 
-1. `matchStatus(ogs_match_id)` — un `GET /matches/{id}`, qui renvoie l'objet complet.
-2. Dès qu'un `game` est connu, écrire `ogs_game_id` et `gold_id = "OGS_<game>"`.
-3. Si `finished`, lire le résultat dans la réponse d'OGS et l'écrire avec `finished = NOW()`.
+```
+GET /matches/?league_match_id__startswith=<db.name>_<saison>_<session>_&page_size=100
+```
+
+Le préfixe fait tout le travail : il borne la réponse à une session, d'une saison, d'un environnement. La réponse ne
+grossit donc jamais avec l'historique de la ligue, et un run de dev ne voit par construction que ses propres rencontres.
+C'est le même préfixe que celui introduit pour éviter les collisions d'identifiants — il sert deux fois.
+
+Puis, pour chaque rencontre rendue, rapprochée de sa ligne par `league_match_id` :
+
+1. Dès qu'un `game` est connu, écrire `ogs_game_id` et `gold_id = "OGS_<game>"`.
+2. Si `finished`, lire le résultat dans la réponse et l'écrire avec `finished = NOW()`, via `finishMatch`, dont le
+   `WHERE result IS NULL` fait que rien ne ressuscite un match déjà réglé.
+
+Trois précautions de mise en œuvre :
+
+- **Charger la session en une requête**, `matches(season, session)`, et rapprocher en Kotlin. Un `SELECT` par rencontre
+  rendue serait N requêtes pour rien.
+- **Suivre `next`, jamais incrémenter `page`.** Une page au-delà de la dernière répond **400** `Invalid page.`, pas une
+  page vide. À 100 par page et une vingtaine de rencontres par session, la pagination ne se déclenchera jamais — c'est
+  précisément pourquoi il faut l'écrire correctement du premier coup, puisque rien ne l'exercera.
+- **Un champ de filtre inconnu est un 400**, pas un filtre ignoré — mesuré. C'est ce qui rend ce balayage sûr à
+  construire : le mode de panne redouté, filtrer et se faire ignorer en silence, n'existe pas ici.
 
 **Le résultat vient d'OGS, pas de `ogs_games`.** C'est la correction que la sonde a apportée à ce plan : la rencontre
 porte neuf champs `readOnly` qu'OGS remplit — `outcome`, `black_lost`, `white_lost`, `annulled`, `moderator_annulled`,
@@ -1083,7 +1094,8 @@ Deux conséquences qui valent mieux que l'économie d'une jointure :
   une victoire, et le savoir ne demande aucun travail supplémentaire.
 - **La ligue ne dépend plus du pipeline d'ingestion pour ses résultats.** `ogs_games` reste utile — c'est par lui que
   les parties de ligue alimentent les maisons et FGC (décision 8) — mais un scraper OGS cassé ne bloque plus le
-  classement de la ligue.
+  classement de la ligue. Et la renommée ne dépend même pas de `game` : le vainqueur est sur l'objet rencontre, donc
+  `ogs_game_id` et `gold_id` ne servent qu'au lien vers `ogs_games` pour le site.
 
 ⚠ Le type réel de `outcome`, `black_lost` et `white_lost` reste à constater sur une rencontre terminée : la spec
 OpenAPI les annonce en `string`, ce qui est douteux pour deux champs dont le nom dit un booléen. C'est le premier point
@@ -1158,11 +1170,15 @@ toujours ses points de maison et sa validité FGC, tout en ne rapportant plus de
 prises séparément — la ligue a une date limite, la maison non — mais le joueur qui pose la question mérite cette
 réponse-là et pas un haussement d'épaules.
 
-**Vérification** : un match posé à la main dans `fg_dev` pointant `ogs_match_id = 13688`, la rencontre de la sonde, puis
-un tick — le rattrapage doit lire `started: false`, `game: null` et ne rien écrire. Puis la même chose sur une rencontre
-réellement jouée, pour contrôler le `result` recopié et le classement. Le callback se teste au `curl` sur
-`game_update/0` (attendu : 200, rien en base) puis sur l'id d'un vrai match. Le règlement se teste en posant un match sur
-une session déjà passée et en vérifiant qu'il finit `'unplayed'`, puis qu'un callback ultérieur ne le ressuscite pas.
+**Vérification** : un match posé à la main dans `fg_dev` avec le `league_match_id` de la rencontre de la sonde, puis un
+tick — le balayage doit la retrouver par le préfixe, lire `started: false`, `game: null` et ne rien écrire. Puis la même
+chose sur une rencontre réellement jouée, pour contrôler le `game` récupéré, le `result` recopié et le classement. Le
+règlement se teste en posant un match sur une session déjà passée et en vérifiant qu'il finit `'unplayed'`, puis qu'un
+balayage ultérieur ne le ressuscite pas — c'est le `WHERE result IS NULL` de `finishMatch` qui doit tenir.
+
+⚠ Deux choses que rien n'exercera spontanément, et qu'il faut donc provoquer : la **pagination** (poser plus de
+`page_size` rencontres dans une session, ou baisser `page_size` à 1 le temps d'un test) et le cas **`game` non nul**,
+qui n'apparaît qu'une fois une partie réellement lancée.
 
 ---
 
@@ -1359,8 +1375,7 @@ démarrage quand elle est renseignée — et ici cette ligne de log est le derni
 
 **Documentation** — `CLAUDE.md` : `league` dans l'ordre d'`init()` (avant `api`, qui en dépend), les intervalles au
 paragraphe sur l'étalement des ticks, les quatre clés à l'énumération — dont `league.test.players` au paragraphe des
-clés optionnelles, à côté de `house.period.override` —, un point sur la ligue dans le flux de données, la route
-`game_update` comme **seule route entrante appelée par un tiers**, la nouvelle capacité MP de `DiscordBot`, et un mot
+clés optionnelles, à côté de `house.period.override` —, un point sur la ligue dans le flux de données, la nouvelle capacité MP de `DiscordBot`, et un mot
 sur `league.member.salt` : c'est la première clé du projet dont la **perte** détruit une donnée métier plutôt que de
 faire tomber un service. `doc/schema.sql` gagne les six tables. ⚠ Au passage : `CLAUDE.md` renvoie à `doc/changelog.txt`, qui **n'existe pas**
 dans le dépôt — à créer ou à retirer de la doc.
@@ -1474,9 +1489,11 @@ l'écriture du code.** Il reste deux vérifications et trois risques à connaît
     session tirée sans match est retirée seulement si le tirage rend au moins une paire aujourd'hui, ce qui distingue le
     crash du tirage légitimement vide sans colonne supplémentaire et sans bruit. Garde-fou journalier `claimRedraw`.
     Effet de bord accepté : un tirage vide devient rattrapable en cours de session.
-18. ~~**L'`id` du callback**~~ — tranché : **on cherche sur les deux colonnes**, `ogs_match_id` puis
-    `league_match_id`, toutes deux indexées. Marche quelle que soit la convention d'OGS, qui reste inconnue et
-    indocumentée. Se tromper aurait été silencieux, le rattrapage masquant la panne — d'où le refus de parier.
+18. ~~**L'`id` du callback**~~ — devenu sans objet : **il n'y a pas de callback**. La question était « OGS substitue-t-il
+    son `id` ou notre `league_match_id` ? », et la réponse choisie était de chercher sur les deux colonnes indexées, pour
+    ne pas parier sur une convention inconnue dont l'erreur aurait été silencieuse. Le callback ayant été écarté — il ne
+    transportait aucune donnée, donc il ne faisait que déclencher l'appel que le balayage fait déjà —, l'inconnue
+    disparaît avec lui, ainsi que le second `SELECT`. Voir l'étape 8.
 19. ~~**Contrat avec le site**~~ — tranché : le serveur **pose** la forme, comme pour les maisons, en reprenant à
     l'identique ce que `/gold/api/houses` sert déjà. Écrite à l'étape 9. Le chemin est `/league`, des deux côtés — API et
     page du site.
