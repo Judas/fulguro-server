@@ -266,11 +266,23 @@ d'enregistrement du callback.
 
 **Fichier** : `doc/migration ligue.sql`
 
+Trois conventions valent pour les six blocs qui suivent, et elles sont celles de `doc/migration maisons.sql` :
+
+- **`CREATE TABLE IF NOT EXISTS`**, et non `DROP TABLE IF EXISTS` + `CREATE`. Les deux sont rejouables, mais seul le
+  second efface une saison de matchs et toutes les académies quand il est rejoué en cours de saison. La contrepartie est
+  qu'un changement de colonne ultérieur ne sera pas repris : il demandera son propre `ALTER`, dans son propre fichier.
+- **`INT(11)`**, pour se lire comme les treize autres tables. Type identique — la largeur d'affichage ne veut plus rien
+  dire depuis que MySQL 8.0 l'a dépréciée.
+- **`ROW_FORMAT = DYNAMIC` explicite sur les quatre tables dont la PK contient un `VARCHAR(255)`**, soit 1 020 octets en
+  utf8mb4, donc au-delà de la limite d'index de 767 octets de `COMPACT`. C'est de la ceinture-bretelles : le serveur a
+  `innodb_default_row_format = dynamic` et `innodb_large_prefix = 1`, et `house_members` tient une PK de 1 020 octets en
+  production sans rien déclarer. Si l'une d'elles échoue quand même en erreur 1071, le correctif est un `discord_id`
+  plus court, pas un autre `ROW_FORMAT` — un snowflake Discord fait 20 caractères.
+
 ### Tables
 
 ```sql
-DROP TABLE IF EXISTS `league_seasons`;
-CREATE TABLE `league_seasons` (
+CREATE TABLE IF NOT EXISTS `league_seasons` (
   `season` VARCHAR(9) NOT NULL,
   `opened` DATETIME NULL,
   `closed` DATETIME NULL,
@@ -282,10 +294,9 @@ Même rôle que `house_seasons` : le garde-fou de ce qui doit arriver une fois p
 clôture. Aucune colonne pour la ligue OGS : elle est permanente et vit dans la config.
 
 ```sql
-DROP TABLE IF EXISTS `league_sessions`;
-CREATE TABLE `league_sessions` (
+CREATE TABLE IF NOT EXISTS `league_sessions` (
   `season` VARCHAR(9) NOT NULL,
-  `session` INT NOT NULL,
+  `session` INT(11) NOT NULL,
   `drawn` DATETIME NULL,
   `notified` DATETIME NULL,
   `settled` DATETIME NULL,
@@ -303,12 +314,11 @@ Une ligne est créée par le tirage, donc une session non tirée n'a pas de lign
 sessions à venir, et une différence lisible avec une session tirée sans match.
 
 ```sql
-DROP TABLE IF EXISTS `league_players`;
-CREATE TABLE `league_players` (
+CREATE TABLE IF NOT EXISTS `league_players` (
   `discord_id` VARCHAR(255) NOT NULL,
   `ogs_registered` DATETIME NULL,
   PRIMARY KEY (`discord_id`)
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 ROW_FORMAT = DYNAMIC;
 ```
 
 Le côté OGS, **permanent et sans saison** : une inscription à la ligue OGS ne s'annule pas, et le brief demande
@@ -350,8 +360,7 @@ sauvegardes de la base, contrairement à ce qu'aurait été une colonne d'uuid. 
 jamais, et il est sauvegardé avec les autres secrets du serveur.
 
 ```sql
-DROP TABLE IF EXISTS `league_members`;
-CREATE TABLE `league_members` (
+CREATE TABLE IF NOT EXISTS `league_members` (
   `season` VARCHAR(9) NOT NULL,
   `discord_id` VARCHAR(255) NOT NULL,
   `joined` DATETIME NOT NULL,
@@ -359,7 +368,7 @@ CREATE TABLE `league_members` (
   `left_since` DATETIME NULL,
   PRIMARY KEY (`season`, `discord_id`),
   KEY `league_members_active` (`season`, `active`)
-) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 ROW_FORMAT = DYNAMIC;
 ```
 
 L'académie, par saison. La PK porte la saison, ce qui **vide les académies gratuitement** : le 1<sup>er</sup> septembre
@@ -372,23 +381,22 @@ La maison n'est **pas** ici : `house_members` en est la source, et la dupliquer 
 figée au tirage, où elle compte vraiment, et pas à l'inscription.
 
 ```sql
-DROP TABLE IF EXISTS `league_matches`;
-CREATE TABLE `league_matches` (
+CREATE TABLE IF NOT EXISTS `league_matches` (
   `season` VARCHAR(9) NOT NULL,
-  `session` INT NOT NULL,
+  `session` INT(11) NOT NULL,
   `black_discord_id` VARCHAR(255) NOT NULL,
   `white_discord_id` VARCHAR(255) NOT NULL,
-  `black_house_id` INT NOT NULL,
-  `white_house_id` INT NOT NULL,
+  `black_house_id` INT(11) NOT NULL,
+  `white_house_id` INT(11) NOT NULL,
   `pairing_score` DOUBLE NOT NULL,
   `league_match_id` VARCHAR(64) NOT NULL,
-  `ogs_match_id` INT NULL,
+  `ogs_match_id` INT(11) NULL,
   `black_invite` VARCHAR(255) NULL,
   `white_invite` VARCHAR(255) NULL,
   `spectator_link` VARCHAR(255) NULL,
   `black_notified` DATETIME NULL,
   `white_notified` DATETIME NULL,
-  `ogs_game_id` INT NULL,
+  `ogs_game_id` INT(11) NULL,
   `gold_id` VARCHAR(255) NULL,
   `result` VARCHAR(255) NULL,
   `created` DATETIME NOT NULL,
@@ -443,13 +451,14 @@ Le règlement ne laisse **aucun** match à `NULL`, et c'est ce qui ferme le mode
 un match éternellement en suspens n'est ni joué ni exempté, donc il coûte silencieusement le bonus « sans faute » à ses
 deux joueurs, et cela ne se découvre qu'en fin de saison.
 
-`ROW_FORMAT = DYNAMIC` explicite, comme `house_points` : la PK fait 2 040 octets en utf8mb4, trop large pour `COMPACT`.
+`ROW_FORMAT = DYNAMIC` explicite, comme `house_points` : la PK fait 1 060 octets en utf8mb4 — 36 pour la saison,
+4 pour la session, 1 020 pour l'id — trop large pour `COMPACT`. (Les 2 040 octets d'une version précédente de ce plan
+étaient le chiffre de `house_points`, qui a deux `VARCHAR(255)` dans sa PK. La conclusion ne change pas.)
 
 ```sql
-DROP TABLE IF EXISTS `league_exemptions`;
-CREATE TABLE `league_exemptions` (
+CREATE TABLE IF NOT EXISTS `league_exemptions` (
   `season` VARCHAR(9) NOT NULL,
-  `session` INT NOT NULL,
+  `session` INT(11) NOT NULL,
   `discord_id` VARCHAR(255) NOT NULL,
   `reason` VARCHAR(32) NOT NULL,
   `created` DATETIME NOT NULL,
@@ -506,7 +515,10 @@ ses résultats que par le rattrapage. C'est la raison pour laquelle cet appel n'
 En dev, aucun callback n'arrive donc jamais — c'est le rattrapage de l'étape 8 qui rend la ligue testable en local, et
 c'est aussi pourquoi il ne peut pas être considéré comme un chemin secondaire.
 
-**Vérification** : appliquer sur le serveur, puis `SHOW TABLES LIKE 'league_%'` renvoie 6 lignes.
+**Vérification** : appliquer sur `fg_dev`, puis `SHOW TABLES LIKE 'league_%'` renvoie 6 lignes, et
+`information_schema.TABLES` les donne toutes en `Dynamic` avec 0 vue ajoutée. Puis, parce que c'est le seul endroit où
+ce fichier dévie du plan, **rejouer le fichier entier avec des lignes en base** : une saison et un membre témoins
+doivent survivre au second passage. Les supprimer ensuite.
 
 ---
 

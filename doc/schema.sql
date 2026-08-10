@@ -1,4 +1,4 @@
--- Reference schema of the fg_prod database: 13 tables, 5 views, and the gold_tiers reference rows.
+-- Reference schema of the fg_prod database: 19 tables, 5 views, and the gold_tiers reference rows.
 --
 -- There is no migration tool. The live schema is changed by hand on the server, and this file is what the code
 -- expects to find there -- so it is a reference, not a script anyone runs, and it can drift. When in doubt the
@@ -21,6 +21,10 @@
 -- The four house_* tables and the house_games view come from `migration maisons.sql`, which is where their
 -- design is argued at length. They are additive and were applied ahead of the jar that uses them, so on a server
 -- that has run that script but not yet deployed the Houses they exist and stay empty.
+--
+-- The six league_* tables come from `migration ligue.sql`, same story and same authority for the reasoning. They add
+-- no view: the standings depend on the current season, which only Kotlin knows, so they are hand-written queries in
+-- LeagueDatabaseAccessor. Nothing below them reads a league table, so this block is additive in both directions.
 
 -- ---------------------------------------------------------------------------------------------------------------
 -- Tables
@@ -202,6 +206,105 @@ CREATE TABLE `house_seasons` (
   `last_ranking` DATETIME NULL,
   PRIMARY KEY (`season`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
+
+-- The league's once-a-season guard: opening it, and the closing recap. No column for the OGS league -- there is one,
+-- it is permanent, and it lives in `ogs.league.id` / `ogs.league.auth` in config.properties.
+CREATE TABLE `league_seasons` (
+  `season` VARCHAR(9) NOT NULL,
+  `opened` DATETIME NULL,
+  `closed` DATETIME NULL,
+  PRIMARY KEY (`season`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
+
+-- One row per session, created by its draw -- so a session not yet drawn has no row at all. The three columns are
+-- three once-only guards: the draw, its announcement, and the settlement. The service ticks every ten minutes, so
+-- the start of a session is seen about 1400 times and it is `drawn`, not the calendar, that says it is done.
+CREATE TABLE `league_sessions` (
+  `season` VARCHAR(9) NOT NULL,
+  `session` INT(11) NOT NULL,
+  `drawn` DATETIME NULL,
+  `notified` DATETIME NULL,
+  `settled` DATETIME NULL,
+  PRIMARY KEY (`season`, `session`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
+
+-- The OGS side, for life and with no season: a member registered with OGS stays registered, including after leaving
+-- their academy. There is deliberately no `ogs_member_id` -- it is sha256(discord_id + league.member.salt), computed
+-- by one function and never stored -- and no rating, which is the same constant for everybody.
+-- `ogs_registered IS NULL` is the work queue of the tick that calls `PUT member/{id}`.
+CREATE TABLE `league_players` (
+  `discord_id` VARCHAR(255) NOT NULL,
+  `ogs_registered` DATETIME NULL,
+  PRIMARY KEY (`discord_id`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 ROW_FORMAT = DYNAMIC;
+
+-- The academy, per season. The season in the PK is what empties the academies for free on 1 September: the new season
+-- simply has no rows, and the old ones stay readable. `active` rather than a delete, so a player who leaves keeps
+-- their matches and can come back. The house is not here -- `house_members` is its source, and it is frozen on the
+-- match instead, where it matters.
+CREATE TABLE `league_members` (
+  `season` VARCHAR(9) NOT NULL,
+  `discord_id` VARCHAR(255) NOT NULL,
+  `joined` DATETIME NOT NULL,
+  `active` TINYINT(1) NOT NULL DEFAULT 1,
+  `left_since` DATETIME NULL,
+  PRIMARY KEY (`season`, `discord_id`),
+  KEY `league_members_active` (`season`, `active`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 ROW_FORMAT = DYNAMIC;
+
+-- The pairings, and the only source of the standings -- there is no league points table, the renown is derived from
+-- this one. The PK plus the unique key on white state the domain rule: at most one match per player per session,
+-- whichever side they are on, which is what makes a draw run twice harmless. The two house ids are frozen at draw
+-- time so an academy's total never shrinks. `league_match_id` is what OGS keys its idempotence on, prefixed with
+-- db.name because dev and prod share the one OGS league. `ogs_match_id` is indexed because the callback arrives on it.
+-- `result` is NULL while open, the winner OGS names once played, and 'unplayed' -- terminal -- once the session is
+-- settled without a result. The settlement leaves no match at NULL, which is what stops a match pending forever from
+-- silently costing both players the perfect-attendance bonus.
+-- No foreign key on `gold_id`: CleanService deletes games after 32 days and a November match must stay readable in
+-- May, which is also why `result` is copied here rather than joined.
+-- ROW_FORMAT is explicit because that PK is 1060 bytes in utf8mb4 -- fine under DYNAMIC, too wide for COMPACT.
+CREATE TABLE `league_matches` (
+  `season` VARCHAR(9) NOT NULL,
+  `session` INT(11) NOT NULL,
+  `black_discord_id` VARCHAR(255) NOT NULL,
+  `white_discord_id` VARCHAR(255) NOT NULL,
+  `black_house_id` INT(11) NOT NULL,
+  `white_house_id` INT(11) NOT NULL,
+  `pairing_score` DOUBLE NOT NULL,
+  `league_match_id` VARCHAR(64) NOT NULL,
+  `ogs_match_id` INT(11) NULL,
+  `black_invite` VARCHAR(255) NULL,
+  `white_invite` VARCHAR(255) NULL,
+  `spectator_link` VARCHAR(255) NULL,
+  `black_notified` DATETIME NULL,
+  `white_notified` DATETIME NULL,
+  `ogs_game_id` INT(11) NULL,
+  `gold_id` VARCHAR(255) NULL,
+  `result` VARCHAR(255) NULL,
+  `created` DATETIME NOT NULL,
+  `finished` DATETIME NULL,
+  PRIMARY KEY (`season`, `session`, `black_discord_id`),
+  UNIQUE KEY `league_matches_white` (`season`, `session`, `white_discord_id`),
+  UNIQUE KEY `league_matches_league_id` (`league_match_id`),
+  KEY `league_matches_ogs_match` (`ogs_match_id`),
+  KEY `league_matches_gold_id` (`gold_id`),
+  KEY `league_matches_season_black` (`season`, `black_discord_id`),
+  KEY `league_matches_season_white` (`season`, `white_discord_id`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 ROW_FORMAT = DYNAMIC;
+
+-- The players a draw left without an opponent, written by the draw and never by the settlement. It is the only thing
+-- that makes the perfect-attendance bonus computable: without it, a session with no match is indistinguishable from
+-- a session where the player was not there. `reason` is 'ODD' or 'NO_RIVAL' and no code reads it -- it answers "why
+-- was I not drawn?" months later.
+CREATE TABLE `league_exemptions` (
+  `season` VARCHAR(9) NOT NULL,
+  `session` INT(11) NOT NULL,
+  `discord_id` VARCHAR(255) NOT NULL,
+  `reason` VARCHAR(32) NOT NULL,
+  `created` DATETIME NOT NULL,
+  PRIMARY KEY (`season`, `session`, `discord_id`),
+  KEY `league_exemptions_player` (`season`, `discord_id`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 ROW_FORMAT = DYNAMIC;
 
 -- ---------------------------------------------------------------------------------------------------------------
 -- Reference data
