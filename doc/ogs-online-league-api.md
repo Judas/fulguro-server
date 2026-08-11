@@ -200,6 +200,23 @@ Exemple de réponse, ✅ celle de la sonde `13688` (liens d'invitation tronqués
 `id` est un **entier**. Les deux liens joueurs portent une clé courte de 22 caractères ; le lien spectateur ne contient
 que l'`id` de la rencontre, donc lui seul est publiable.
 
+⚠⚠ **OGS ne prévient pas les joueurs.** Constaté à l'usage le 11 août : créer une rencontre ne produit ni notification,
+ni invitation, ni entrée dans une liste que le joueur consulterait. Les deux liens d'invitation sont **le seul moyen**
+qu'un joueur a d'apprendre qu'il a un match, et c'est à nous de les acheminer.
+
+Trois conséquences, et la première renverse une priorité :
+
+- **Le MP Discord n'est pas un confort, c'est le mécanisme de livraison.** Un match dont le MP échoue est un match
+  injouable, pas un match dont le joueur est mal prévenu. Les colonnes `black_notified` / `white_notified` cessent d'être
+  de la traçabilité pour devenir l'état d'une livraison, et le renvoi manuel des liens cesse d'être un dépannage
+  cosmétique.
+- **Une rencontre créée et non transmise est inerte.** Personne ne la voit, personne ne la joue. C'est ce qui rend une
+  création de test peu coûteuse côté joueurs — nul n'est dérangé.
+- ⚠ Mais elle est **permanente** : `DELETE /matches/{id}` répond 405, donc chaque test consomme définitivement son
+  `league_match_id`. Rejouer plus tard le même identifiant avec une autre paire répond **400** en nommant le champ, ce
+  qui est bruyant et donc récupérable — mais un identifiant qu'une saison réelle voudra utiliser ne doit pas être brûlé
+  par un test.
+
 **Les neuf champs `readOnly` du résultat** — `outcome`, `black_lost`, `white_lost`, `annulled`,
 `moderator_annulled`, `annulment_reason`, `rating_complete`, `black_member_rating`, `white_member_rating` — sont
 écrits par OGS. Ils suffisent à connaître l'issue d'une rencontre **et son annulation** sans passer par

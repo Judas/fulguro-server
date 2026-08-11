@@ -16,6 +16,11 @@ import com.fulgurogo.league.db.model.LeagueStanding
  * What each of them owes, when written: [notifyChallenge] is a **private message** carrying an invitation link, which is
  * a player secret and must never go to a channel; the other two are channel messages on `bot.notification.channel.id`,
  * the houses' channel.
+ *
+ * ⚠⚠ **[notifyChallenge] is the delivery mechanism, not a courtesy.** Established by use on 11 August 2026: creating a
+ * match at OGS notifies nobody — no notification, no invitation, no list the player would find it in. The invitation link
+ * is the only way a player learns they have a match. So a DM that fails is a match that **cannot be played**, which is
+ * why the caller stamps `*_notified` only on success and why resending by hand is a real repair rather than a nicety.
  */
 object LeagueNotifier {
     /**

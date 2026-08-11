@@ -164,7 +164,8 @@ class LeagueSessionService : PeriodicFlowService(INITIAL_DELAY_IN_SECONDS, INTER
 
         if (LeagueDatabaseAccessor.claimDraw(season, session.number)) {
             val late = ChronoUnit.DAYS.between(session.start, now)
-            val lateness = if (late > 0) ", $late day(s) late" else ""
+            // Meaningless under the override, where the forced session's dates are wherever the season put them.
+            val lateness = if (late > 0 && !LeagueSession.isOverridden()) ", $late day(s) late" else ""
             log(TAG, "Drawing session ${session.number} of $season$lateness")
             performDraw(season, session.number)
         } else {
@@ -422,8 +423,12 @@ class LeagueSessionService : PeriodicFlowService(INITIAL_DELAY_IN_SECONDS, INTER
     /**
      * 7:00 to 9:59, the houses' daily-ranking window, for the same reason: the only moment a notification stands a chance
      * of being read the same day. A draw at midnight would DM everyone in the middle of the night.
+     *
+     * Always open when [LeagueSession.isOverridden], because forcing a session without opening the window would leave the
+     * draw testable only between 07:00 and 09:59 — which defeats the point of the key.
      */
-    private fun isMorningWindow(now: ZonedDateTime): Boolean = now.hour in FIRST_HOUR..LAST_HOUR
+    private fun isMorningWindow(now: ZonedDateTime): Boolean =
+        LeagueSession.isOverridden() || now.hour in FIRST_HOUR..LAST_HOUR
 
     companion object {
         /** Behind the houses' 90s and 120s, so a cold start does not open every outbound connection at once. */

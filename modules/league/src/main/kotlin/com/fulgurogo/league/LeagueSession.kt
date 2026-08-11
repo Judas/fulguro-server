@@ -1,7 +1,10 @@
 package com.fulgurogo.league
 
+import com.fulgurogo.common.config.Config
+import com.fulgurogo.common.logger.log
 import com.fulgurogo.common.utilities.DATE_ZONE
 import com.fulgurogo.house.HouseSeason
+import com.fulgurogo.league.LeagueModule.TAG
 import java.time.ZonedDateTime
 
 /**
@@ -28,8 +31,50 @@ data class Session(val number: Int, val start: ZonedDateTime, val end: ZonedDate
  * 14 and 15 September, 14 and 20 December, 1 January, 31 May, 1 June — can be checked one call at a time.
  */
 object LeagueSession {
+    private const val SESSION_OVERRIDE_KEY = "league.session.override"
+
     /** The day the second session of a month starts, and the exclusive end of its first one. */
     private const val SECOND_HALF_DAY = 15
+
+    /**
+     * A dev-only override: the number of the session to pretend is running, whatever the date.
+     *
+     * It exists for one reason, and it is a real one. The draw is the module's most consequential write and it must work
+     * on 15 September at 07:00 — yet it is **unreachable** outside a session, so between 1 June and 14 September no test
+     * can touch it, in dev or anywhere. Shipping it never having run once is the larger risk.
+     *
+     * ⚠ It forces **two** things, and conflating them is deliberate rather than sloppy: the session in progress, and the
+     * morning window. Forcing only the first still leaves the draw untestable except between 07:00 and 09:59. The key
+     * therefore means "act as though session N were running and it were the moment to draw".
+     *
+     * Read through [Config.getOrNull] and logged when set, the same contract as `house.period.override` — **empty in
+     * production**, where a value would freeze the league on one session for good.
+     *
+     * ⚠ And it is not free of consequence at OGS: a draw under this key creates permanent matches, `DELETE` answering 405,
+     * so it consumes the `league_match_id` of that (season, session) for the pairing it drew. Reusing the same slot later
+     * with a different pairing answers 400 naming the field, which is loud rather than silent — but a slot a real season
+     * will want must not be spent on a test.
+     */
+    private val sessionOverride: Int? = readSessionOverride()
+
+    /** Whether the calendar is being forced, which the service also reads to bypass the morning window. */
+    fun isOverridden(): Boolean = sessionOverride != null
+
+    /** One line at startup, and only when the key is set. Its absence in dev is itself the signal. */
+    fun logState() {
+        sessionOverride?.let {
+            log(TAG, "$SESSION_OVERRIDE_KEY is set: session $it is forced current and the draw window is always open")
+        }
+    }
+
+    private fun readSessionOverride(): Int? {
+        val value = Config.getOrNull(SESSION_OVERRIDE_KEY)?.trim()
+        if (value.isNullOrEmpty()) return null
+
+        val number = value.toIntOrNull()
+        if (number == null) log(TAG, "Ignoring unreadable $SESSION_OVERRIDE_KEY value [$value]")
+        return number
+    }
 
     /**
      * The two fortnights of the season that are not sessions, as `month to half` with the half numbered 1 or 2:
@@ -68,8 +113,13 @@ object LeagueSession {
      * not a longer neighbour. Extending session 6 to 1 January would make the holiday games count for it, and — since a
      * match is settled at the end of its session — would let those two matches live a fortnight longer than every other.
      */
-    fun current(season: String, now: ZonedDateTime = ZonedDateTime.now(DATE_ZONE)): Session? =
-        sessions(season).firstOrNull { it.contains(now) }
+    fun current(season: String, now: ZonedDateTime = ZonedDateTime.now(DATE_ZONE)): Session? {
+        val sessions = sessions(season)
+        // The override answers before the calendar, and answers null on a number that is not a session of this season
+        // rather than inventing one — a typo in the key must leave the league idle, not pair people into a phantom slot.
+        sessionOverride?.let { forced -> return sessions.firstOrNull { it.number == forced } }
+        return sessions.firstOrNull { it.contains(now) }
+    }
 
     /** The sessions of [season] that are over, for the settlement to walk. */
     fun ended(season: String, now: ZonedDateTime = ZonedDateTime.now(DATE_ZONE)): List<Session> =

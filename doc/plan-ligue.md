@@ -30,8 +30,8 @@ questions en attente.
 | Ligue OGS | **Une seule ligue permanente**, `FulguroGo`, créée à la main. Elle traverse les saisons, et **il n'y a pas de ligue de dev** |
 | Isolation dev / prod | Aucune côté OGS : dev et prod partagent la ligue. Le seul garde-fou est `league.test.players` |
 | Bac à sable de dev | En dev, seuls Drooxi et Judas peuvent entrer dans la ligue. Clé vide en prod (voir plus bas) |
-| Liens de challenge | Noir et blanc en MP Discord, spectateur public sur le site |
-| MP en échec | Les liens restent en base, renvoi manuel au cas par cas. Une ligne de log le signale |
+| Liens de challenge | Noir et blanc en MP Discord, spectateur public sur le site. ⚠ **OGS ne prévient pas les joueurs** : ce MP est le seul moyen d'apprendre qu'on a un match |
+| MP en échec | Les liens restent en base, renvoi manuel au cas par cas. Une ligne de log le signale. ⚠ Un MP perdu rend le match **injouable**, pas seulement mal annoncé |
 | Sortie | Un joueur peut quitter/revenir en cours de saison ; il devient « inactif », ses points restent |
 | Délier OGS | Sortie automatique de l'académie |
 | Nouvelle saison | Académies vidées le 1<sup>er</sup> septembre, tout le monde repostule |
@@ -1403,7 +1403,7 @@ un joueur s'en va.
 `PeriodicFlowService.start()`. Avec 600 s d'intervalle et 150 s de délai initial, le seuil de péremption sera de
 `max(600 × 5, 60) + 150 = 3 150 s`. Vérifier que `GET /gold/api/health` répond 200 avec le nouveau compte de services.
 
-**Config** — quatre clés nouvelles, dans les **trois** fichiers de `modules/common/src/main/resources/` :
+**Config** — cinq clés nouvelles, dans les **trois** fichiers de `modules/common/src/main/resources/` :
 `config.properties.dev`, `config.properties.prod` **et** la copie de travail `config.properties`. Seul le dernier est sur
 le classpath, donc une clé ajoutée aux deux variantes seulement n'existe pas pour l'application qui tourne en local. Le
 suffixe se place après `.properties`, jamais avant : `release.sh` copie par nom exact et un `dev.config.properties` casse
@@ -1418,8 +1418,18 @@ ajoute `/players`.
 | `ogs.league.auth` | L'en-tête `X-OGS-LEAGUE-AUTH`, la clé d'API | **identique** |
 | `league.member.salt` | Le sel du `member_id` OGS. **Ne change jamais** : il porte l'identité OGS de chaque joueur | **identique**, obligatoirement |
 | `league.test.players` | Le bac à sable : les seuls Discord id autorisés dans la ligue. Vide = aucune restriction | `236813095207436289,453473841252007937` en dev, **vide** en prod |
+| `league.session.override` | Dev seulement : force ce numéro de session à être la session courante **et** ouvre la fenêtre de tirage | **vide** partout par défaut, renseignée le temps d'un test |
 
-Trois clés identiques sur quatre, l'inverse des autres blocs de config — c'est le prix de la ligue unique.
+`league.session.override` a été ajoutée après coup, pour une raison qui vaut d'être écrite : le tirage est
+**inatteignable hors session**, donc entre le 1<sup>er</sup> juin et le 14 septembre aucun test ne peut l'exercer, ni en
+dev ni ailleurs — et c'est l'écriture la plus conséquente du module, celle qui doit marcher le 15 septembre à 7h. La
+livrer sans l'avoir jamais vue tourner était le plus gros risque du chantier. Elle force deux choses à la fois, la
+session et la fenêtre, parce que ne forcer que la session laisserait le tirage testable seulement entre 7h et 9h59.
+⚠ Un tirage sous cette clé crée de vraies rencontres **permanentes** chez OGS et consomme le `league_match_id` de ce
+couple (saison, session) : réutiliser le créneau avec une autre paire répond 400, ce qui est bruyant donc récupérable,
+mais un créneau qu'une saison réelle voudra ne doit pas être dépensé en test.
+
+Trois clés identiques sur cinq, l'inverse des autres blocs de config — c'est le prix de la ligue unique.
 `league.member.salt` **doit** être identique : un sel différent en dev donnerait aux deux comptes de test un second
 `member_id` dans la même ligue, donc deux appartenances pour une seule personne. Il ne reste donc que
 `league.test.players` pour séparer les deux environnements.

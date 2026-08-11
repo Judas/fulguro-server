@@ -19,6 +19,7 @@ object LeagueModule {
     fun init() {
         logCalendar()
         LeagueTestPlayers.logState()
+        LeagueSession.logState()
         sessionService.start()
     }
 
