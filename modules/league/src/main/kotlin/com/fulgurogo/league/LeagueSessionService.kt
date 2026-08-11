@@ -39,9 +39,11 @@ import java.util.*
  * - The DMs run **after** the challenge creation, since there is no link to send before it, and the channel announcement
  *   after the draw so it can never describe a half-written one.
  *
- * ⚠ In dev this service is what makes the league reach production, because there is one OGS league and dev shares it.
- * `league.test.players` is the only guard, and it is applied here too — on the registration queue — rather than trusted
- * from the join route alone.
+ * ⚠ In dev this service is what makes the league reach production, because there is one OGS league and dev shares it, and
+ * nothing restricts it any more: the sandbox that used to limit dev to two accounts is gone, OGS notifying nobody. A local
+ * run against a populated `fg_dev` academy therefore creates real, permanent matches on the shared league — inert, since
+ * no link is delivered, but undeletable. The `db.name` prefix keeps the identifiers apart; it does not keep the volume
+ * down.
  */
 class LeagueSessionService : PeriodicFlowService(INITIAL_DELAY_IN_SECONDS, INTERVAL_IN_SECONDS) {
     private val ogs = OgsLeagueClient()
@@ -98,20 +100,11 @@ class LeagueSessionService : PeriodicFlowService(INITIAL_DELAY_IN_SECONDS, INTER
     /**
      * Registers with OGS the players who joined but are not known there yet.
      *
-     * ⚠ The sandbox is re-applied here, and this is the one place it protects **production from dev** rather than the
-     * other way round: registering a member is the act of entering the shared OGS league. The join route already refuses
-     * outsiders, so a skip should never fire — which is exactly why it is logged if it does.
-     *
      * `ogs_registered` is stamped only on success, so a failure is retried next tick. Replaying the call is harmless —
      * OGS answers 200 instead of 201 — but it must not be replayed for everyone every tick, which is what this queue is.
      */
     private fun registerWithOgs() {
         LeagueDatabaseAccessor.playersToRegister().forEach { player ->
-            if (!LeagueTestPlayers.isAllowed(player.discordId)) {
-                log(TAG, "Not registering ${player.discordId} with OGS: outside the dev sandbox")
-                return@forEach
-            }
-
             if (ogs.registerMember(LeagueMemberId.of(player.discordId))) {
                 LeagueDatabaseAccessor.markRegistered(player.discordId)
                 log(TAG, "Registered ${player.discordId} with the OGS league")

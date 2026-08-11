@@ -4,7 +4,6 @@ import com.fulgurogo.common.db.DatabaseAccessor
 import com.fulgurogo.common.db.query
 import com.fulgurogo.league.LeaguePairing
 import com.fulgurogo.league.LeagueSession
-import com.fulgurogo.league.LeagueTestPlayers
 import com.fulgurogo.league.db.model.*
 import org.sql2o.Connection
 import java.util.*
@@ -307,14 +306,12 @@ object LeagueDatabaseAccessor {
      * linked player, so an unrated one sits at 0 and would be dragged to the bottom of the ladder and paired against the
      * same wrong opponent every session.
      *
-     * The dev sandbox is applied here **as well as** in the join route. Two places, but they answer two different
-     * questions: the route owes a human an explicit 403, while this is the guarantee about the draw itself — the one that
-     * has to hold even for a membership that got in by another path, a hand-written row included. Both read the same list
-     * from [LeagueTestPlayers].
+     * ⚠ Nothing restricts this to test accounts. The dev sandbox that used to is gone — OGS notifies nobody, so a match
+     * created from dev disturbs no player — which means a local run against a populated `fg_dev` academy really does
+     * create matches on the shared OGS league. What keeps the two apart is the `db.name` prefix of `league_match_id`, and
+     * that guards against collisions, not against volume.
      */
     fun candidates(season: String): List<LeagueCandidate> = DatabaseAccessor.withDao { connection ->
-        // `IN ()` is a syntax error in MySQL, and an unrestricted sandbox is the normal production case.
-        val sandbox = if (LeagueTestPlayers.isActive()) " AND m.discord_id IN (:testPlayers) " else ""
         val sql = "SELECT m.discord_id, h.house_id, g.rating " +
                 " FROM $MEMBERS_TABLE m " +
                 " JOIN $HOUSE_MEMBERS_TABLE h ON h.discord_id = m.discord_id " +
@@ -323,16 +320,14 @@ object LeagueDatabaseAccessor {
                 " JOIN $PLAYERS_TABLE p ON p.discord_id = m.discord_id " +
                 " WHERE m.season = :season AND m.active = 1 " +
                 "   AND p.ogs_registered IS NOT NULL " +
-                "   AND g.rating > 0 AND g.error = 0 " +
-                sandbox
+                "   AND g.rating > 0 AND g.error = 0 "
 
-        val query = connection
+        connection
             .query(sql)
             .throwOnMappingFailure(false)
             .addParameter("season", season)
-        if (LeagueTestPlayers.isActive()) query.addParameter("testPlayers", LeagueTestPlayers.ids)
-
-        query.executeAndFetch(LeagueCandidate::class.java) ?: listOf()
+            .executeAndFetch(LeagueCandidate::class.java)
+            ?: listOf()
     }
 
     /**

@@ -1,6 +1,7 @@
 package com.fulgurogo.common.utilities
 
 import com.fulgurogo.common.config.Config
+import okhttp3.CookieJar
 import okhttp3.JavaNetCookieJar
 import okhttp3.OkHttpClient
 import org.jsoup.Connection
@@ -23,6 +24,26 @@ val okHttpClient: OkHttpClient by lazy {
         .readTimeout(Config.get("global.read.timeout.ms").toLong(), TimeUnit.MILLISECONDS)
         .cookieJar(JavaNetCookieJar(CookieManager().apply { setCookiePolicy(CookiePolicy.ACCEPT_ALL) }))
         .build()
+}
+
+/**
+ * The same client with **no cookie jar**, for APIs that authenticate on headers alone.
+ *
+ * It exists because the shared jar is not neutral. `OgsRealTimeService` logs into OGS with a real account to open its
+ * WebSocket, and that login's `sessionid` lands in [okHttpClient]'s jar, where it is then replayed on **every** later
+ * request to online-go.com. Django Rest Framework sees a session-authenticated request, applies its CSRF check, and
+ * answers `403 CSRF Failed: Referer checking failed - no Referer.` — so the OGS league's writes, which authenticate on
+ * `X-OGS-LEAGUE*` headers and want nothing to do with that session, failed for a reason nothing in their own code
+ * suggested. Measured: the same `PUT` answers 200 before the login and 403 after it.
+ *
+ * Sending a `Referer` would have silenced the check, but the right fix is not to send the cookie: an organiser endpoint
+ * has no business carrying a user's session, and doing so risks OGS attributing the call to that account.
+ *
+ * Built with [OkHttpClient.newBuilder], so the connection pool and the dispatcher are **shared** with [okHttpClient] —
+ * this is one more configuration, not one more thread pool, which is the mistake the comment above records.
+ */
+val okHttpClientWithoutCookies: OkHttpClient by lazy {
+    okHttpClient.newBuilder().cookieJar(CookieJar.NO_COOKIES).build()
 }
 
 /**

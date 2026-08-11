@@ -28,8 +28,8 @@ questions en attente.
 | Parties OGS | `japanese`, 19×19, handicap 0, `byoyomi` 40 min + 5×30 s — envoyé dans le payload de chaque rencontre |
 | Identité OGS | `member_id` = `sha256(discordId + league.member.salt)`, calculé et non stocké |
 | Ligue OGS | **Une seule ligue permanente**, `FulguroGo`, créée à la main. Elle traverse les saisons, et **il n'y a pas de ligue de dev** |
-| Isolation dev / prod | Aucune côté OGS : dev et prod partagent la ligue. Le seul garde-fou est `league.test.players` |
-| Bac à sable de dev | En dev, seuls Drooxi et Judas peuvent entrer dans la ligue. Clé vide en prod (voir plus bas) |
+| Isolation dev / prod | Aucune côté OGS : dev et prod partagent la ligue. Seul le préfixe `db.name` de `league_match_id` sépare les identifiants |
+| Bac à sable de dev | ~~Seuls Drooxi et Judas en dev~~ — **retiré le 11 août** : OGS ne prévient aucun joueur, donc une rencontre créée depuis dev ne dérange personne (voir plus bas) |
 | Liens de challenge | Noir et blanc en MP Discord, spectateur public sur le site. ⚠ **OGS ne prévient pas les joueurs** : ce MP est le seul moyen d'apprendre qu'on a un match |
 | MP en échec | Les liens restent en base, renvoi manuel au cas par cas. Une ligne de log le signale. ⚠ Un MP perdu rend le match **injouable**, pas seulement mal annoncé |
 | Sortie | Un joueur peut quitter/revenir en cours de saison ; il devient « inactif », ses points restent |
@@ -127,21 +127,23 @@ C'est une rupture avec tout le reste de l'application, et il faut la nommer : `d
 peut par construction rien toucher de la production. **La ligue OGS n'a pas cette protection.** Un run local crée de
 vraies rencontres sur la vraie ligue et envoie de vrais liens d'invitation.
 
-Ce qui prend le relais est donc `league.test.players`, et il faut le voir comme **le seul garde-fou** et non comme une
-précaution supplémentaire :
+Il n'y a donc **rien** qui borne ce qu'un run local envoie à la ligue de production, et il faut le dire ainsi plutôt que
+de le sous-entendre :
 
-- **Bac à sable.** Seuls les Discord id listés dans `league.test.players` peuvent entrer dans la ligue. En dev :
-  `236813095207436289` (Drooxi) et `453473841252007937` (Judas). **Vide en prod**, ce qui veut dire « aucune
-  restriction ». La clé est lue par `Config.getOrNull` et **journalisée au démarrage quand elle est renseignée** — même
-  contrat que `house.period.override`, la seule autre clé optionnelle du projet.
+- **Les écritures de la ligue restent dans `fg_dev`.** C'est ce qui borne les dégâts côté base : un tirage local écrit
+  ses matchs dans le schéma de dev, donc le classement de prod ne bouge pas. Ce qui part vers la production, c'est le
+  côté OGS — de vraies rencontres et de vrais liens dans la vraie ligue, pour qui que ce soit que `fg_dev` contienne.
 
-  Les deux risques miroirs se valent et cette ligne de log est ce qui les rend visibles : l'oublier renseignée en prod
-  limiterait silencieusement la ligue à deux joueurs, l'oublier vide en dev laisserait un run local apparier toute la
-  communauté sur la vraie ligue.
+- **Un bac à sable a existé et il a été retiré le 11 août.** `league.test.players` limitait la ligue aux deux comptes de
+  test en dev. Sa raison d'être était d'éviter d'envoyer de vrais challenges à de vrais joueurs — et elle est tombée avec
+  le constat qu'**OGS ne prévient personne** : une rencontre dont le lien n'est pas transmis est inerte, invisible du
+  joueur, injouable. Personne n'est donc dérangé par un tirage de dev.
 
-- **Les écritures de la ligue restent dans `fg_dev`.** C'est ce qui borne les dégâts : un tirage local écrit ses matchs
-  dans le schéma de dev, donc le classement de prod ne bouge pas. Ce qui fuit vers la production, c'est le côté OGS —
-  des rencontres et des liens dans la vraie ligue, pour les deux comptes de test.
+  ⚠ Ce qui reste, et qui n'est pas rien : les rencontres créées sont **permanentes** (`DELETE` répond 405) et chacune
+  consomme son `league_match_id`. Un run local sur une académie de trente joueurs laisse quinze rencontres indélébiles à
+  chaque essai. Le préfixe `db.name` garantit qu'aucune ne collisionne avec la production, pas que le volume reste
+  raisonnable. La règle d'usage remplace donc le garde-fou : **ne pas dépenser en test un créneau (saison, session)
+  qu'une saison réelle voudra**, et préférer une saison déjà close.
 
 - **Il n'y a rien à enregistrer chez OGS**, et c'est une conséquence directe de la ligue unique. Le
   `callback_url_template` est un réglage **global à la ligue** : un enregistrement lancé depuis un poste de dev
@@ -658,8 +660,7 @@ Dépend de : 3. Ajouter `implementation(project(":modules:league"))` à `modules
 `POST /gold/api/league/join` — corps `{ "discordId": "..." }`.
 
 - `400` corps invalide
-- `403` on est hors saison (`HouseSeason.period() == VACATION`), ou le bac à sable de dev est actif et ce joueur n'y
-  est pas
+- `403` on est hors saison (`HouseSeason.period() == VACATION`)
 - `404` joueur inconnu, sans maison, ou sans compte OGS lié
 - `409` déjà membre **actif**
 - `200` avec l'état de l'inscription
@@ -673,11 +674,6 @@ entrante.
 Un joueur inscrit puis parti puis revenu retombe sur sa ligne existante, `active` repassant à 1 : l'inscription est
 donc un `INSERT IGNORE` suivi d'un `setActive(true)`, pas une insertion sèche. Son `joined` n'est pas restampé, et sa
 renommée déjà acquise reste dans ses matchs.
-
-Le **bac à sable de dev** est refusé ici plutôt que filtré en silence : un compte de test non listé doit recevoir un
-403 explicite, sinon on passe une soirée à chercher pourquoi il n'apparaît dans aucun tirage. Le filtre est répété
-dans `candidates()` — deux endroits, mais l'un est une réponse à un humain et l'autre une garantie sur le tirage, et
-c'est la même liste lue au même endroit.
 
 `POST /gold/api/league/leave` — corps `{ "discordId": "..." }`. Passe `active` à 0 et stampe `left_since`.
 
@@ -1403,7 +1399,7 @@ un joueur s'en va.
 `PeriodicFlowService.start()`. Avec 600 s d'intervalle et 150 s de délai initial, le seuil de péremption sera de
 `max(600 × 5, 60) + 150 = 3 150 s`. Vérifier que `GET /gold/api/health` répond 200 avec le nouveau compte de services.
 
-**Config** — cinq clés nouvelles, dans les **trois** fichiers de `modules/common/src/main/resources/` :
+**Config** — quatre clés nouvelles, dans les **trois** fichiers de `modules/common/src/main/resources/` :
 `config.properties.dev`, `config.properties.prod` **et** la copie de travail `config.properties`. Seul le dernier est sur
 le classpath, donc une clé ajoutée aux deux variantes seulement n'existe pas pour l'application qui tourne en local. Le
 suffixe se place après `.properties`, jamais avant : `release.sh` copie par nom exact et un `dev.config.properties` casse
@@ -1417,7 +1413,6 @@ ajoute `/players`.
 | `ogs.league.id` | L'en-tête `X-OGS-LEAGUE` — `FulguroGo` | **identique** : une seule ligue |
 | `ogs.league.auth` | L'en-tête `X-OGS-LEAGUE-AUTH`, la clé d'API | **identique** |
 | `league.member.salt` | Le sel du `member_id` OGS. **Ne change jamais** : il porte l'identité OGS de chaque joueur | **identique**, obligatoirement |
-| `league.test.players` | Le bac à sable : les seuls Discord id autorisés dans la ligue. Vide = aucune restriction | `236813095207436289,453473841252007937` en dev, **vide** en prod |
 | `league.session.override` | Dev seulement : force ce numéro de session à être la session courante **et** ouvre la fenêtre de tirage | **vide** partout par défaut, renseignée le temps d'un test |
 
 `league.session.override` a été ajoutée après coup, pour une raison qui vaut d'être écrite : le tirage est
@@ -1429,17 +1424,17 @@ session et la fenêtre, parce que ne forcer que la session laisserait le tirage 
 couple (saison, session) : réutiliser le créneau avec une autre paire répond 400, ce qui est bruyant donc récupérable,
 mais un créneau qu'une saison réelle voudra ne doit pas être dépensé en test.
 
-Trois clés identiques sur cinq, l'inverse des autres blocs de config — c'est le prix de la ligue unique.
+Trois clés identiques sur quatre, l'inverse des autres blocs de config — c'est le prix de la ligue unique.
 `league.member.salt` **doit** être identique : un sel différent en dev donnerait aux deux comptes de test un second
-`member_id` dans la même ligue, donc deux appartenances pour une seule personne. Il ne reste donc que
-`league.test.players` pour séparer les deux environnements.
+`member_id` dans la même ligue, donc deux appartenances pour une seule personne. Rien ne sépare donc plus les deux environnements côté OGS que le
+préfixe `db.name` des identifiants de rencontre.
 
 Elle est la deuxième clé du projet lue par `Config.getOrNull` plutôt que `Config.get`, après `house.period.override`, et
 pour la même raison : elle doit pouvoir rester vide sans faire tomber un service. Comme elle, elle est journalisée au
 démarrage quand elle est renseignée — et ici cette ligne de log est le dernier rempart avant la production.
 
 **Documentation** — `CLAUDE.md` : `league` dans l'ordre d'`init()` (avant `api`, qui en dépend), les intervalles au
-paragraphe sur l'étalement des ticks, les quatre clés à l'énumération — dont `league.test.players` au paragraphe des
+paragraphe sur l'étalement des ticks, les quatre clés à l'énumération — dont `league.session.override` au paragraphe des
 clés optionnelles, à côté de `house.period.override` —, un point sur la ligue dans le flux de données, la nouvelle capacité MP de `DiscordBot`, et un mot
 sur `league.member.salt` : c'est la première clé du projet dont la **perte** détruit une donnée métier plutôt que de
 faire tomber un service. `doc/schema.sql` gagne les six tables. ⚠ Au passage : `CLAUDE.md` renvoie à `doc/changelog.txt`, qui **n'existe pas**
@@ -1476,13 +1471,16 @@ réelle sont faits — mais trois risques à connaître.
 
 **Les trois risques à connaître**
 
-3. **La ligue OGS est partagée entre dev et prod**, et c'est le seul endroit du projet où un run local peut toucher la
-   production. `league.test.players` est l'unique garde-fou : renseignée en dev, **vide en prod**, et journalisée au
-   démarrage. Le préfixe `db.name` sur `league_match_id` est la seconde moitié de cette précaution.
-4. **`league.member.salt` porte l'identité OGS de tous les joueurs**, vit dans un fichier gitignoré, et n'est donc pas
+1. **La ligue OGS est partagée entre dev et prod**, et c'est le seul endroit du projet où un run local touche la
+   production — sans aucun garde-fou depuis le retrait du bac à sable le 11 août. Le préfixe `db.name` sur
+   `league_match_id` empêche les collisions d'identifiants, rien de plus : un tirage local crée de vraies rencontres,
+   permanentes puisque `DELETE` répond 405. Elles sont inertes, OGS ne prévenant aucun joueur, mais elles s'accumulent.
+   La discipline remplace le mécanisme : tester sur une saison close, et sur des créneaux de session qu'aucune saison
+   réelle ne réclamera.
+2. **`league.member.salt` porte l'identité OGS de tous les joueurs**, vit dans un fichier gitignoré, et n'est donc pas
    dans les sauvegardes de la base. Le perdre ou le changer réinscrit tout le monde sous de nouveaux `member_id`. À
    sauvegarder comme `bot.token`.
-5. **Deux angles morts hérités**, qui n'appartiennent pas à la ligue mais l'atteignent. Les **parties annulées** après
+3. **Deux angles morts hérités**, qui n'appartiennent pas à la ligue mais l'atteignent. Les **parties annulées** après
    ingestion, que ni `OgsService` ni `OgsRealTimeService` ne défont : la ligue s'en sort, puisqu'OGS le lui dit sur la
    rencontre, mais `house_points` gardera les points d'une partie annulée. Et `gold_ranks.error`, qui **somme** les
    drapeaux d'erreur par plateforme — un scraper KGS cassé peut sortir d'un tirage tous les joueurs ayant un compte KGS,

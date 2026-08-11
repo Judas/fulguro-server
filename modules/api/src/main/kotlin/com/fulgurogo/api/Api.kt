@@ -29,7 +29,6 @@ import com.fulgurogo.house.HousePeriod
 import com.fulgurogo.house.HouseRoles
 import com.fulgurogo.house.HouseSeason
 import com.fulgurogo.house.db.HouseDatabaseAccessor
-import com.fulgurogo.league.LeagueTestPlayers
 import com.fulgurogo.league.db.LeagueDatabaseAccessor
 import com.fulgurogo.ogs.api.OgsApiClient
 import com.google.gson.Gson
@@ -224,9 +223,8 @@ class Api {
     }
 
     /**
-     * Joins the league: 400 on a bad body, 403 outside the season or when the dev sandbox excludes the player, 404 on an
-     * unknown player or one with no house or no linked OGS account, 409 when they are already an active member, 200 with
-     * where they now stand.
+     * Joins the league: 400 on a bad body, 403 outside the season, 404 on an unknown player or one with no house or no
+     * linked OGS account, 409 when they are already an active member, 200 with where they now stand.
      *
      * Two writes, and no network call. The `PUT member/{id}` OGS needs is left to the tick, for two reasons: joining must
      * not fail because OGS is momentarily down, and this handler would otherwise be the second place in the project where
@@ -236,8 +234,6 @@ class Api {
      * `INSERT IGNORE` followed by [LeagueDatabaseAccessor.setActive] rather than a bare insert. Their `joined` is not
      * restamped and the renown they already earned stays on their matches.
      *
-     * The sandbox is **refused** here rather than filtered in silence. A test account that is not on the list has to get
-     * an explicit 403, or one spends an evening looking for why it never appears in a draw.
      */
     fun joinLeague(context: Context) = context.handle("joinLeague") {
         // Gson does not honour Kotlin nullability, so treat every field as possibly absent.
@@ -250,12 +246,6 @@ class Api {
 
         if (HouseSeason.period() == HousePeriod.VACATION) {
             context.forbidden()  // The academies are formed at the start of a season, not during the break
-            return@handle
-        }
-
-        if (!LeagueTestPlayers.isAllowed(discordId)) {
-            log(TAG, "joinLeague REFUSED $discordId is not in the dev sandbox")
-            context.forbidden()
             return@handle
         }
 

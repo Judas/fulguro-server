@@ -4,6 +4,7 @@ import com.fulgurogo.common.config.Config
 import com.fulgurogo.common.logger.log
 import com.fulgurogo.common.utilities.DATE_ZONE
 import com.fulgurogo.common.utilities.okHttpClient
+import com.fulgurogo.common.utilities.okHttpClientWithoutCookies
 import com.fulgurogo.ogs.OgsModule.TAG
 import com.google.gson.Gson
 import okhttp3.MediaType.Companion.toMediaType
@@ -12,8 +13,18 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import java.time.ZonedDateTime
 
-class OgsApiClient {
+/**
+ * [sendCookies] left true keeps `OgsService` and `OgsRealTimeService` exactly as they were — the second one needs its
+ * login session for the WebSocket handshake.
+ *
+ * The league passes **false**, and must. That login's `sessionid` lives in the shared cookie jar and is replayed on every
+ * later call to online-go.com, which makes Django treat a league write as session-authenticated and refuse it with
+ * `403 CSRF Failed`. Measured both ways. An organiser endpoint authenticating on `X-OGS-LEAGUE*` headers has no business
+ * carrying a user's session anyway.
+ */
+class OgsApiClient(sendCookies: Boolean = true) {
     private val gson: Gson = Gson()
+    private val client = if (sendCookies) okHttpClient else okHttpClientWithoutCookies
     private var lastNetworkCallTime: ZonedDateTime = ZonedDateTime.now(DATE_ZONE)
 
     /**
@@ -51,7 +62,7 @@ class OgsApiClient {
             .apply { headers.forEach { (name, value) -> header(name, value) } }
             .get().build()
 
-        return okHttpClient.newCall(request).execute().use { response ->
+        return client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
                 val error = Exception("GET FAILURE ${response.code} on $route ${response.explain()}")
                 log(TAG, error.message!!)
@@ -71,7 +82,7 @@ class OgsApiClient {
             .apply { headers.forEach { (name, value) -> header(name, value) } }
             .post(requestBody).build()
 
-        return okHttpClient.newCall(request).execute().use { response ->
+        return client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
                 val error = Exception("POST FAILURE ${response.code} on $route ${response.explain()}")
                 log(TAG, error.message!!)
@@ -92,7 +103,7 @@ class OgsApiClient {
             .apply { headers.forEach { (name, value) -> header(name, value) } }
             .put(requestBody).build()
 
-        return okHttpClient.newCall(request).execute().use { response ->
+        return client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
                 val error = Exception("PUT FAILURE ${response.code} on $route ${response.explain()}")
                 log(TAG, error.message!!)
