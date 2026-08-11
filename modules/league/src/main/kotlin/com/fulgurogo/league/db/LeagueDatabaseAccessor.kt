@@ -689,6 +689,24 @@ object LeagueDatabaseAccessor {
             .eachCount()
     }
 
+    /**
+     * The exemptions of one session.
+     *
+     * Two callers, both needing the rows rather than a count: the draw announcement, which names the players on the bench,
+     * and the empty-session check, for which "no match **and** no exemption" is what tells a crashed draw from one that
+     * was legitimately empty — a session with exemptions and no match was drawn, it just had nobody to pair.
+     */
+    fun exemptionsOf(season: String, session: Int): List<LeagueExemption> = DatabaseAccessor.withDao { connection ->
+        val query = "SELECT * FROM $EXEMPTIONS_TABLE WHERE season = :season AND session = :session"
+        connection
+            .query(query)
+            .throwOnMappingFailure(false)
+            .addParameter("season", season)
+            .addParameter("session", session)
+            .executeAndFetch(LeagueExemption::class.java)
+            ?: listOf()
+    }
+
     // ---------------------------------------------------------------------------------------------------------------
     // Standings
     // ---------------------------------------------------------------------------------------------------------------

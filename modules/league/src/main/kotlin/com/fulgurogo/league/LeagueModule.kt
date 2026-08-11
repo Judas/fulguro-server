@@ -8,17 +8,18 @@ import java.time.format.DateTimeFormatter
 
 /**
  * This module is in charge of the league: academy membership, session pairings, OGS matches and renown.
- *
- * No service yet. The pairings, the OGS client and the API routes come with the later steps of `doc/plan-ligue.md`.
  */
 object LeagueModule {
     const val TAG = "LGE"
 
     private val DAY_MONTH = DateTimeFormatter.ofPattern("dd/MM")
 
+    private val sessionService = LeagueSessionService()
+
     fun init() {
         logCalendar()
         LeagueTestPlayers.logState()
+        sessionService.start()
     }
 
     /**

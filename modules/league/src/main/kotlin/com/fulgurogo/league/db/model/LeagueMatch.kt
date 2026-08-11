@@ -58,7 +58,7 @@ data class LeagueMatch(
      * Three families of values, and this is where the "not played, not replayable" rule lives:
      *
      * - **null** while the fate of the match is still open;
-     * - the winner OGS names — [BLACK_WINS], [WHITE_WINS], or something else that designates neither — once played;
+     * - the winner OGS names — [BLACK_WINS], [WHITE_WINS], or [ANNULLED] which designates neither — once played;
      * - [UNPLAYED] as soon as the session was settled without a result arriving. Terminal: no write looks at it again,
      *   which is what makes a game played late on OGS have no effect on the league.
      *
@@ -108,5 +108,23 @@ data class LeagueMatch(
         /** How the platforms spell a win, the same two strings `ogs_games.result` and `kgs_games.result` carry. */
         const val BLACK_WINS = "black"
         const val WHITE_WINS = "white"
+
+        /**
+         * A match OGS voided. **Played, and won by nobody** — so 2 points to each player and the session counts towards
+         * the perfect-attendance bonus, which is the plan's rule that an annulled match is not a victory.
+         *
+         * Ours rather than OGS's, which says `outcome: "Cancellation"` and, worse, still fills `black_lost` — see
+         * [loser]. Distinct from [UNPLAYED]: nobody failed to turn up, the game simply does not stand.
+         */
+        const val ANNULLED = "annulled"
+
+        /**
+         * Finished, not voided, and naming neither side. Also played with no winner, but for an honest reason rather than
+         * an annulment — writing [ANNULLED] here would put a claim in the data that is not true.
+         *
+         * Unreachable as things stand: japanese rules put komi at a half point, so no score can be level. The same word
+         * `ogs_games.result` already uses for a drawn game, so the two tables read alike if it ever becomes reachable.
+         */
+        const val JIGO = "jigo"
     }
 }
