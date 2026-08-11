@@ -823,8 +823,19 @@ Dépend de : 3. Fonction pure, sans BDD, sans horloge — la partie la plus faci
 ```kotlin
 data class Draw(val pairings: List<Pairing>, val exemptions: List<Exemption>)
 
-fun draw(candidates: List<LeagueCandidate>, history: Map<Pair<String, String>, Int>): Draw
+fun draw(
+    candidates: List<LeagueCandidate>,
+    history: Map<Pair<String, String>, Int>,
+    exemptions: Map<String, Int> = mapOf(),
+    random: Random = Random.Default
+): Draw
 ```
+
+⚠ **Deux paramètres de plus que la première version de ce plan**, et ce n'est pas du confort. `exemptions` — le nombre
+de sessions déjà manquées par joueur — est ce sans quoi la règle du banc énoncée plus bas (« parmi ceux qui ont subi le
+moins d'exemptions ») est inapplicable. Et `random` est injecté pour que le tirage reste vérifiable : la fonction est
+sans base et sans horloge, mais elle tire au sort deux fois — le banc et les couleurs —, donc l'aléa doit pouvoir être
+fixé par un test.
 
 Le tirage renvoie **les deux** : les paires, et les candidats qu'il n'a pas pu apparier avec la raison. C'est lui, et
 lui seul, qui sait pourquoi un joueur est resté sur le banc — un effectif impair (`ODD`) ou aucun adversaire hors de sa
@@ -850,12 +861,28 @@ la même unité, des points de rating, et le réglage se lit comme une phrase : 
 autant que d'en affronter un deux tiers plus loin. La nouveauté prime nettement sur l'équilibrage, ce qui est le bon
 arbitrage sur 16 sessions — un joueur qui affronte trois fois la même personne dans l'année n'a pas joué une ligue.
 
-### L'algorithme : glouton, puis amélioration locale
+### L'algorithme : banc d'abord, puis glouton, réparation, 2-opt
 
-1. **Glouton.** Énumérer les paires valides, trier par score croissant, prendre chaque paire dont les deux joueurs sont
-   encore libres. O(n² log n), déterministe, dix lignes.
-2. **2-opt.** Balayer les couples de paires déjà formées et échanger les adversaires quand le total baisse, en
-   revérifiant la contrainte de maison à chaque échange. Répéter jusqu'à ce que plus rien ne bouge.
+0. **Le banc, avant tout appariement.** Retirer un par un les joueurs qui ne peuvent pas jouer, en réévaluant la
+   distribution après chaque retrait. Deux situations, jamais confondues : une maison qui détient **plus de la moitié**
+   des candidats a un surplus que personne ne peut affronter, donc le banc sort de cette maison, raison `NO_RIVAL` ; un
+   effectif **impair** par ailleurs équilibré laisse exactement un joueur, raison `ODD`. Dans les deux cas la personne
+   est choisie parmi les moins exemptées de la saison, au sort à égalité. À la sortie, l'effectif restant est pair et
+   aucune maison n'en détient plus de la moitié — exactement la condition d'existence d'un couplage parfait.
+1. **Glouton.** Énumérer les paires valides, trier par score croissant — puis par identifiants, pour que deux exécutions
+   sur la même entrée donnent le même tirage plutôt que l'ordre où la base a rendu les candidats —, prendre chaque paire
+   dont les deux joueurs sont encore libres.
+2. **Réparation.** Le glouton **n'apparie pas tout le monde**, et c'est une correction apportée à ce plan. Les paires
+   valides forment un graphe multiparti complet, sur lequel un couplage glouton est *maximal* mais pas *maximum* : avec
+   les maisons {A,B}, {C}, {D}, prendre C-D en premier laisse A et B sur le banc alors qu'un couplage parfait existait.
+   Le 2-opt n'y peut rien, puisqu'échanger des adversaires ne crée jamais de paire. Deux mouvements suffisent à remonter
+   au maximum : apparier entre eux deux non-appariés de maisons différentes — après quoi tous les non-appariés restants
+   sont forcément d'une même maison —, puis casser une paire dont aucun membre n'est de cette maison pour en faire deux.
+   Sans cette réparation, une exemption pourrait vouloir dire « l'algorithme a renoncé » au lieu de « personne n'était
+   disponible », ce qui est exactement ce que le barème ne doit pas confondre.
+3. **2-opt.** Balayer les couples de paires déjà formées et échanger les adversaires quand le total baisse, en
+   revérifiant la contrainte de maison à chaque échange. Répéter jusqu'à ce que plus rien ne bouge. Il passe en dernier
+   pour rattraper le score que la réparation, qui ignore les scores, a pu dégrader.
 
 Le glouton seul ne suffit pas, et pour une raison précise qu'il faut avoir en tête avant de toucher à ce fichier :
 **sans la pénalité, le score est une simple distance sur une droite** — les ratings — et le couplage optimal consiste à
@@ -893,6 +920,11 @@ les candidats qui ont subi le moins d'exemptions cette saison, et on départage 
 
 **Joueur non appariable** : tous les autres actifs sont de sa maison. Exempté de la même façon, raison `NO_RIVAL`, et
 pas de bye non plus. Ce cas-là ne se choisit pas : il s'impose.
+
+⚠ La raison du **dernier** joueur restant se décide sur l'effectif d'origine, pas sur ce qu'il reste. Deux joueurs seuls
+d'une même maison sont tous les deux `NO_RIVAL` : traiter le second comme `ODD` parce qu'il est seul à la fin
+répondrait à côté de la question à celui qui demandera en mai pourquoi il n'a jamais été tiré. La règle est donc :
+avait-il un adversaire possible dans ce tirage ? Non ⇒ `NO_RIVAL`, oui ⇒ `ODD`.
 
 **Les couleurs sont tirées au sort** à chaque match. Ni le rating, ni une alternance sur la saison : deux lignes, et
 équitable en espérance. La contrepartie est visible et acceptée — sur seize sessions, un joueur peut prendre noir dix

@@ -2,6 +2,7 @@ package com.fulgurogo.league.db
 
 import com.fulgurogo.common.db.DatabaseAccessor
 import com.fulgurogo.common.db.query
+import com.fulgurogo.league.LeaguePairing
 import com.fulgurogo.league.LeagueSession
 import com.fulgurogo.league.LeagueTestPlayers
 import com.fulgurogo.league.db.model.*
@@ -479,7 +480,7 @@ object LeagueDatabaseAccessor {
     /**
      * How many times each pair has already been drawn this season, for the draw's repeat penalty.
      *
-     * Keyed with [opponentKey] so a lookup finds the pair whichever way round it is asked for. Getting that wrong is
+     * Keyed with [LeaguePairing.opponentKey] so a lookup finds the pair whichever way round it is asked for. Getting that wrong is
      * silent — every lookup would miss, the penalty would never apply, and the same two players would be paired all
      * season — which is why the key is built by a function rather than by each caller.
      *
@@ -487,12 +488,8 @@ object LeagueDatabaseAccessor {
      * the penalty cannot be computed over a different set than the standings are.
      */
     fun pastOpponents(season: String): Map<Pair<String, String>, Int> = matches(season)
-        .groupingBy { opponentKey(it.blackDiscordId, it.whiteDiscordId) }
+        .groupingBy { LeaguePairing.opponentKey(it.blackDiscordId, it.whiteDiscordId) }
         .eachCount()
-
-    /** The canonical key for a pair of players: the two ids in a fixed order, so colour cannot change it. */
-    fun opponentKey(one: String, other: String): Pair<String, String> =
-        if (one <= other) one to other else other to one
 
     /**
      * Writes the pairings a draw produced, and answers how many were new.
