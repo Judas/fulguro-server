@@ -203,8 +203,8 @@ que l'`id` de la rencontre, donc lui seul est publiable.
 **Les neuf champs `readOnly` du résultat** — `outcome`, `black_lost`, `white_lost`, `annulled`,
 `moderator_annulled`, `annulment_reason`, `rating_complete`, `black_member_rating`, `white_member_rating` — sont
 écrits par OGS. Ils suffisent à connaître l'issue d'une rencontre **et son annulation** sans passer par
-`/api/v1/games/{id}` ni par une ingestion de parties. ⚠ La spec les type `string`, ce qui est douteux pour
-`black_lost` / `white_lost` ; leur type réel reste à constater sur une rencontre terminée.
+`/api/v1/games/{id}` ni par une ingestion de parties. ✅ Leurs types réels sont mesurés, voir « Une rencontre
+terminée » plus bas — et la spec se trompe sur deux d'entre eux.
 
 ---
 
@@ -284,6 +284,47 @@ des deux a perdu.
 
 ---
 
+## Une rencontre terminée
+
+✅ Mesuré le 11 août 2026 sur la rencontre `13688`, dont la partie a été jouée puis **annulée**.
+
+```json
+{"finished": true, "cancelled": false,
+ "outcome": "Cancellation", "black_lost": true, "white_lost": false,
+ "annulled": true, "moderator_annulled": null, "annulment_reason": null,
+ "rating_complete": true, "black_member_rating": 1500.0, "white_member_rating": 1500.0}
+```
+
+**Les types, enfin connus, et la spec se trompe deux fois :**
+
+| Champ | Type réel | Ce que la spec dit |
+|---|---|---|
+| `outcome` | `String`, lisible par un humain — `"Cancellation"` | string ✅ |
+| `black_lost`, `white_lost` | **`Boolean`** | string ❌ |
+| `annulled`, `moderator_annulled` | `Boolean`, nullable | — |
+| `annulment_reason` | resté `null` malgré l'annulation | string |
+| `black_member_rating`, `white_member_rating` | **`Double`** (Glicko), `1500.0` | — |
+
+⚠⚠ **Le piège : une rencontre annulée désigne quand même un vainqueur.** Celle-ci est revenue `finished: true`,
+`annulled: true`, `outcome: "Cancellation"` **et** `black_lost: true, white_lost: false`. Lire les deux drapeaux sans
+vérifier l'annulation d'abord transforme une partie qui ne compte pas en victoire pour blanc. C'est pourquoi
+`OgsLeagueMatch.loser()` teste `isAnnulled()` **en premier** et rend `null` : la règle « une rencontre annulée n'est pas
+une victoire » est appliquée au seul endroit où ces drapeaux sont lus, plutôt que laissée à la mémoire de chaque appelant.
+
+⚠ Trois autres détails de cette réponse :
+
+- `moderator_annulled` et `annulment_reason` sont **null** alors que `annulled` est `true`. `annulled` seul est donc le
+  signal, et il ne faut pas compter sur une raison lisible — le plan la promettait, elle n'est pas venue.
+- `cancelled` vaut **`false`** sur une rencontre annulée : ce champ parle d'autre chose, ne pas s'en servir pour
+  détecter une annulation.
+- Les deux ratings valent `1500.0`, donc **`Double` et non `Int`** — et c'est une correction, pas un détail. Gson lit
+  `1500.0` dans un champ `Int` sans broncher et **lève** sur `1523.7`, en perdant **l'objet entier** et pas seulement le
+  champ. Comme le client répond null ou liste vide en cas d'échec, un seul rating fractionnaire aurait rendu un balayage
+  vide, silencieusement, tant qu'il restait fractionnaire. Mesuré aussi : `rating_complete` passe à `true` ici, après
+  avoir valu `false` à la création puis `null` en cours de partie.
+
+---
+
 ## `GET|PUT|PATCH /callback`
 
 ```json
@@ -352,14 +393,13 @@ n'accepte que la lecture.
 
 ## Ce qui reste inconnu
 
-- Le type réel de `black_lost` / `white_lost` / `outcome` **sur la rencontre**, une fois terminée. Sur une rencontre non
-  commencée puis en cours, les trois restent `null`, donc `OgsLeagueMatch` les mappe en `String?` — Gson y lit
-  indifféremment un booléen, un nombre ou une chaîne, ce qui dégrade une surprise en valeur bizarre plutôt qu'en tick
-  perdu.
+- La forme d'`outcome` sur une partie **gagnée** : `"Cancellation"` est la seule valeur vue. Une victoire normale porte
+  vraisemblablement quelque chose comme `"Resignation"` ou `"12.5 points"`, mais ce n'est pas mesuré. Sans importance
+  pour la ligue, qui lit `black_lost` / `white_lost` et non `outcome`.
 - Quand `pending_rating_change` est consommé, et si un `PUT /member` rejoué après la liaison peut réinitialiser le
   `league_rating` d'un joueur en cours de saison.
-- `rating_complete` valait `false` à la création et `null` une fois la partie lancée. Ces champs sont mous ; les lire en
-  `Boolean?` plutôt qu'en `Boolean`.
+- Ce que valent `annulment_reason` et `moderator_annulled` sur une annulation **par un modérateur** — sur celle du
+  11 août, faite autrement, les deux sont restés `null`.
 - Ce que `game` contient exactement, et le `speed` que la partie créée déclare — ce qui décide si une partie de ligue
   est vue comme `live` par les consommateurs de `ogs_games`.
 - Ce que fait `PUT /matches/`, et sur quelle clé il retrouve la rencontre.

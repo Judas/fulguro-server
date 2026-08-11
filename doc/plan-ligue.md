@@ -1100,10 +1100,20 @@ Deux conséquences qui valent mieux que l'économie d'une jointure :
   classement de la ligue. Et la renommée ne dépend même pas de `game` : le vainqueur est sur l'objet rencontre, donc
   `ogs_game_id` et `gold_id` ne servent qu'au lien vers `ogs_games` pour le site.
 
-⚠ Le type réel de `outcome`, `black_lost` et `white_lost` reste à constater sur une rencontre terminée : la spec
-OpenAPI les annonce en `string`, ce qui est douteux pour deux champs dont le nom dit un booléen. C'est le premier point
-à vérifier quand la première partie de ligue se terminera, et le seul endroit du module qui en dépend est la fonction
-qui convertit une réponse OGS en `result`.
+✅ **Les types sont mesurés** sur la rencontre terminée du 11 août : `outcome` est une chaîne lisible
+(`"Cancellation"`), `black_lost` et `white_lost` sont de vrais **booléens** — la spec se trompe en les annonçant en
+`string` — et les deux ratings sont des **`Double`**, pas des entiers.
+
+⚠⚠ **Et la mesure a révélé le piège qui compte : une rencontre annulée désigne quand même un vainqueur.** Celle du
+11 août est revenue `finished: true`, `annulled: true`, `outcome: "Cancellation"` **et** `black_lost: true,
+white_lost: false`. La conversion en `result` doit donc tester l'annulation **avant** de lire les drapeaux, sinon une
+partie qui ne compte pas devient une victoire pour blanc. C'est fait dans `OgsLeagueMatch.loser()`, qui rend `null` dès
+que `isAnnulled()`, pour que la règle vive au seul endroit où ces drapeaux sont lus plutôt que dans la mémoire de chaque
+appelant. `isAnnulled()` reste disponible pour distinguer « nulle » de « terminée sans vainqueur » dans une ligne de log.
+
+⚠ Deux corrections au passage : `annulment_reason` et `moderator_annulled` sont restés **null** malgré l'annulation, donc
+ce plan promettait à tort de savoir *pourquoi* une partie a été annulée ; et `cancelled` vaut `false` sur une rencontre
+annulée, donc ce champ ne sert pas à la détecter.
 
 Recopier le résultat dans `league_matches` plutôt que le relire à chaque affichage garde tout son sens : `CleanService`
 supprime les parties au bout de 32 jours, et surtout un classement ne doit pas dépendre d'un appel réseau par ligne.
@@ -1393,21 +1403,18 @@ dans le dépôt — à créer ou à retirer de la doc.
 ## Ce qui reste en suspens
 
 Les vingt questions du plan sont tranchées, la clé d'API est en main, et le journal complet suit. **Rien ne bloque plus
-l'écriture du code.** Il reste une vérification et trois risques à connaître.
-
-**À constater sur la première partie terminée**
-
-1. **Le type réel des champs de résultat** — `outcome`, `black_lost`, `white_lost`. La spec OpenAPI les annonce en
-   `string`, ce qui est douteux pour deux champs dont le nom dit un booléen. Un seul endroit du code en dépend : la
-   fonction qui convertit une réponse OGS en `result`.
-
-   ⚠ Et il y a un piège, vu le 11 août sur la partie **en cours** : sur l'API des parties, `black_lost` **et**
-   `white_lost` valent tous deux `true` tant que la partie n'est pas finie, `outcome` restant `""`. Lire les deux
-   drapeaux sans vérifier d'abord que la rencontre est terminée désignerait donc deux perdants. `OgsApiGame.result()`
-   teste `outcome` en premier, ce qui le protège déjà ; `OgsLeagueMatch.loser()` ne rend un côté que si **exactement** un
-   des deux a perdu, ce qui le protège aussi. Les deux garde-fous existent : ne pas les retirer.
+l'écriture du code.** Il ne reste plus de vérification en attente — les trois constats qui demandaient une partie
+réelle sont faits — mais trois risques à connaître.
 
 **Constaté le 11 août, et donc réglé**
+
+- **Les types des champs de résultat.** `outcome` est une chaîne lisible, `black_lost` / `white_lost` de vrais booléens
+  (la spec se trompe), les ratings des `Double`. Et le piège qui va avec : **une rencontre annulée désigne quand même un
+  perdant**, donc la conversion teste l'annulation d'abord. Fait dans `OgsLeagueMatch.loser()`.
+
+  Deux garde-fous à ne pas retirer, chacun trouvé par la mesure : sur une partie **en cours**, l'API des parties renvoie
+  `black_lost` **et** `white_lost` à `true` avec `outcome: ""` — `OgsApiGame.result()` teste `outcome` en premier, et
+  `loser()` n'accepte qu'**exactement** un perdant.
 
 - **Le `speed` et le caractère classé.** Aucun n'est dans le payload de création, et la partie 89632834 sort avec
   `"speed": "live"` et `"ranked": true`. Le bonus `long_game` des maisons est donc acquis (`isLongGame()` veut `live`

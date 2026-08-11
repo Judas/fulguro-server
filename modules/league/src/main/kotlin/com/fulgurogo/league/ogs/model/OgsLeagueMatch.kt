@@ -59,14 +59,14 @@ data class OgsLeagueMatch(
     val cancelled: Boolean? = null,
 
     /**
-     * The result, written by OGS. ⚠ Typed `String?` on purpose: the spec types these three as strings, which is doubtful
-     * for the two `*_lost`, and the real type has never been seen on a finished match — nothing has finished yet. Gson
-     * reads a JSON boolean or number into a String field without complaining, so a surprise here degrades to an odd
-     * string rather than to a parse failure that would lose the whole tick. Revisit once a real match has ended.
+     * The result, written by OGS, and now measured on a finished match rather than guessed.
+     *
+     * [outcome] really is a string, and a human-readable one — `"Cancellation"` on the annulled match of 11 August. The
+     * two `*_lost` are real **booleans**, despite the spec typing them as strings.
      */
     val outcome: String? = null,
-    @SerializedName("black_lost") val blackLost: String? = null,
-    @SerializedName("white_lost") val whiteLost: String? = null,
+    @SerializedName("black_lost") val blackLost: Boolean? = null,
+    @SerializedName("white_lost") val whiteLost: Boolean? = null,
 
     /**
      * Annulment, reported by OGS. This is what lets the league know a game was voided without depending on the game
@@ -77,33 +77,46 @@ data class OgsLeagueMatch(
     @SerializedName("annulment_reason") val annulmentReason: String? = null,
 
     @SerializedName("rating_complete") val ratingComplete: Boolean? = null,
-    @SerializedName("black_member_rating") val blackMemberRating: Int? = null,
-    @SerializedName("white_member_rating") val whiteMemberRating: Int? = null
+    /**
+     * The league ratings OGS keeps, and they are **doubles** — Glicko, not integers.
+     *
+     * ⚠ These were `Int?` until measured, and that was a crash waiting for a rating that is not a round number. Gson
+     * reads `1500.0` into an `Int` happily and throws on `1523.7`, and the throw loses **the whole object**, not just the
+     * field. Since the client answers null or an empty list on failure, one fractional rating would have made a sweep
+     * come back empty and write nothing, silently, for as long as it stayed fractional.
+     */
+    @SerializedName("black_member_rating") val blackMemberRating: Double? = null,
+    @SerializedName("white_member_rating") val whiteMemberRating: Double? = null
 ) {
-    /** True when OGS says the game behind this match was voided, by a moderator or otherwise. */
+    /**
+     * True when OGS says the game behind this match was voided, by a moderator or otherwise.
+     *
+     * ⚠ Measured on the annulled match of 11 August: `annulled` was `true` while `moderator_annulled` and
+     * `annulment_reason` were both **null**, and the match-level `cancelled` was **false**. So `annulled` alone is the
+     * signal — `cancelled` is about something else, and there is no reason to report even when there is an annulment.
+     */
     fun isAnnulled(): Boolean = annulled == true || moderatorAnnulled == true
 
     /**
-     * Which side lost, as a pair of flags, or null when OGS has not decided.
+     * The side that lost, or null when the match designates no loser — **including when it was annulled**.
      *
-     * Reads the two `*_lost` fields through their string form, tolerating `"true"`, `"True"` and `"1"`, since their real
-     * type is unknown. Returns null unless exactly one side lost, so a finished game that designates neither — or both —
-     * comes back as "no winner" rather than as an arbitrary one.
+     * ⚠ **This is the trap, and it is not hypothetical.** An annulled match still carries a winner: on 11 August the
+     * voided match came back `finished: true`, `annulled: true`, `outcome: "Cancellation"`, and
+     * `black_lost: true, white_lost: false`. Read the two flags on their own and a game that never counted becomes a win
+     * for white. The annulment check therefore lives **here**, at the only place those flags are read, rather than being
+     * left as something every caller must remember: a league match that was annulled is not a victory, and this function
+     * is where that rule is enforced.
+     *
+     * [isAnnulled] stays available for the caller that wants to tell "void" from "finished with no winner" — worth a
+     * different log line, and the two are worth telling apart when a player asks.
+     *
+     * Null too unless **exactly** one side lost, which also covers the in-progress state: a running game reports both
+     * `*_lost` as true on the games API, and the same shape reaching a match must not name a loser either.
      */
-    fun loser(): LeagueLoser? {
-        val black = blackLost.toFlag()
-        val white = whiteLost.toFlag()
-        return when {
-            black == true && white != true -> LeagueLoser.BLACK
-            white == true && black != true -> LeagueLoser.WHITE
-            else -> null
-        }
-    }
-
-    private fun String?.toFlag(): Boolean? = when (this?.trim()?.lowercase()) {
-        null, "", "null" -> null
-        "true", "1" -> true
-        "false", "0" -> false
+    fun loser(): LeagueLoser? = when {
+        isAnnulled() -> null
+        blackLost == true && whiteLost != true -> LeagueLoser.BLACK
+        whiteLost == true && blackLost != true -> LeagueLoser.WHITE
         else -> null
     }
 }
