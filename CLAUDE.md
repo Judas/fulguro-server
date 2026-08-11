@@ -246,6 +246,16 @@ to known player ids, then `game/connect` per game). That second writer is exactl
 a bug where a correspondence game overwrote live results was fixed here — so be deliberate about which game a
 `gold_id` refers to when touching either file.
 
+`OgsService` is also the only path that **deletes**: `OgsDatabaseAccessor.removeAnnulledGames` drops the games OGS has
+since voided, and their `house_points` rows with them. It has to be there, because only the REST poll ever sees
+`annulled` — `OgsWsGameData` has no such field, so the WebSocket writes a game it cannot know was later voided, which is
+the usual order of events. Skipping annulled games at ingestion, which is all this used to do, left a voided game stored
+as a real win: it happened, and FGC counted it. Two consequences worth knowing before touching it. Deleting from
+`house_points` is a deliberate exception to "the register is never purged" — that rule protects a house total from a
+player *leaving*, not from points never earned — and it cannot be replaced by finding orphans later, since
+`CleanService` deletes every game after 32 days and "points whose game is gone" would then mean the whole register. And
+the fix only reaches as far as the poll window: a game annulled after it has left `ogs_games` stays counted.
+
 ### Outbound HTTP etiquette
 
 Scraping is fragile and rate-sensitive. `common/utilities/HttpUtilities.kt` centralizes the okhttp client and the

@@ -42,8 +42,14 @@ class OgsService : StalestFirstService<OgsUserInfo>(0, 15, TAG) {
             )
         }
 
+        val apiGames = fetchPlayerApiGames(stale)
+
+        // Undo what OGS has voided, before ingesting the rest. This is the only path that can: the WebSocket writes games
+        // from the live list and knows nothing of annulment, and an annulment almost always lands after the game ended.
+        OgsDatabaseAccessor.removeAnnulledGames(apiGames.filter { it.annulled }.map { it.goldId() })
+
         // Add games in DB. Only the caller that actually wrote the row notifies; the real time service races us here.
-        reconcileGames(fetchPlayerGames(stale), OgsDatabaseAccessor, "OGS")
+        reconcileGames(apiGames.mapNotNull { toGame(it) }, OgsDatabaseAccessor, "OGS")
     }
 
     private fun fetchPlayerRating(stale: OgsUserInfo): OgsApiPlayerRating? {
@@ -51,7 +57,13 @@ class OgsService : StalestFirstService<OgsUserInfo>(0, 15, TAG) {
         return ogsApiClient.get(route, OgsApiPlayerRating::class.java)
     }
 
-    private fun fetchPlayerGames(stale: OgsUserInfo): List<OgsGame> {
+    /**
+     * The player's recent games as OGS returns them, unfiltered.
+     *
+     * Split from [toGame] so that `refresh` sees the annulled ones too: they used to be dropped here, which meant the one
+     * place in the application that knows a game has been voided threw that knowledge away.
+     */
+    private fun fetchPlayerApiGames(stale: OgsUserInfo): List<OgsApiGame> {
         // OGS puts ongoing correspondence games at the top of the list
         // So we parse results until we get a page with live games.
         // Paging follows the `next` URL the API hands us rather than a page counter we build ourselves: a player with
@@ -65,53 +77,55 @@ class OgsService : StalestFirstService<OgsUserInfo>(0, 15, TAG) {
         val games = page.results.toMutableList()
         page.nextRoute()?.let { games.addAll(ogsApiClient.get(it, OgsApiGameList::class.java).results) }
 
-        return games.mapNotNull {
-            // Skip cancelled games
-            if (it.annulled) return@mapNotNull null
+        return games
+    }
 
-            // Skip non-square goban
-            if (it.height != it.width) return@mapNotNull null
+    /** One API game as a row, or null when it is not a game the ladder counts. */
+    private fun toGame(game: OgsApiGame): OgsGame? {
+        // Skip cancelled games. They are not merely ignored any more: `refresh` deletes the stored ones first.
+        if (game.annulled) return null
 
-            // Skip bot games
-            if (it.players.black.isBot() || it.players.white.isBot()) return@mapNotNull null
+        // Skip non-square goban
+        if (game.height != game.width) return null
 
-            // Skip correspondence games
-            if (it.isCorrespondence()) return@mapNotNull null
+        // Skip bot games
+        if (game.players.black.isBot() || game.players.white.isBot()) return null
 
-            // Skip rengo
-            if (it.rengo) return@mapNotNull null
+        // Skip correspondence games
+        if (game.isCorrespondence()) return null
 
-            // Skip weird result
-            val result = it.result()
-            if (result == null) return@mapNotNull null
+        // Skip rengo
+        if (game.rengo) return null
 
-            // Date => skip games we cannot date, then games older than 32 days
-            val date = it.date() ?: return@mapNotNull null
-            val now = ZonedDateTime.now(DATE_ZONE)
-            if (now.minusDays(32).toDate().after(date)) return@mapNotNull null
+        // Skip weird result
+        val result = game.result() ?: return null
 
-            // Fetch SGF
-            val sgf = fetchSgf(it)
+        // Date => skip games we cannot date, then games older than 32 days
+        val date = game.date() ?: return null
+        val now = ZonedDateTime.now(DATE_ZONE)
+        if (now.minusDays(32).toDate().after(date)) return null
 
-            OgsGame(
-                goldId = it.goldId(),
-                id = it.id,
-                date = date,
-                blackId = it.players.black.id,
-                blackName = it.players.black.username,
-                blackRank = it.players.black.ranking.rankToKyuDanString(),
-                whiteId = it.players.white.id,
-                whiteName = it.players.white.username,
-                whiteRank = it.players.white.ranking.rankToKyuDanString(),
-                size = it.width,
-                komi = it.komi.toDouble(),
-                handicap = it.handicap,
-                ranked = it.ranked,
-                longGame = it.isLongGame(),
-                result = result,
-                sgf = sgf
-            )
-        }
+        // Fetch SGF
+        val sgf = fetchSgf(game)
+
+        return OgsGame(
+            goldId = game.goldId(),
+            id = game.id,
+            date = date,
+            blackId = game.players.black.id,
+            blackName = game.players.black.username,
+            blackRank = game.players.black.ranking.rankToKyuDanString(),
+            whiteId = game.players.white.id,
+            whiteName = game.players.white.username,
+            whiteRank = game.players.white.ranking.rankToKyuDanString(),
+            size = game.width,
+            komi = game.komi.toDouble(),
+            handicap = game.handicap,
+            ranked = game.ranked,
+            longGame = game.isLongGame(),
+            result = result,
+            sgf = sgf
+        )
     }
 
     private fun fetchSgf(game: OgsApiGame): String = try {

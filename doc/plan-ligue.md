@@ -253,16 +253,25 @@ surprenant si ces réglages changeaient un jour, et il tient en une branche.
 porte `annulled`, `moderator_annulled` et `annulment_reason`, renseignés par OGS : la ligue sait donc qu'une partie a
 été annulée, et pourquoi, sans dépendre de l'ingestion. Une rencontre annulée n'est pas une victoire.
 
-⚠ Le reste de l'application, en revanche, ne sait pas faire, et la ligue ne le corrige pas — les parties de ligue
-alimentant `house_points` et `fgc_validity` (décision 8), l'écart se verra là :
+✅ **Et le reste de l'application sait le faire aussi, depuis le 11 août.** Ce plan documentait ici un défaut hérité
+de l'ingestion OGS et le déclarait accepté : `OgsService` écartait les parties annulées à l'ingestion,
+`OgsRealTimeService` ignore la notion — rien dans `OgsWsGameData` ne la porte —, et **aucun des deux ne défaisait une
+annulation postérieure**, qui est le cas le plus fréquent puisqu'une annulation arrive presque toujours après la fin de
+la partie. Une partie de ligue annulée pouvait donc ne rien rapporter en renommée tout en ayant crédité des points de
+maison.
 
-- `OgsService` (le poll REST) écarte les parties annulées à l'ingestion — `if (it.annulled) return@mapNotNull null`.
-- `OgsRealTimeService` (le WebSocket) ne connaît pas la notion : rien dans `OgsWsGameData` ne la porte.
-- Et **aucun des deux ne défait une partie annulée après coup**, ce qui est le cas le plus fréquent, puisqu'une
-  annulation arrive presque toujours après la fin de la partie.
+Le défaut a cessé d'être théorique le 11 août : la partie de test annulée est restée dans `ogs_games` en **victoire de
+blanc**, comptée par FGC. `OgsDatabaseAccessor.removeAnnulledGames` la ferme — le poll REST supprime désormais les
+parties qu'OGS a annulées, au lieu de se contenter de ne pas les écrire, et supprime avec elles leurs lignes de
+`house_points`. Deux choses à savoir :
 
-Donc une partie de ligue annulée pourra ne rien rapporter en renommée tout en ayant crédité des points de maison. C'est
-rare, ça se corrige à la main dans `house_points`, et le prétendre réglé serait pire que l'écrire ici.
+- **C'est une exception assumée à « le registre n'est jamais purgé ».** Cette règle existe pour qu'un total de maison ne
+  rétrécisse pas quand un joueur *part*, pas pour conserver des points jamais gagnés. Et l'alternative n'existe pas :
+  des points orphelins ne sont pas détectables par l'absence plus tard, puisque `CleanService` supprime toutes les
+  parties au bout de 32 jours — « les points dont la partie a disparu » décrirait le registre entier. La correction se
+  fait au moment où l'annulation est apprise, ou jamais.
+- **La fenêtre est celle du poll.** Une partie annulée après avoir quitté `ogs_games` est hors de portée, et c'est
+  accepté.
 
 **Pas de table de points.** La renommée est entièrement **dérivable** de la table des matchs : un match porte ses deux
 joueurs, leur maison figée au tirage, et son résultat. L'idempotence est déjà assurée par la clé primaire du match, et
@@ -1090,11 +1099,12 @@ jointure sur `ogs_games`, ni d'un appel à `/api/v1/games/{id}`.
 
 Deux conséquences qui valent mieux que l'économie d'une jointure :
 
-- **L'angle mort des parties annulées se ferme.** `annulled` et `moderator_annulled` disent explicitement qu'une partie
-  a été annulée, et `annulment_reason` pourquoi. Le plan documentait jusqu'ici ce cas comme un défaut hérité de
-  l'ingestion OGS — `OgsService` écarte les parties annulées, `OgsRealTimeService` ignore la notion, et aucun des deux
-  ne défait une annulation postérieure. La ligue, elle, peut traiter le cas proprement : une rencontre annulée n'est pas
-  une victoire, et le savoir ne demande aucun travail supplémentaire.
+- **L'angle mort des parties annulées se ferme.** `annulled` dit explicitement qu'une partie a été annulée — ⚠ mais pas
+  `annulment_reason`, resté `null` sur l'annulation mesurée, contrairement à ce que ce plan promettait. La ligue traite
+  donc le cas proprement sans travail supplémentaire : une rencontre annulée n'est pas une victoire, et
+  `OgsLeagueMatch.loser()` applique la règle en testant l'annulation avant de lire les drapeaux — car une rencontre
+  annulée **désigne quand même un perdant**. Côté ingestion, le défaut symétrique est corrigé de son côté : le poll REST
+  supprime maintenant les parties annulées déjà stockées, et leurs points de maison.
 - **La ligue ne dépend plus du pipeline d'ingestion pour ses résultats.** `ogs_games` reste utile — c'est par lui que
   les parties de ligue alimentent les maisons et FGC (décision 8) — mais un scraper OGS cassé ne bloque plus le
   classement de la ligue. Et la renommée ne dépend même pas de `game` : le vainqueur est sur l'objet rencontre, donc
