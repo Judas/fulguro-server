@@ -98,7 +98,7 @@ l'application. Ce sont des constantes de `OgsLeagueClient`, envoyées à chaque 
 | Champ | Valeur | Pourquoi cette valeur et pas une autre |
 |---|---|---|
 | `height`, `width` | **19** | `fgc_validity_games` ne retient que le 19×19. Un 13×13 sortirait les parties de ligue du comptage FGC |
-| `rules` | **`japanese`** | Komi 7,5 par défaut, ce qui rend le jigo impossible et laisse le barème sans trou (décision 2). C'est aussi la fourchette que FGC accepte, `komi > 6 AND komi < 9` |
+| `rules` | **`japanese`** | ✅ Mesuré : la partie sort avec un **komi de 6,5** — et non 7,5, comme une version précédente de ce plan l'affirmait. La conclusion tient pour une autre raison : c'est le **demi-point** qui rend le jigo impossible, pas la valeur. Et 6,5 passe la fenêtre de FGC, `komi > 6 AND komi < 9`. ⚠ Mais la marge n'est plus que de 0,5 : si OGS passait un jour son défaut japonais à 6,0, les parties de ligue sortiraient silencieusement du comptage FGC |
 | `handicap` | **0** | FGC exige `handicap = 0`, et les maisons créditent le bonus `even_game` dessus. Le tirage par rating proche fait déjà l'équilibrage ; `-1` (automatique) rendrait les parties plus justes mais les sortirait des deux comptages |
 | `time_control` | **`byoyomi`** | Le système que `isLongGame()` sait lire à partir de `main_time` |
 | `main_time` | **2400** (40 min) | Deux seuils du code existant, aucun négociable. `isLongGame()` demande `main_time >= 1200` pour le bonus `long_game` des maisons, **et** `speed == "live"` : `OgsService` écarte les parties en correspondance à l'ingestion et le WebSocket ne voit que le live, donc une ligue en correspondance serait invisible de tout le pipeline |
@@ -110,10 +110,11 @@ et qui est acquis par construction puisque le tirage interdit les paires intra-m
 ligue vaut le maximum du barème des maisons, 11 points sur une victoire. C'est cohérent, et c'est exactement ce que la
 décision 8 acte.
 
-⚠ Deux choses que le payload ne permet pas de dire, et qu'il faudra constater sur la première partie réellement jouée :
-il n'existe **aucun champ `ranked`**, donc rien ne garantit côté API que les parties de ligue soient classées ; et
-`speed` appartient à la partie et non à la rencontre, donc le `live` dont dépendent `isLongGame()` et l'ingestion
-elle-même reste à vérifier. 40 min + 5×30 s devrait être classé `live` par OGS, mais ce n'est pas mesuré.
+✅ **Les deux choses que le payload ne permettait pas de dire sont mesurées**, sur la partie 89632834 créée par la
+rencontre 13688 le 11 août 2026. Le payload ne porte aucun champ `ranked` et ne dit rien du `speed` ; la partie qui en
+sort porte `"ranked": true` et `"speed": "live"`. Une partie de ligue est donc classée, vue par l'ingestion — `OgsService`
+écarte la correspondance, le WebSocket ne voit que le live — et `isLongGame()` la retient (`live` + byoyomi 2400 ≥ 1200).
+Rien à changer : les valeurs choisies produisent bien l'effet attendu.
 
 ### Une seule ligue, et ce que ça implique
 
@@ -167,9 +168,10 @@ La clé est en main, la ligue existe, et la sonde du 10 août a répondu à tout
 | Peut-on annuler une rencontre ? | ⚠ pas sur `/matches/{id}`, qui est en lecture seule (405). Un `PUT /matches/` existe sur la collection et pourrait le faire, non essayé |
 | Le nom d'une ligue est-il modifiable ? | ⚠ sans objet : la ligue est unique et sans année |
 
-Rien ne bloque donc plus l'écriture du code. Il reste trois constats à faire sur la **première partie réellement jouée**,
-que ni la spec ni la sonde ne peuvent donner : le type réel des champs de résultat, ce que contient `game` — l'hypothèse
-étant l'`id` de la partie OGS, ce qui fonde `gold_id = "OGS_<game>"` — et le `speed` que la partie déclare.
+Rien ne bloque donc plus l'écriture du code. Des trois constats qui attendaient une partie réellement jouée, deux sont
+faits le 11 août : `game` porte bien l'`id` de la partie OGS — un entier, `89632834` pour la rencontre `13688`, ce qui
+fonde `gold_id = "OGS_<game>"` — et la partie est `ranked` et `live`. Il ne reste que le **type réel des champs de
+résultat** sur une rencontre *terminée*.
 
 ---
 
@@ -239,7 +241,8 @@ d'où la table `league_exemptions` de l'étape 0.
 
 ### Les résultats qui ne désignent pas de vainqueur
 
-**Le jigo est écarté par les réglages, pas par le barème.** Chaque rencontre part avec `rules: japanese` — komi 7,5 —
+**Le jigo est écarté par les réglages, pas par le barème.** Chaque rencontre part avec `rules: japanese` — komi 6,5,
+mesuré —
 et `handicap: 0`, ce qui rend le score nul impossible ; c'est la même raison pour laquelle le bonus « partie à égalité »
 des maisons a dû être lu comme « sans handicap » et non comme « score nul ». Le code traite quand même le cas, au
 minimum et sans en faire une règle affichée : une partie terminée dont le résultat ne désigne ni noir ni blanc compte
@@ -1390,19 +1393,27 @@ dans le dépôt — à créer ou à retirer de la doc.
 ## Ce qui reste en suspens
 
 Les vingt questions du plan sont tranchées, la clé d'API est en main, et le journal complet suit. **Rien ne bloque plus
-l'écriture du code.** Il reste deux vérifications et trois risques à connaître.
+l'écriture du code.** Il reste une vérification et trois risques à connaître.
 
-**À constater sur la première partie jouée**
+**À constater sur la première partie terminée**
 
 1. **Le type réel des champs de résultat** — `outcome`, `black_lost`, `white_lost`. La spec OpenAPI les annonce en
    `string`, ce qui est douteux pour deux champs dont le nom dit un booléen. Un seul endroit du code en dépend : la
    fonction qui convertit une réponse OGS en `result`.
-2. **Le `speed` de la partie, et le fait qu'elle soit classée.** `speed` appartient à la partie, pas à la rencontre,
-   donc ni la spec ni la sonde ne peuvent le donner. Il décide de deux choses : le bonus `long_game` des maisons
-   (`isLongGame()` veut `speed == "live"` **et** `main_time >= 1200`) et, plus grave, l'ingestion elle-même, puisque
-   `OgsService` écarte les parties en correspondance. 40 min + 5×30 s devrait être `live`. Et aucun champ `ranked`
-   n'existe dans le payload de création, donc le caractère classé des parties reste à vérifier — il conditionne le bonus
-   `ranked` des maisons et `total_ranked_games` chez FGC.
+
+   ⚠ Et il y a un piège, vu le 11 août sur la partie **en cours** : sur l'API des parties, `black_lost` **et**
+   `white_lost` valent tous deux `true` tant que la partie n'est pas finie, `outcome` restant `""`. Lire les deux
+   drapeaux sans vérifier d'abord que la rencontre est terminée désignerait donc deux perdants. `OgsApiGame.result()`
+   teste `outcome` en premier, ce qui le protège déjà ; `OgsLeagueMatch.loser()` ne rend un côté que si **exactement** un
+   des deux a perdu, ce qui le protège aussi. Les deux garde-fous existent : ne pas les retirer.
+
+**Constaté le 11 août, et donc réglé**
+
+- **Le `speed` et le caractère classé.** Aucun n'est dans le payload de création, et la partie 89632834 sort avec
+  `"speed": "live"` et `"ranked": true`. Le bonus `long_game` des maisons est donc acquis (`isLongGame()` veut `live`
+  **et** `main_time >= 1200`), l'ingestion voit la partie, et `ranked` crédite maisons comme FGC.
+- **Ce que contient `game`** — l'`id` de la partie OGS, un entier, distinct de l'`id` de la rencontre : `13688` pour la
+  rencontre, `89632834` pour la partie. `gold_id = "OGS_<game>"` est donc juste.
 
 **Les trois risques à connaître**
 
@@ -1427,15 +1438,18 @@ l'écriture du code.** Il reste deux vérifications et trois risques à connaît
 1. ~~**Le bonus de 10 points**~~ — tranché : **16 sessions jouées ou exemptées**. Un joueur que le tirage laisse sans
    adversaire n'est pas pénalisé, mais ne gagne rien non plus ; un joueur inscrit en cours de saison, ou qui a quitté
    son académie, ne peut pas l'avoir. Coûte la table `league_exemptions` (étape 0), écrite par le tirage.
-2. ~~**Jigo et parties annulées**~~ — tranché : le jigo est rendu impossible par le komi à 7,5 de `rules: japanese`, et
+2. ~~**Jigo et parties annulées**~~ — tranché : le jigo est rendu impossible par le komi à demi-point de
+   `rules: japanese` — 6,5, mesuré, et non 7,5 comme d'abord écrit —, et
    traité au minimum s'il survenait (jouée, sans victoire). Les parties annulées, elles, sont **proprement traitées** —
    la sonde a révélé qu'OGS renseigne `annulled` et `moderator_annulled` sur la rencontre. ⚠ Reste l'angle mort du reste
    de l'application, qui ne défait pas une annulation postérieure dans `house_points` — voir le barème.
 3. ~~**Réglages de partie**~~ — tranché **et corrigé par la sonde** : ils ne sont pas configurés sur la ligue côté OGS,
    ils partent dans le payload de chaque `POST /matches/`. `rules: japanese`, `handicap: 0`, `19×19`,
    `time_control: byoyomi`, `main_time: 2400`, `periods: 5`, `period_time: 30`. Chaque valeur est contrainte par le code
-   existant plutôt que choisie — voir le tableau en tête de plan. Plus rien à demander à OGS. ⚠ Restent à constater sur
-   la première partie jouée : l'absence de champ `ranked` dans le payload, et le `speed` que la partie déclare.
+   existant plutôt que choisie — voir le tableau en tête de plan. Plus rien à demander à OGS. ✅ Et les deux inconnues que
+   le payload laissait sont levées le 11 août : la partie sort `ranked` et `live`. Une seule correction au tableau — le
+   komi est **6,5**, pas 7,5 ; le jigo reste impossible parce que c'est un demi-point, et 6,5 passe encore la fenêtre de
+   FGC, avec 0,5 de marge au lieu de 1,5.
 4. ~~**Rating poussé chez OGS**~~ — tranché : une constante neutre identique pour tous, `1500`, poussée une fois à
    l'inscription. Les deux classements — celui d'OGS et notre rating gold, qui sert au tirage — restent séparés.
    Supprime la colonne `ogs_rating` de `league_players`.

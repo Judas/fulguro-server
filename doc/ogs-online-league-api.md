@@ -15,8 +15,9 @@ pas lue.
 La page `/api-docs/` est rendue en JavaScript : un `curl` dessus ne rend que l'en-tête. La spec exploitable est sur
 `/api-docs/schema/?format=json`, ~590 Ko.
 
-**Vérifié le 10 août 2026**, contre la ligue de production `FulguroGo`. Ce qui est marqué ✅ a été exécuté ; le reste
-est lu dans la spec.
+**Vérifié les 10 et 11 août 2026**, contre la ligue de production `FulguroGo`. Ce qui est marqué ✅ a été exécuté ; le
+reste est lu dans la spec. Le 11 août ajoute ce qu'une partie réellement lancée est seule à pouvoir dire — voir « La
+partie qu'une rencontre crée ».
 
 ---
 
@@ -250,6 +251,39 @@ trois appels.
 
 ---
 
+## La partie qu'une rencontre crée
+
+✅ Mesuré le 11 août 2026 sur la partie issue de la rencontre `13688`, une fois lancée par les deux joueurs.
+
+**`game` porte l'`id` de la partie OGS**, un entier, et il est **différent** de l'`id` de la rencontre :
+
+```
+rencontre 13688  ->  "game": 89632834
+```
+
+C'est ce qui fonde `gold_id = "OGS_<game>"`. Ne pas confondre les deux : `https://online-go.com/api/v1/games/13688`
+existe et désigne une partie sans rapport. `game` reste `null` jusqu'à ce que les deux joueurs aient accepté, et
+`started` passe alors à `true`.
+
+**Ce que la partie déclare**, alors que rien de tout cela n'est dans le payload de création :
+
+| Champ | Valeur | Pourquoi ça compte |
+|---|---|---|
+| `ranked` | ✅ **`true`** | Il n'existe aucun champ `ranked` à la création, donc c'était une inconnue. Les parties de ligue sont classées : le bonus `ranked` des maisons et `total_ranked_games` de FGC s'appliquent |
+| `speed` | ✅ **`live`** | Décide de tout : `isLongGame()` exige `live`, `OgsService` écarte la correspondance et le WebSocket ne voit que le live. Une ligue en correspondance aurait été invisible du pipeline entier |
+| `komi` | ⚠ **`6.50`** | Et non 7,5 comme supposé. Le jigo reste impossible — c'est le demi-point qui compte — et 6,5 passe la fenêtre `komi > 6 AND komi < 9` de FGC, mais avec 0,5 de marge au lieu de 1,5 |
+| `name` | reprend le nom de la rencontre | Le `name` du payload devient le nom de la partie, comme le wiki l'annonce |
+| `source` | `"play"` | |
+| `time_control_parameters` | une **chaîne** contenant du JSON | `{"main_time": 2400, "period_time": 30, "periods": 5, "speed": "live", "system": "byoyomi", …}`. C'est une chaîne, pas un objet — `OgsApiGame` le mappe déjà ainsi, et le parser comme un objet lève une exception |
+
+⚠ **Le piège des deux perdants.** Sur une partie **en cours**, l'API des parties renvoie `black_lost: true` **et**
+`white_lost: true`, avec `outcome: ""` et `ended: null`. Lire les deux drapeaux sans vérifier d'abord que la partie est
+terminée désigne donc deux perdants. Deux garde-fous existent déjà et ne doivent pas être retirés :
+`OgsApiGame.result()` teste `outcome` en premier, et `OgsLeagueMatch.loser()` ne rend un côté que si **exactement** un
+des deux a perdu.
+
+---
+
 ## `GET|PUT|PATCH /callback`
 
 ```json
@@ -318,11 +352,14 @@ n'accepte que la lecture.
 
 ## Ce qui reste inconnu
 
-- Le type réel de `black_lost` / `white_lost` / `outcome` sur une rencontre terminée, et la forme d'`outcome`. Sur une
-  rencontre non commencée les trois sont `null`, donc `OgsLeagueMatch` les mappe en `String?` — Gson y lit indifféremment
-  un booléen, un nombre ou une chaîne, ce qui dégrade une surprise en valeur bizarre plutôt qu'en tick perdu.
+- Le type réel de `black_lost` / `white_lost` / `outcome` **sur la rencontre**, une fois terminée. Sur une rencontre non
+  commencée puis en cours, les trois restent `null`, donc `OgsLeagueMatch` les mappe en `String?` — Gson y lit
+  indifféremment un booléen, un nombre ou une chaîne, ce qui dégrade une surprise en valeur bizarre plutôt qu'en tick
+  perdu.
 - Quand `pending_rating_change` est consommé, et si un `PUT /member` rejoué après la liaison peut réinitialiser le
   `league_rating` d'un joueur en cours de saison.
+- `rating_complete` valait `false` à la création et `null` une fois la partie lancée. Ces champs sont mous ; les lire en
+  `Boolean?` plutôt qu'en `Boolean`.
 - Ce que `game` contient exactement, et le `speed` que la partie créée déclare — ce qui décide si une partie de ligue
   est vue comme `live` par les consommateurs de `ogs_games`.
 - Ce que fait `PUT /matches/`, et sur quelle clé il retrouve la rencontre.
