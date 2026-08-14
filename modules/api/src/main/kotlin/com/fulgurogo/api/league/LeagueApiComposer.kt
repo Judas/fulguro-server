@@ -24,8 +24,16 @@ import com.fulgurogo.league.db.model.LeagueStanding
  * described the same way wherever they appear.
  */
 class LeagueApiComposer(private val season: String) {
-    private val standings: List<LeagueStanding> = LeagueDatabaseAccessor.standings(season)
-    private val byDiscordId: Map<String, LeagueStanding> = standings.associateBy { it.discordId }
+    /**
+     * The season's ranked standings, and every identity in the league with them.
+     *
+     * `by lazy`, like the other two reads here, because the profile route builds this composer for **every** player —
+     * including the great majority who were never league members — and eagerly this cost each of those requests a
+     * full-season aggregation over `league_matches` plus every exemption row, for an answer of null. [playerBlock] checks
+     * membership with one indexed read before touching this.
+     */
+    private val standings: List<LeagueStanding> by lazy { LeagueDatabaseAccessor.standings(season) }
+    private val byDiscordId: Map<String, LeagueStanding> by lazy { standings.associateBy { it.discordId } }
 
     /**
      * One crest per house id, read once.
@@ -33,8 +41,9 @@ class LeagueApiComposer(private val season: String) {
      * Driven from `houses` rather than from the members, so a house nobody is in still resolves — and a player whose
      * `house_id` somehow names no house comes back with a null crest instead of failing the whole response.
      */
-    private val crests: Map<Int, ApiLeagueCrest> = HouseDatabaseAccessor.houses()
-        .associate { it.id to ApiLeagueCrest.from(it) }
+    private val crests: Map<Int, ApiLeagueCrest> by lazy {
+        HouseDatabaseAccessor.houses().associate { it.id to ApiLeagueCrest.from(it) }
+    }
 
     val sessionCount: Int = LeagueSession.count(season)
 
@@ -90,6 +99,10 @@ class LeagueApiComposer(private val season: String) {
      * shows — two separate computations could straddle a tick and disagree.
      */
     fun playerBlock(discordId: String, period: HousePeriod): ApiPlayerLeague? {
+        // One indexed read on the primary key before anything else. Most profiles belong to somebody who never joined the
+        // league, and they must not pay for a season-wide aggregation to be told so.
+        LeagueDatabaseAccessor.member(season, discordId) ?: return null
+
         val standing = byDiscordId[discordId] ?: return null
 
         return ApiPlayerLeague(

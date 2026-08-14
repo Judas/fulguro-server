@@ -192,8 +192,10 @@ class OgsLeagueClient(private val client: OgsApiClient = OgsApiClient(sendCookie
          * league game is meant to score in every existing count.
          *
          * - [BOARD_SIZE] 19: `fgc_validity_games` keeps only 19×19, so a 13×13 would drop league games from the FGC count.
-         * - [RULES] japanese: komi 7.5 by default, which makes a drawn score impossible and leaves no hole in the renown
-         *   scale, and it sits inside the `komi > 6 AND komi < 9` window FGC accepts.
+         * - [RULES] japanese: komi **6.5**, measured — a half point, so no score can be level and the renown
+         *   scale has no hole. It sits inside the `komi > 6 AND komi < 9` window FGC accepts, ⚠ but with only 0.5 of
+         *   margin rather than the 1.5 a komi of 7.5 would have given: if OGS ever moved its japanese default to
+         *   6.0, league games would drop out of the FGC count silently.
          * - [HANDICAP] 0: FGC requires it, and the houses credit their `even_game` bonus on it. The draw already balances
          *   by rating; `-1` would make the games fairer and drop them from both counts.
          * - [TIME_CONTROL] byoyomi: the system `isLongGame()` knows how to read from `main_time`.

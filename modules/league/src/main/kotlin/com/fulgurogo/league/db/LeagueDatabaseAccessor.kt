@@ -180,8 +180,10 @@ object LeagueDatabaseAccessor {
     /**
      * Claims the right to settle a session, and answers whether this call got it.
      *
-     * The one claim whose loss is permanent, since [markUnplayed] closes matches for good — so it is taken first and the
-     * settlement runs under it, never the other way round.
+     * ⚠ Claimed **last**, after [markUnplayed], and not before it — the opposite of [claimDraw]. That is what makes an
+     * interrupted settlement resume where it stopped instead of burning its only chance: the sweep and the voiding are both
+     * idempotent, so repeating them costs nothing, while claiming first and then dying would leave matches at `NULL`
+     * forever. Do not "fix" the caller to claim first; it would void matches whose result was one call away.
      */
     fun claimSettlement(season: String, session: Int): Boolean = DatabaseAccessor.withDao { connection ->
         val query = "UPDATE $SESSIONS_TABLE SET settled = NOW() " +
@@ -254,16 +256,6 @@ object LeagueDatabaseAccessor {
             .addParameter("season", season)
             .addParameter("discordId", discordId)
             .executeAndFetchFirst(LeagueMember::class.java)
-    }
-
-    /** Everyone who joined this season's academy, active or not. */
-    fun members(season: String): List<LeagueMember> = DatabaseAccessor.withDao { connection ->
-        connection
-            .query("SELECT * FROM $MEMBERS_TABLE WHERE season = :season")
-            .throwOnMappingFailure(false)
-            .addParameter("season", season)
-            .executeAndFetch(LeagueMember::class.java)
-            ?: listOf()
     }
 
     /**
@@ -428,47 +420,6 @@ object LeagueDatabaseAccessor {
     }
 
     /**
-     * The match OGS's callback names, or null.
-     *
-     * Keyed on the OGS match id, which is the id the callback carries. Not season-scoped, because a callback arrives with
-     * nothing but that id — which is also why the column is indexed.
-     */
-    fun matchByOgsId(ogsMatchId: Int): LeagueMatch? = DatabaseAccessor.withDao { connection ->
-        connection
-            .query("SELECT * FROM $MATCHES_TABLE WHERE ogs_match_id = :ogsMatchId LIMIT 1")
-            .throwOnMappingFailure(false)
-            .addParameter("ogsMatchId", ogsMatchId)
-            .executeAndFetchFirst(LeagueMatch::class.java)
-    }
-
-    /**
-     * The match by the id we gave OGS, or null.
-     *
-     * The other way into a callback, kept because it is not settled which id OGS substitutes into the template. This one
-     * is unique across every season and both environments, the prefix being what makes that true.
-     */
-    fun matchByLeagueId(leagueMatchId: String): LeagueMatch? = DatabaseAccessor.withDao { connection ->
-        connection
-            .query("SELECT * FROM $MATCHES_TABLE WHERE league_match_id = :leagueMatchId LIMIT 1")
-            .throwOnMappingFailure(false)
-            .addParameter("leagueMatchId", leagueMatchId)
-            .executeAndFetchFirst(LeagueMatch::class.java)
-    }
-
-    /** The matches of a session whose fate is still open: no result either way. For the catch-up and the settlement. */
-    fun pendingMatches(season: String, session: Int): List<LeagueMatch> = DatabaseAccessor.withDao { connection ->
-        val query = "SELECT * FROM $MATCHES_TABLE " +
-                " WHERE season = :season AND session = :session AND result IS NULL "
-        connection
-            .query(query)
-            .throwOnMappingFailure(false)
-            .addParameter("season", season)
-            .addParameter("session", session)
-            .executeAndFetch(LeagueMatch::class.java)
-            ?: listOf()
-    }
-
-    /**
      * The matches of a session with a challenge to send and at least one DM still owed.
      *
      * `ogs_match_id IS NOT NULL` because there is nothing to send before OGS has created the challenge — without it a
@@ -508,43 +459,93 @@ object LeagueDatabaseAccessor {
         .eachCount()
 
     /**
-     * Writes the pairings a draw produced, and answers how many were new.
+     * Writes a draw — its exemptions **and** its matches — in **one transaction**, and answers how many of each were new.
      *
-     * `INSERT IGNORE`, the idiom the rest of the app uses, and for the reason `HouseDatabaseAccessor.addPoints` spells
-     * out: it is the only one of the two whose row count tells an insert from a duplicate, given that the app's JDBC url
-     * reports rows matched. So a draw run twice reports 0 new matches rather than looking like it worked.
+     * The transaction is the whole point, and it closes a hole that the two obvious orderings both leave open. The
+     * exemptions have to be written before the network calls, so a failure at OGS cannot cost a player the end-of-season
+     * bonus; but written as two separate statements, a crash between them leaves a session holding exemptions and no
+     * matches — and that is exactly the state `redrawIfEmpty` reads as "drawn, nobody to pair", so it would never repair
+     * it. Every paired player of that fortnight would lose their match and their bonus, discovered in May. Reversing the
+     * order only moves the loss onto the benched players. Either both rows land or neither does.
+     *
+     * The one transaction in the project, and it earns it: everywhere else a partial write is repairable on the next tick,
+     * because a primary key makes the retry idempotent. Here the two halves are individually idempotent but their
+     * *combination* is what the redraw reads, so the intermediate state has to be unobservable rather than merely rare.
+     *
+     * `INSERT IGNORE` throughout, the idiom the rest of the app uses, and for the reason `HouseDatabaseAccessor.addPoints`
+     * spells out: it is the only one of the two whose row count tells an insert from a duplicate, given that the app's JDBC
+     * url reports rows matched. So a draw run twice reports nothing new rather than looking like it worked.
      *
      * Only the columns a draw knows. The OGS side is filled afterwards by [setMatchChallenge], which is what makes an
      * interrupted draw resumable: the rows are already there, and replaying the OGS call returns the same challenge.
      */
-    fun addMatches(matches: List<LeagueMatch>): Int {
-        if (matches.isEmpty()) return 0
+    fun writeDraw(matches: List<LeagueMatch>, exemptions: List<LeagueExemption>): DrawWritten {
+        if (matches.isEmpty() && exemptions.isEmpty()) return DrawWritten(0, 0)
 
-        return DatabaseAccessor.withDao { connection ->
-            val sql = "INSERT IGNORE INTO $MATCHES_TABLE( " +
-                    " season, session, black_discord_id, white_discord_id, " +
-                    " black_house_id, white_house_id, pairing_score, league_match_id, created) " +
-                    " VALUES (:season, :session, :blackDiscordId, :whiteDiscordId, " +
-                    " :blackHouseId, :whiteHouseId, :pairingScore, :leagueMatchId, NOW()) "
-
-            var inserted = 0
-            matches.forEach { match ->
-                connection
-                    .query(sql)
-                    .addParameter("season", match.season)
-                    .addParameter("session", match.session)
-                    .addParameter("blackDiscordId", match.blackDiscordId)
-                    .addParameter("whiteDiscordId", match.whiteDiscordId)
-                    .addParameter("blackHouseId", match.blackHouseId)
-                    .addParameter("whiteHouseId", match.whiteHouseId)
-                    .addParameter("pairingScore", match.pairingScore)
-                    .addParameter("leagueMatchId", match.leagueMatchId)
-                    .executeUpdate()
-
-                if (connection.result == 1) inserted++
-            }
-            inserted
+        // Not `use`: sql2o's commit() and rollback() both close the connection themselves, so closing again afterwards
+        // would be a second close. This is the pattern sql2o documents.
+        val connection = DatabaseAccessor.dao.beginTransaction()
+        return try {
+            val exempted = insertExemptions(connection, exemptions)
+            val paired = insertMatches(connection, matches)
+            connection.commit()
+            DrawWritten(matches = paired, exemptions = exempted)
+        } catch (e: Exception) {
+            connection.rollback()
+            throw e
         }
+    }
+
+    private fun insertMatches(connection: Connection, matches: List<LeagueMatch>): Int {
+        val sql = "INSERT IGNORE INTO $MATCHES_TABLE( " +
+                " season, session, black_discord_id, white_discord_id, " +
+                " black_house_id, white_house_id, pairing_score, league_match_id, created) " +
+                " VALUES (:season, :session, :blackDiscordId, :whiteDiscordId, " +
+                " :blackHouseId, :whiteHouseId, :pairingScore, :leagueMatchId, NOW()) "
+
+        var inserted = 0
+        matches.forEach { match ->
+            connection
+                .query(sql)
+                .addParameter("season", match.season)
+                .addParameter("session", match.session)
+                .addParameter("blackDiscordId", match.blackDiscordId)
+                .addParameter("whiteDiscordId", match.whiteDiscordId)
+                .addParameter("blackHouseId", match.blackHouseId)
+                .addParameter("whiteHouseId", match.whiteHouseId)
+                .addParameter("pairingScore", match.pairingScore)
+                .addParameter("leagueMatchId", match.leagueMatchId)
+                .executeUpdate()
+
+            // 1 on an insert, 0 when the row was already there and IGNORE dropped this one.
+            if (connection.result == 1) inserted++
+        }
+        return inserted
+    }
+
+    /**
+     * The exemptions of a draw. Called from [writeDraw] and from nowhere else.
+     *
+     * The settlement must never write here: an exemption is a decision of the draw, not a consequence of a match that was
+     * not played.
+     */
+    private fun insertExemptions(connection: Connection, exemptions: List<LeagueExemption>): Int {
+        val sql = "INSERT IGNORE INTO $EXEMPTIONS_TABLE(season, session, discord_id, reason, created) " +
+                " VALUES (:season, :session, :discordId, :reason, NOW()) "
+
+        var inserted = 0
+        exemptions.forEach { exemption ->
+            connection
+                .query(sql)
+                .addParameter("season", exemption.season)
+                .addParameter("session", exemption.session)
+                .addParameter("discordId", exemption.discordId)
+                .addParameter("reason", exemption.reason)
+                .executeUpdate()
+
+            if (connection.result == 1) inserted++
+        }
+        return inserted
     }
 
     /** Records the challenge OGS created: its id and the three links. */
@@ -663,35 +664,6 @@ object LeagueDatabaseAccessor {
     // ---------------------------------------------------------------------------------------------------------------
     // Exemptions
     // ---------------------------------------------------------------------------------------------------------------
-
-    /**
-     * Writes the exemptions a draw constated, and answers how many were new. Same `INSERT IGNORE` idiom, same reason.
-     *
-     * Called by the draw and by nothing else. The settlement must never write here: an exemption is a decision of the
-     * draw, not a consequence of a match that was not played.
-     */
-    fun addExemptions(exemptions: List<LeagueExemption>): Int {
-        if (exemptions.isEmpty()) return 0
-
-        return DatabaseAccessor.withDao { connection ->
-            val sql = "INSERT IGNORE INTO $EXEMPTIONS_TABLE(season, session, discord_id, reason, created) " +
-                    " VALUES (:season, :session, :discordId, :reason, NOW()) "
-
-            var inserted = 0
-            exemptions.forEach { exemption ->
-                connection
-                    .query(sql)
-                    .addParameter("season", exemption.season)
-                    .addParameter("session", exemption.session)
-                    .addParameter("discordId", exemption.discordId)
-                    .addParameter("reason", exemption.reason)
-                    .executeUpdate()
-
-                if (connection.result == 1) inserted++
-            }
-            inserted
-        }
-    }
 
     /**
      * How many sessions each player was exempted from, for the perfect-attendance bonus. Players with none are absent.

@@ -47,6 +47,11 @@ object LeagueSession {
      * morning window. Forcing only the first still leaves the draw untestable except between 07:00 and 09:59. The key
      * therefore means "act as though session N were running and it were the moment to draw".
      *
+     * ⚠⚠ **And the morning window gates the settlement as well as the draw**, which is the consequence to know before
+     * setting this: on its very first tick, at any hour, the service will settle every session of the season whose end has
+     * passed and which is not settled yet — and `markUnplayed` is irreversible. On a fresh `fg_dev` there is nothing to
+     * lose, but on a database holding a season's matches there is, so read that sentence before typing a number here.
+     *
      * Read through [Config.getOrNull] and logged when set, the same contract as `house.period.override` — **empty in
      * production**, where a value would freeze the league on one session for good.
      *

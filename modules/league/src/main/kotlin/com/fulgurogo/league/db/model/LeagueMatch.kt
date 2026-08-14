@@ -74,7 +74,7 @@ data class LeagueMatch(
      * Whether this match counts as played: it has a result, and that result is not the settlement's.
      *
      * A finished game whose result designates neither player is still played — 2 points to both, and the session counts
-     * for the perfect-attendance bonus. The settings make that unreachable (japanese rules put komi at 7.5, so no jigo),
+     * for the perfect-attendance bonus. The settings make that unreachable — japanese rules put komi at 6.5, measured, so no score can be level —
      * but the branch costs nothing and is the least surprising behaviour if they ever change.
      */
     fun isPlayed(): Boolean = result != null && result != UNPLAYED
@@ -87,12 +87,6 @@ data class LeagueMatch(
         BLACK_WINS -> blackDiscordId
         WHITE_WINS -> whiteDiscordId
         else -> null
-    }
-
-    /** The Discord id on one side, for the callers that hold a [LeagueSide] rather than a colour. */
-    fun playerOn(side: LeagueSide): String = when (side) {
-        LeagueSide.BLACK -> blackDiscordId
-        LeagueSide.WHITE -> whiteDiscordId
     }
 
     companion object {

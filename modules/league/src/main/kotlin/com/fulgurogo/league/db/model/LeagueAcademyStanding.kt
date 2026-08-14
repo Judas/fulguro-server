@@ -24,3 +24,11 @@ data class LeagueAcademyStanding(
     /** Match points only: the two per game played and the five per win, by the scale the players are scored on. */
     fun renown(): Int = played * LeagueRenown.POINTS_PER_PLAYED + won * LeagueRenown.POINTS_PER_VICTORY
 }
+
+/**
+ * How many rows a draw actually created, one count per table.
+ *
+ * A pair rather than two return values because `writeDraw` writes both in one transaction, and the caller logs both — the
+ * two numbers only mean anything together.
+ */
+data class DrawWritten(val matches: Int, val exemptions: Int)

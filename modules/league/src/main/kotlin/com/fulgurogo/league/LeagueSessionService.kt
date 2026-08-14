@@ -213,20 +213,17 @@ class LeagueSessionService : PeriodicFlowService(INITIAL_DELAY_IN_SECONDS, INTER
     )
 
     /**
-     * Writes a draw: the exemptions first, then the matches.
+     * Writes a draw: its exemptions and its matches, in one transaction.
      *
-     * That order is deliberate. Exemptions depend on nobody and cost nothing, while the matches are followed by network
-     * calls — so a failure on the OGS side must not be able to cost a player the end-of-season bonus that an exemption
-     * protects.
-     *
-     * Both writes are `INSERT IGNORE`, so a redraw landing on rows that already exist adds nothing.
+     * Atomic because the two halves are only meaningful together. Exemptions have to be recorded before the network calls,
+     * so a failure at OGS cannot cost a player the end-of-season bonus — but a crash between the two writes would leave a
+     * session holding exemptions and no matches, which is precisely what [redrawIfEmpty] reads as "drawn, nobody to pair"
+     * and would never repair. See `LeagueDatabaseAccessor.writeDraw`.
      */
     private fun writeDraw(season: String, session: Int, draw: Draw) {
         val exemptions = draw.exemptions.map {
             LeagueExemption(season = season, session = session, discordId = it.discordId, reason = it.reason.name)
         }
-        val written = LeagueDatabaseAccessor.addExemptions(exemptions)
-
         val matches = draw.pairings.map { pairing ->
             LeagueMatch(
                 season = season,
@@ -241,9 +238,12 @@ class LeagueSessionService : PeriodicFlowService(INITIAL_DELAY_IN_SECONDS, INTER
                 created = Date()
             )
         }
-        val inserted = LeagueDatabaseAccessor.addMatches(matches)
 
-        log(TAG, "Session $session of $season: $inserted match(es) and $written exemption(s) written")
+        val written = LeagueDatabaseAccessor.writeDraw(matches, exemptions)
+        log(
+            TAG,
+            "Session $session of $season: ${written.matches} match(es) and ${written.exemptions} exemption(s) written"
+        )
     }
 
     /**
@@ -376,12 +376,22 @@ class LeagueSessionService : PeriodicFlowService(INITIAL_DELAY_IN_SECONDS, INTER
      * match; this branch exists so the stored value says *annulled* rather than merely *no winner*, which is what a player
      * asking about it wants to hear.
      *
-     * The last branch is a finished match naming neither side and not annulled. Unreachable as things stand — japanese
+     * ⚠ Then **a match that never became a game**. `finished` alone does not mean it was played: OGS can close a challenge
+     * nobody accepted, which comes back finished, not started, with both `*_lost` null. Falling through to
+     * [LeagueMatch.JIGO] there would pay **both players 2 renown for a game that never existed** and credit the session
+     * towards their perfect-attendance bonus. `cancelled` and `started` are read for exactly this, and the answer is
+     * [LeagueMatch.UNPLAYED] — which is what it is, and terminal.
+     *
+     * A missing `started` is treated as "not played" rather than assumed: if OGS ever stops sending it, inventing points is
+     * the worse of the two failures.
+     *
+     * The last branch is a finished, started, un-annulled match naming neither side. Unreachable as things stand — japanese
      * rules put komi at a half point — and recorded as [LeagueMatch.JIGO] rather than as an annulment, because calling it
-     * one would put a claim in the data that is not true. Either way it is played with no winner: 2 points each.
+     * one would put a claim in the data that is not true. Played, with no winner: 2 points each.
      */
     private fun resultOf(match: OgsLeagueMatch): String = when {
         match.isAnnulled() -> LeagueMatch.ANNULLED
+        match.cancelled == true || match.started != true -> LeagueMatch.UNPLAYED
         match.loser() == LeagueLoser.BLACK -> LeagueMatch.WHITE_WINS
         match.loser() == LeagueLoser.WHITE -> LeagueMatch.BLACK_WINS
         else -> LeagueMatch.JIGO
