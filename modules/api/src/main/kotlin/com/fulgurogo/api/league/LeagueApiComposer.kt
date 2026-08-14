@@ -5,7 +5,9 @@ import com.fulgurogo.house.HousePeriod
 import com.fulgurogo.house.db.HouseDatabaseAccessor
 import com.fulgurogo.league.LeagueSession
 import com.fulgurogo.league.db.LeagueDatabaseAccessor
+import com.fulgurogo.league.Session
 import com.fulgurogo.league.db.model.LeagueMatch
+import com.fulgurogo.league.db.model.LeagueSessionState
 import com.fulgurogo.league.db.model.LeagueSide
 import com.fulgurogo.league.db.model.LeagueStanding
 
@@ -35,6 +37,22 @@ class LeagueApiComposer(private val season: String) {
         .associate { it.id to ApiLeagueCrest.from(it) }
 
     val sessionCount: Int = LeagueSession.count(season)
+
+    /**
+     * Every session's state, read once and indexed by number.
+     *
+     * A session with no row is absent, which reads as "not drawn yet" — the honest answer, since the row is created by the
+     * draw. Doing this per session would be sixteen round trips for one page.
+     */
+    private val states: Map<Int, LeagueSessionState> =
+        LeagueDatabaseAccessor.sessionStates(season).associateBy { it.session }
+
+    /** The whole calendar: the sixteen sessions with their bounds and their state. */
+    fun calendar(): List<ApiLeagueSession> =
+        LeagueSession.sessions(season).map { ApiLeagueSession.from(it, states[it.number]) }
+
+    /** One session, for the routes that already hold it. */
+    fun session(session: Session): ApiLeagueSession = ApiLeagueSession.from(session, states[session.number])
 
     /** The whole standings, already ranked by the accessor. */
     fun standings(): List<ApiLeagueStanding> = standings.map { ApiLeagueStanding.from(it, crestOf(it)) }

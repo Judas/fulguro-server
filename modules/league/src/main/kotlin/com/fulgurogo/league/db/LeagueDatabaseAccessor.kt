@@ -62,6 +62,22 @@ object LeagueDatabaseAccessor {
     }
 
     /**
+     * Every session of the season that has a row, in order.
+     *
+     * One query rather than sixteen: the calendar page needs the state of all of them at once, and asking per session
+     * would be sixteen round trips for a page that renders a table. Sessions never drawn are simply absent — they have no
+     * row — so the caller indexes this by number and reads a miss as "not drawn yet".
+     */
+    fun sessionStates(season: String): List<LeagueSessionState> = DatabaseAccessor.withDao { connection ->
+        connection
+            .query("SELECT * FROM $SESSIONS_TABLE WHERE season = :season ORDER BY session")
+            .throwOnMappingFailure(false)
+            .addParameter("season", season)
+            .executeAndFetch(LeagueSessionState::class.java)
+            ?: listOf()
+    }
+
+    /**
      * Stamps a season as opened and answers whether this call is the one that did it.
      *
      * Two statements because the row may not exist: `INSERT IGNORE` makes sure it does without disturbing one that

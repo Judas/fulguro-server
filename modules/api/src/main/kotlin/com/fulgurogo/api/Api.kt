@@ -247,9 +247,8 @@ class Api {
                 season = season,
                 period = HouseSeason.period(now),
                 sessionCount = composer.sessionCount,
-                currentSession = current?.let {
-                    ApiLeagueSession.from(it, LeagueDatabaseAccessor.sessionState(season, it.number))
-                },
+                currentSession = current?.let { composer.session(it) },
+                sessions = composer.calendar(),
                 standings = composer.standings()
             )
         )
@@ -281,7 +280,7 @@ class Api {
                 season = season,
                 period = HouseSeason.period(now),
                 sessionCount = composer.sessionCount,
-                session = ApiLeagueSession.from(session, LeagueDatabaseAccessor.sessionState(season, session.number)),
+                session = composer.session(session),
                 matches = composer.sessionMatches(session.number),
                 exemptions = composer.sessionExemptions(session.number)
             )

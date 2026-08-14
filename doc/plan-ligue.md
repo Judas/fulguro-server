@@ -1237,8 +1237,16 @@ qui n'apparaît qu'une fois une partie réellement lancée.
 
 Dépend de : 3, 8.
 
-`GET /gold/api/league` — la page « Ligue ». Saison, session courante (numéro et bornes), nombre total de sessions, et
-le classement complet.
+`GET /gold/api/league` — la page « Ligue ». Saison, session courante (numéro et bornes), nombre total de sessions, **le
+calendrier complet des 16 sessions**, et le classement.
+
+Le calendrier a été ajouté après coup, sur demande : sans lui, une page qui veut afficher la saison doit appeler seize
+fois la route de session. Chaque entrée porte un **libellé français prêt à afficher** — `15 – 30 septembre` — et pas
+seulement des bornes ISO. C'est le serveur qui le formate, et pas par confort : formater une date en français demande une
+locale épinglée, l'oublier est silencieux, et ce module a déjà livré un `Thursday 30 April` dans une phrase française
+parce que la locale par défaut de la JVM est `en_US`. Un navigateur a le même piège avec la sienne. Le jour affiché est le
+**dernier jour inclus**, l'`end` étant exclusif, et une session ne chevauche jamais deux mois — d'où un seul nom de mois.
+Les deux trous du calendrier se lisent par absence : rien entre la session 6 et la 7, et la numérotation reste continue.
 
 `GET /gold/api/league/session/{number}` — les appariements d'une session : les deux joueurs (identité Discord, maison,
 rating), le **lien spectateur**, et le vainqueur quand le match est terminé — ou l'état « non joué » quand la session
@@ -1269,8 +1277,9 @@ d'un lien perdu se fait à la main.
 {
   "season": "2026-2027", "period": "SEASON",
   "sessionCount": 16,
-  "currentSession": { "number": 8, "start": "2027-01-15T00:00:00+01:00",
+  "currentSession": { "number": 8, "label": "15 – 31 janvier", "start": "2027-01-15T00:00:00+01:00",
                       "end": "2027-02-01T00:00:00+01:00", "drawn": true, "settled": false },
+  "sessions": [ { … même forme, les 16, dans l'ordre … } ],
   "standings": [
     { "discordId": "111", "discordName": "Alice", "discordAvatar": "…",
       "house": { "slug": "NEXUS_ALPHA", "name": "Nexus Alpha", "color": "#0E1A40" },
