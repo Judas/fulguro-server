@@ -24,6 +24,14 @@ import com.fulgurogo.league.db.model.LeagueStanding
  */
 object LeagueNotifier {
     /**
+     * The league's page on the website, appended to `frontend.url` — as the houses do with `/houses`.
+     *
+     * One constant, here, because the announcements are the only thing that links to it and nothing else on the server
+     * depends on the site's routing. The same path serves the API, `/gold/api/league`, so the two cannot drift.
+     */
+    const val LEAGUE_PATH = "/league"
+
+    /**
      * Sends one player their invitation link, by DM.
      *
      * The caller stamps `black_notified` / `white_notified` only when this succeeds, so a failure is retried on the next

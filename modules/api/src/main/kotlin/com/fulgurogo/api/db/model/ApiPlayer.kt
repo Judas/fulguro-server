@@ -21,5 +21,13 @@ data class ApiPlayer(
      * Composed by the handler from `HouseDatabaseAccessor`, not added to the `api_players` view: it is counted over the
      * current season, which only Kotlin knows, and this way there is no view to alter on the production server.
      */
-    var house: ApiPlayerHouse? = null
+    var house: ApiPlayerHouse? = null,
+    /**
+     * The player's league standing and matches, or null when they were never a member of the current season. Filled by
+     * the profile route only, like [games] and [house].
+     *
+     * Composed by the handler for the same reason the house block is: it is counted over the current season, which only
+     * Kotlin knows, so nothing has to be added to the `api_players` view in production.
+     */
+    var league: ApiPlayerLeague? = null
 )

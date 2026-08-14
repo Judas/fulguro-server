@@ -39,7 +39,10 @@ object ApiModule {
                 post("/gold/api/house/join", api::joinHouse)
                 post("/gold/api/house/choice", api::setHouseChoice)
 
-                // League: joining and leaving an academy. The standings and the sessions come with a later step
+                // League: plural-free, the path is /league on both sides -- API and website page
+                get("/gold/api/league", api::getLeague)
+                get("/gold/api/league/session/{number}", api::getLeagueSession)
+                // Mutations. No collision with the GETs above: Javalin matches on the method too
                 post("/gold/api/league/join", api::joinLeague)
                 post("/gold/api/league/leave", api::leaveLeague)
 

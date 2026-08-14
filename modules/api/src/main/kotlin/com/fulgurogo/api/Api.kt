@@ -3,6 +3,7 @@ package com.fulgurogo.api
 import com.fulgurogo.api.ApiModule.TAG
 import com.fulgurogo.api.db.ApiDatabaseAccessor
 import com.fulgurogo.api.db.model.*
+import com.fulgurogo.api.league.LeagueApiComposer
 import com.fulgurogo.api.link.AccountLinkers
 import com.fulgurogo.api.utilities.badRequest
 import com.fulgurogo.api.utilities.conflict
@@ -29,6 +30,7 @@ import com.fulgurogo.house.HousePeriod
 import com.fulgurogo.house.HouseRoles
 import com.fulgurogo.house.HouseSeason
 import com.fulgurogo.house.db.HouseDatabaseAccessor
+import com.fulgurogo.league.LeagueSession
 import com.fulgurogo.league.db.LeagueDatabaseAccessor
 import com.fulgurogo.ogs.api.OgsApiClient
 import com.google.gson.Gson
@@ -85,6 +87,9 @@ class Api {
             val season = HouseSeason.seasonName(now)
             p.house = HouseDatabaseAccessor.playerStanding(season, playerId)
                 ?.let { ApiPlayerHouse.from(HouseSeason.period(now), season, it) }
+            // Same story as the house block: counted over the current season, which only Kotlin knows, so it is composed
+            // here rather than added to `api_players` — and there is no view to alter on the production server.
+            p.league = LeagueApiComposer(season).playerBlock(playerId, HouseSeason.period(now))
 
             context.standardResponse(p)
         } ?: context.notFoundError()
@@ -220,6 +225,67 @@ class Api {
         HouseDatabaseAccessor.setPendingAction(discordId, action.name)
         log(TAG, "setHouseChoice $discordId chose $action")
         context.standardResponse()
+    }
+
+    /**
+     * The "League" page: the calendar, then every member of the season best first.
+     *
+     * The clock is read once and that instant passed to both calendar questions, as everywhere the two are asked together:
+     * a period and a season read either side of midnight on 1 September would describe a season other than the one the
+     * standings were summed over.
+     *
+     * `currentSession` is null out of season and inside the two holes of the calendar. That is the answer, not a gap.
+     */
+    fun getLeague(context: Context) = context.handle("getLeague") {
+        val now = ZonedDateTime.now(DATE_ZONE)
+        val season = HouseSeason.seasonName(now)
+        val composer = LeagueApiComposer(season)
+        val current = LeagueSession.current(season, now)
+
+        context.standardResponse(
+            ApiLeague(
+                season = season,
+                period = HouseSeason.period(now),
+                sessionCount = composer.sessionCount,
+                currentSession = current?.let {
+                    ApiLeagueSession.from(it, LeagueDatabaseAccessor.sessionState(season, it.number))
+                },
+                standings = composer.standings()
+            )
+        )
+    }
+
+    /**
+     * One session's pairings, and the players the draw could not pair. 404 on a number that is not a session of the season.
+     *
+     * The 404 is read off the calendar rather than off a range check: the season is what says how many sessions there are,
+     * so a hardcoded 1..16 would answer 404 for a legitimate session the day the split changed.
+     *
+     * A session with no matches is not an error. Not yet drawn, or drawn with nobody to pair — `session.drawn` tells those
+     * apart, and the exemptions are what make the second case legible.
+     */
+    fun getLeagueSession(context: Context) = context.handle("getLeagueSession") {
+        val number = context.pathParam("number").toIntOrNull()
+        val now = ZonedDateTime.now(DATE_ZONE)
+        val season = HouseSeason.seasonName(now)
+
+        val session = LeagueSession.sessions(season).firstOrNull { it.number == number }
+        if (session == null) {
+            context.notFoundError()
+            return@handle
+        }
+
+        val composer = LeagueApiComposer(season)
+        context.standardResponse(
+            ApiLeagueSessionDetails(
+                season = season,
+                period = HouseSeason.period(now),
+                sessionCount = composer.sessionCount,
+                session = ApiLeagueSession.from(session, LeagueDatabaseAccessor.sessionState(season, session.number)),
+                matches = composer.sessionMatches(session.number),
+                exemptions = composer.sessionExemptions(session.number)
+            )
+        )
     }
 
     /**
