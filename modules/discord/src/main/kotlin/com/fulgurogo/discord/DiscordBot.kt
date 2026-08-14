@@ -29,16 +29,67 @@ class DiscordBot : ListenerAdapter() {
 
     fun sendMessageEmbeds(channelId: String, message: String, title: String = "", imageUrl: String = "") = jda
         ?.getTextChannelById(channelId)
-        ?.sendMessageEmbeds(
-            EmbedBuilder()
-                .setColor(Color.decode(Config.get("bot.color")))
-                .apply { if (title.isNotBlank()) setTitle(title) }
-                .apply { if (imageUrl.isNotBlank()) setThumbnail(imageUrl) }
-                .setAuthor(Config.get("bot.name"), Config.get("frontend.url"), Config.get("gold.default.avatar"))
-                .setDescription(message.ellipsize(2048))
-                .build()
-        )
+        ?.sendMessageEmbeds(embed(message, title, imageUrl))
         ?.queue()
+
+    /**
+     * Sends [discordId] a private message, and calls [onSuccess] **only if Discord accepted it**.
+     *
+     * That callback is the whole reason this is not shaped like [sendMessageEmbeds]. A DM here carries an OGS invitation
+     * link, and OGS notifies nobody — so the DM *is* how a player learns they have a match, and a lost one means an
+     * unplayable game. The caller therefore records "notified" from inside the success callback rather than optimistically
+     * before queueing, which is the opposite of the trade the houses' daily ranking makes: there a duplicate was the thing
+     * to avoid, here a silent loss is.
+     *
+     * Nothing is reported back synchronously and nothing throws, as with [modifyRole]. Three failures look alike from
+     * here and each gets its own line: the bot not being connected, Discord refusing the channel — closed DMs, or no guild
+     * in common — and a client-side rejection.
+     *
+     * The `try/catch` is not belt-and-braces, for the reason `modifyRole` records: JDA validates on the calling thread and
+     * can throw before anything is queued, where the failure callback would never see it.
+     *
+     * Failure is deliberately not passed back. The retry lives in the caller's tick, which reads the un-stamped rows again
+     * next time round, so this side has nothing to decide.
+     */
+    fun sendPrivateMessageEmbeds(
+        discordId: String,
+        message: String,
+        title: String = "",
+        onSuccess: () -> Unit = {}
+    ) {
+        val jda = jda
+        if (jda == null) {
+            log(TAG, "sendPrivateMessage $discordId FAILURE bot is not connected")
+            return
+        }
+
+        try {
+            jda.openPrivateChannelById(discordId)
+                .flatMap { it.sendMessageEmbeds(embed(message, title)) }
+                .queue(
+                    {
+                        log(TAG, "sendPrivateMessage $discordId OK")
+                        onSuccess()
+                    },
+                    { error -> log(TAG, "sendPrivateMessage $discordId FAILURE", error) }
+                )
+        } catch (e: Exception) {
+            log(TAG, "sendPrivateMessage $discordId FAILURE", e)
+        }
+    }
+
+    /**
+     * The one embed both senders use, so a channel message and a DM look alike.
+     *
+     * `ellipsize(2048)` is the description limit Discord enforces; over it the whole message is rejected rather than cut.
+     */
+    private fun embed(message: String, title: String = "", imageUrl: String = "") = EmbedBuilder()
+        .setColor(Color.decode(Config.get("bot.color")))
+        .apply { if (title.isNotBlank()) setTitle(title) }
+        .apply { if (imageUrl.isNotBlank()) setThumbnail(imageUrl) }
+        .setAuthor(Config.get("bot.name"), Config.get("frontend.url"), Config.get("gold.default.avatar"))
+        .setDescription(message.ellipsize(2048))
+        .build()
 
     /** Gives [roleId] to [discordId] on `bot.guild.id`. A no-op the member already has costs one wasted request. */
     fun addRole(discordId: String, roleId: String) = modifyRole(discordId, roleId, add = true)

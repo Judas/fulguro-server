@@ -8,6 +8,7 @@ import com.fulgurogo.common.utilities.toDate
 import com.fulgurogo.common.utilities.toStartOfDay
 import com.fulgurogo.house.HousePeriod
 import com.fulgurogo.house.HouseSeason
+import com.fulgurogo.house.db.HouseDatabaseAccessor
 import com.fulgurogo.league.LeagueModule.TAG
 import com.fulgurogo.league.db.LeagueDatabaseAccessor
 import com.fulgurogo.league.db.model.LeagueExemption
@@ -71,7 +72,7 @@ class LeagueSessionService : PeriodicFlowService(INITIAL_DELAY_IN_SECONDS, INTER
         LeagueSession.current(season, now)?.let { session ->
             drawSession(season, session, now)
             createMissingChallenges(season, session.number)
-            sendMissingLinks(season, session.number)
+            sendMissingLinks(season, session)
             announceDraw(season, session.number)
             collectResults(season, session.number)
         }
@@ -281,17 +282,27 @@ class LeagueSessionService : PeriodicFlowService(INITIAL_DELAY_IN_SECONDS, INTER
     /**
      * Sends the invitation links that are still owed, one DM per side.
      *
-     * Each side is stamped only when its own DM succeeded, so a player whose DMs are closed does not stop their opponent
-     * from being told, and neither is recorded as notified when they were not. The links stay in the database either way,
-     * because resending one by hand is the fallback and it happens days later.
+     * ⚠ Each side is stamped **from inside Discord's success callback**, never before queueing, and this is the one place
+     * in the module where that trade is inverted. Elsewhere a guard is claimed first, because a duplicate is the failure to
+     * avoid; here the DM *is* how a player learns they have a match — OGS tells them nothing — so a lost message means an
+     * unplayable game while a duplicate is merely noise. The callback runs on a JDA thread, which is fine: the accessor
+     * takes a pooled connection like every other caller.
+     *
+     * Each side independently, so a player with closed DMs does not stop their opponent from being told, and neither is
+     * recorded as notified when they were not. The links stay in the database either way — a permanently unreachable player
+     * shows up as a `notified` still null at the end of the session, and resending by hand is the documented repair.
      */
-    private fun sendMissingLinks(season: String, session: Int) {
-        LeagueDatabaseAccessor.unnotifiedMatches(season, session).forEach { match ->
-            if (match.blackNotified == null && LeagueNotifier.notifyChallenge(match, LeagueSide.BLACK))
-                LeagueDatabaseAccessor.markNotified(season, session, match.blackDiscordId, LeagueSide.BLACK)
+    private fun sendMissingLinks(season: String, session: Session) {
+        LeagueDatabaseAccessor.unnotifiedMatches(season, session.number).forEach { match ->
+            if (match.blackNotified == null)
+                LeagueNotifier.notifyChallenge(match, LeagueSide.BLACK, session) {
+                    LeagueDatabaseAccessor.markNotified(season, session.number, match.blackDiscordId, LeagueSide.BLACK)
+                }
 
-            if (match.whiteNotified == null && LeagueNotifier.notifyChallenge(match, LeagueSide.WHITE))
-                LeagueDatabaseAccessor.markNotified(season, session, match.blackDiscordId, LeagueSide.WHITE)
+            if (match.whiteNotified == null)
+                LeagueNotifier.notifyChallenge(match, LeagueSide.WHITE, session) {
+                    LeagueDatabaseAccessor.markNotified(season, session.number, match.blackDiscordId, LeagueSide.WHITE)
+                }
         }
     }
 
@@ -312,8 +323,8 @@ class LeagueSessionService : PeriodicFlowService(INITIAL_DELAY_IN_SECONDS, INTER
         LeagueNotifier.notifyDraw(
             season = season,
             session = session,
-            matches = matches,
-            exempted = LeagueDatabaseAccessor.exemptionsOf(season, session).map { it.discordId }
+            matches = matches.size,
+            exempted = LeagueDatabaseAccessor.exemptionsOf(season, session).size
         )
     }
 
@@ -400,7 +411,12 @@ class LeagueSessionService : PeriodicFlowService(INITIAL_DELAY_IN_SECONDS, INTER
 
         val standings = LeagueDatabaseAccessor.standings(season)
         log(TAG, "Closing league season $season, ${standings.size} player(s) ranked")
-        LeagueNotifier.notifySeasonRecap(season, standings)
+        LeagueNotifier.notifySeasonRecap(
+            season = season,
+            standings = standings,
+            academies = LeagueDatabaseAccessor.academyStandings(season),
+            houses = HouseDatabaseAccessor.houses()
+        )
 
         if (LeagueDatabaseAccessor.closeSeason(season)) log(TAG, "League season $season closed")
     }

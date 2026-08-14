@@ -741,6 +741,43 @@ object LeagueDatabaseAccessor {
             .withRanks()
     }
 
+    /**
+     * What each academy has earned this season, by the house **frozen on each match**.
+     *
+     * Grouped on `black_house_id` / `white_house_id` and not on today's `house_members`, which is the whole point: an
+     * academy's total must not move when a player leaves it or changes house. Same property as `house_points`, same
+     * reason.
+     *
+     * `UNION ALL` and not `UNION`, for the reason [tallies] spells out: the branches carry no session, so two matches with
+     * the same outcome for the same house are identical rows and `UNION` would silently merge them.
+     *
+     * Houses with no match at all are absent rather than present with zeroes — the caller drives its list from `houses`,
+     * so a missing key reads as 0 there.
+     */
+    fun academyStandings(season: String): List<LeagueAcademyStanding> = DatabaseAccessor.withDao { connection ->
+        val sql = "SELECT s.house_id, SUM(s.played) AS played, SUM(s.won) AS won FROM ( " +
+                "   SELECT black_house_id AS house_id, " +
+                "          CASE WHEN result IS NOT NULL AND result <> :unplayed THEN 1 ELSE 0 END AS played, " +
+                "          CASE WHEN result = :blackWins THEN 1 ELSE 0 END AS won " +
+                "   FROM $MATCHES_TABLE WHERE season = :season " +
+                "   UNION ALL " +
+                "   SELECT white_house_id AS house_id, " +
+                "          CASE WHEN result IS NOT NULL AND result <> :unplayed THEN 1 ELSE 0 END AS played, " +
+                "          CASE WHEN result = :whiteWins THEN 1 ELSE 0 END AS won " +
+                "   FROM $MATCHES_TABLE WHERE season = :season " +
+                " ) s GROUP BY s.house_id "
+
+        connection
+            .query(sql)
+            .throwOnMappingFailure(false)
+            .addParameter("unplayed", LeagueMatch.UNPLAYED)
+            .addParameter("blackWins", LeagueMatch.BLACK_WINS)
+            .addParameter("whiteWins", LeagueMatch.WHITE_WINS)
+            .addParameter("season", season)
+            .executeAndFetch(LeagueAcademyStanding::class.java)
+            ?: listOf()
+    }
+
     private fun exemptionRows(connection: Connection, season: String): List<LeagueExemption> = connection
         .query("SELECT * FROM $EXEMPTIONS_TABLE WHERE season = :season")
         .throwOnMappingFailure(false)
