@@ -24,8 +24,7 @@ import com.google.gson.Gson
  * Its own [OgsApiClient] instance, **cookie-free**, and both halves matter. `ensureSpamDelay` is instance state, so a
  * shared one would make `OgsService` wait on the league's calls. And the cookies are worse than useless here: the
  * WebSocket service logs into OGS with a real account, its `sessionid` lands in the shared jar, and a league write
- * carrying it is refused with `403 CSRF Failed` — measured, 200 before that login and 403 after. Sharing one would give a real global rate guarantee but would change the behaviour of code already in
- * production — `OgsService` ticks every 15s and would start waiting on the league's calls.
+ * carrying it is refused with `403 CSRF Failed` — measured, 200 before that login and 403 after.
  *
  * ⚠ The consequence is worth knowing: three instances are three counters, so nothing guarantees 500ms between a league
  * call and an `OgsService` call. That is already true between the two existing services, so the league does not

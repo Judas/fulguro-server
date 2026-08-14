@@ -36,14 +36,19 @@ data class LeagueRenown(
          * [sessionCount] comes from the calendar rather than a constant 16, so a change to the split cannot leave the
          * bonus unreachable or free.
          *
-         * `>=` rather than `==` on purpose. The two are equivalent while the invariants hold — at most one match and at
-         * most one exemption per player per session, and never both — but if one ever broke, `==` would quietly deny the
-         * bonus to the players who deserved it most, which is the error that would take longest to notice.
+         * **`==` and not `>=`**, which is a choice rather than laziness. The two counts cover disjoint sessions by
+         * construction — a player exempted from a session has no match in it — so their sum cannot legitimately exceed
+         * [sessionCount], and `>=` would swallow a counting bug instead of letting it show. It would also inflate a
+         * standing, and a standing that is wrong upwards is worse than a bonus that is missing: the second gets reported
+         * by the player who lost it, the first by nobody.
+         *
+         * A bug of that kind is caught earlier anyway. `LeaguePairing.draw` logs when paired plus exempted does not equal
+         * the number of candidates, which is the same invariant one write earlier, and the one step 6 tests first.
          */
         fun of(played: Int, won: Int, exempted: Int, sessionCount: Int): LeagueRenown = LeagueRenown(
             playedPoints = played * POINTS_PER_PLAYED,
             victoryPoints = won * POINTS_PER_VICTORY,
-            perfectBonus = if (played + exempted >= sessionCount) PERFECT_BONUS else 0
+            perfectBonus = if (played + exempted == sessionCount) PERFECT_BONUS else 0
         )
     }
 }
