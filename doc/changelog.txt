@@ -1,0 +1,44 @@
+Notes de version de FulguroGo Server.
+`CLAUDE.md` renvoie ici depuis toujours, mais le fichier n'existait pas dans le dépôt : il commence donc à la 9.1, et
+l'historique des versions antérieures est dans les messages de commit.
+
+
+9.1 — La Ligue d'Aurak
+----------------------
+
+Une ligue par saison, posée sur les maisons : 16 sessions de quinze jours du 1er septembre au 31 mai, un match par
+joueur et par session contre un membre d'une autre maison.
+
+Pour les joueurs
+- Une académie par maison. On s'inscrit et on peut se désinscrire en cours de saison ; les points restent acquis.
+- Un tirage automatique au début de chaque session, entre 7h et 9h du matin. Les adversaires sont choisis par rating
+  proche, et on évite de vous faire rejouer quelqu'un que vous avez déjà rencontré.
+- Votre lien de partie arrive en message privé, avec votre couleur et la date limite. La partie doit être lancée avant
+  la fin de la session, sinon elle ne compte pas.
+- Renommée : 2 points par match joué, 5 de plus par victoire, et 10 points de bonus pour une saison sans faute — les
+  16 sessions jouées ou exemptées. Maximum théorique : 122 points.
+- Une session où le tirage ne trouve personne pour vous ne vous pénalise pas, mais ne rapporte rien.
+- Les parties de ligue comptent aussi pour votre maison et pour votre validité FGC, comme n'importe quelle partie.
+
+Pour le site
+- GET /gold/api/league — la saison, la session en cours et le classement complet.
+- GET /gold/api/league/session/{number} — les appariements d'une session et les joueurs non appariés.
+- Un bloc "league" sur GET /gold/api/player/{id}, à côté de "house".
+
+Pour l'exploitation
+- Six tables nouvelles, aucune vue : appliquer `doc/migration ligue.sql` avant le déploiement. Rien à enregistrer
+  chez OGS.
+- Quatre clés de config nouvelles, dans les trois fichiers. `ogs.league.id`, `ogs.league.auth` et
+  `league.member.salt` sont IDENTIQUES en dev et en prod, parce qu'il n'y a qu'une ligue OGS et que les deux
+  environnements la partagent. `league.session.override` reste vide.
+- `league.member.salt` porte l'identité OGS de chaque joueur. Le perdre ou le changer réinscrit tout le monde sous de
+  nouveaux identifiants. À sauvegarder comme `bot.token`.
+- Un run local crée de vraies rencontres sur la vraie ligue OGS. Elles sont inertes tant qu'aucun lien n'est envoyé,
+  mais permanentes.
+- Le jour d'un tirage, surveiller /gold/api/health : un scraper en panne met des joueurs en erreur de rating et les
+  sort du tirage.
+
+Corrections apportées au passage, hors ligue
+- Les parties annulées après ingestion sont maintenant défaites. Le poll OGS supprime la partie et les points de
+  maison qu'elle avait crédités, au lieu de se contenter de ne pas la réimporter — un cas constaté en production.
+- Les échecs d'appel à l'API OGS indiquent enfin ce que le serveur a répondu, et pas seulement un code HTTP.

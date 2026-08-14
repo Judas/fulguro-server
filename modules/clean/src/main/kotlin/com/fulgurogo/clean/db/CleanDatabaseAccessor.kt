@@ -16,8 +16,14 @@ object CleanDatabaseAccessor {
      * which contradicts the rule that points stay earned for the house they were earned for. The register is meant to be
      * final, and a house's history should not quietly rewrite itself because someone left the server.
      *
-     * `league_members` and `league_players` belong here, and `league_matches` does **not** — the same asymmetry as the
-     * houses, for the same reason: deleting the matches would shrink an academy's renown.
+     * `league_members` and `league_players` belong here. `league_matches` and `league_exemptions` do **not**, and both
+     * omissions are deliberate rather than oversights — which is why they are named here, since an absent table is exactly
+     * what a later reader adds "for consistency".
+     *
+     * Deleting the matches would shrink an academy's renown, the same asymmetry the houses have with `house_points`. The
+     * exemptions are a different argument: they are worth no points, so they carry no academy total, but each one records
+     * that a draw examined a player and found nobody for them. That is a fact about a session, not a property of the
+     * player, and the perfect-attendance bonus of anyone who ever comes back is computed from it.
      *
      * Purging `league_players` loses nothing that cannot be rebuilt, and that is only true because the OGS member id is a
      * hash of the Discord id: it re-derives identically if the player ever comes back, so they find their OGS league

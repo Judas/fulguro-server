@@ -40,12 +40,20 @@ name, so `dev.config.properties` or `config.properties.dev.properties` silently 
 `Config.get(key)` reads that file with no defaults and no error handling, so a missing key surfaces as an NPE deep in
 a service. Keys currently required include `debug`, `db.*`, `ssh.*`, `bot.*`, `user.agent`,
 `global.read.timeout.ms`, `gold.api.port`, `gold.discord.auth.*`, the per-platform blocks (`kgs.archives.url`,
-`kgs.game.link`, `kgs.login.*`, `ogs.*`) and `frontend.url`. Two blocks are the exception to "no defaults", both read
-through `Config.getOrNull` and both allowed to be empty: `house.period.override`, which is empty in all three files, and
-the four `house.role.*` keys, where an empty value means that house gives its members no Discord role — see the houses in
-the data flow below. The authoritative values are the ones deployed on the prod server; both
-variant files hold real credentials in plaintext, which is why the gitignore pattern has to match every
-`config.properties*` name.
+`kgs.game.link`, `kgs.login.*`, `ogs.*`) and `frontend.url`. The league adds `ogs.league.id`, `ogs.league.auth` and
+`league.member.salt`, and those three are **identical in dev and prod** — the inverse of every other block, because there
+is one OGS league and both environments share it. Three blocks are the exception to "no defaults", all read through
+`Config.getOrNull` and all allowed to be empty: `house.period.override` and `league.session.override`, both empty in all
+three files, and the four `house.role.*` keys, where an empty value means that house gives its members no Discord role —
+see the houses in the data flow below.
+
+⚠ `league.member.salt` is the first key in the project whose **loss destroys business data** rather than taking a service
+down. Every player's OGS identity is `sha256(discordId + salt)`, computed and never stored, so changing or losing the salt
+re-registers everybody under new member ids and cuts them off from their OGS league history. It lives in a gitignored file
+and is therefore outside the database backups: back it up with `bot.token`.
+
+The authoritative values are the ones deployed on the prod server; both variant files hold real credentials in plaintext,
+which is why the gitignore pattern has to match every `config.properties*` name.
 
 `ssh.*` is only read when `debug=true` (`DatabaseAccessor` and `App.main` short-circuit on the flag), but keep the
 five keys present in the prod file too — with the `useless-only-needed-in-dev` placeholders — so flipping `debug`
@@ -120,7 +128,8 @@ Every feature is a Gradle module under `modules/` with an identical shape:
 
 - `XModule` — an `object` with a 3-letter `const val TAG` (used by every log line from that module) and an `init()`
   that instantiates and `start()`s its services. `App.main` calls each `init()` in order: aggregators, then community
-  modules (gold, fgc, house, api — `house` before `api`, since `api` depends on it), then utilities (ping, clean).
+  modules (gold, fgc, house, league, api — `house` and `league` before `api`, which depends on both), then
+  utilities (ping, clean).
 - `XService : StalestFirstService<T>` — the work loop (see below; a few services extend `PeriodicFlowService` directly).
 - `db/XDatabaseAccessor` — an `object` owning that module's tables via `private const val`; all SQL lives here.
 - `db/model/*` — sql2o-mapped data classes.
@@ -144,8 +153,9 @@ instead of blocking it. Extend `PeriodicFlowService` directly only when there is
 (`CleanService`, `PingService`, `OgsRealTimeService`).
 
 Tick intervals are deliberately staggered (discord 5s, ogs/gold/fgc 15s, house points 30s, kgs 60s,
-house season/ping/clean 600s) to spread outbound load. Initial delays stagger the first tick the same way — the two
-house services start at 90s and 120s, behind `GoldService`, so a cold start does not open every connection at once.
+house season/league session/ping/clean 600s) to spread outbound load. Initial delays stagger the first tick the same
+way — the two house services start at 90s and 120s and the league's at 150s, behind `GoldService`, so a cold start does
+not open every connection at once.
 
 ### Data flow
 
@@ -181,17 +191,43 @@ house services start at 90s and 120s, behind `GoldService`, so a cold start does
    therefore drift from `house_members`. Two things have to hold on the guild or every grant fails the same way: the bot
    needs **Manage Roles**, and its own role has to sit **above** the four house roles — `DiscordBot` checks the second
    up front (`canInteract`) and names it in the log, since it is the one nobody guesses.
-5. `ApiModule` starts Javalin on `gold.api.port`. The players and games routes come almost entirely out of two MySQL
+5. The **league** (`doc/plan-ligue.md`) is a season-long ladder on top of the houses: 16 fortnightly sessions,
+   1 September to 31 May, one match per player per session against someone from another house. `LeagueSessionService`
+   ticks every 10 minutes and does everything in one pass — draws a session in the 7am-9am window, creates the challenge
+   on OGS, DMs each player their invitation link, sweeps OGS for results, settles what was never played, and closes the
+   year. Every branch claims a column of `league_sessions` before acting, because a 10-minute tick sees a session start
+   about 1400 times and the calendar cannot say what has already been done.
+
+   Four things about it differ from everything else here, and each is a trap:
+
+   - **The OGS league is shared by dev and prod.** There is one, `FulguroGo`, its credentials identical in all three
+     config files, and nothing bounds what a local run sends to it. A draw in dev creates *real* matches, permanent
+     because `DELETE` answers 405. The `db.name` prefix on `league_match_id` prevents id collisions and nothing more.
+   - **OGS notifies nobody.** Creating a match produces no notification of any kind, so the Discord DM carrying the
+     invitation link is the only way a player learns they have a match. A DM that fails is an unplayable game — which is
+     why `black_notified` / `white_notified` are stamped from inside JDA's success callback, never before, and why the
+     links are never deleted.
+   - **Results come from OGS's match objects, not from `ogs_games`.** One request per session sweeps
+     `GET /matches/?league_match_id__startswith=…`, which also reports annulment — so the league knows a game was voided
+     even though the ingestion does not. ⚠ An annulled match still names a loser, so annulment is tested *first*.
+   - **A league game scores everywhere**, by construction and not by design effort: 7 renown, the full 11 house points,
+     and an FGC-valid game. That is what the game settings in `OgsLeagueClient` exist to guarantee, so none of them is a
+     preference — see `doc/ogs-online-league-api.md`, which is the reference for the whole API.
+6. `ApiModule` starts Javalin on `gold.api.port`. The players and games routes come almost entirely out of two MySQL
    views, `api_players` and `api_games`. The house routes do not: their figures are counted over the *current* season,
    which only Kotlin knows, so they are hand-written queries in `HouseDatabaseAccessor` and the `house` block of a
    player's profile is composed in the handler rather than added to `api_players` — which also means no view to alter
-   on the production server. The other exception is `GET /gold/api/health`, which reports the background services:
+   on the production server. The league routes are the same story, assembled by `api/league/LeagueApiComposer`, and the league
+   adds **no view at all**. ⚠ One rule there is not stylistic: `black_invite` / `white_invite` never leave
+   the API, on any route, not even on the profile of the player they belong to — no route here is authenticated, so a
+   published player link would let anyone play anyone's match. Only `spectator_link` is public. The other exception is
+   `GET /gold/api/health`, which reports the background services:
    200 when they are all healthy, 503 otherwise, so a monitor can watch the status code alone. Every service
    registers itself in `ServiceRegistry` from `PeriodicFlowService.start()`, and each reports whether it is still
    running, how long since its last successful tick, and its consecutive-failure count. A service counts as stale
    after `max(interval * 5, 60s) + initialDelay` without a success — measured from start if it has never had one, so a
    service failing on every tick does not read as healthy.
-6. `CleanService` deletes games older than 32 days and invalid accounts, and purges the users Discord confirmed left the
+7. `CleanService` deletes games older than 32 days and invalid accounts, and purges the users Discord confirmed left the
    guild. That purge is **live**, not commented out as it once was: `removeUsersWhoLeft` guards it with `debug` (a dev
    run never acts on departure flags, since in debug the bot cannot tell who is still on the server) and a one-day
    grace period that also covers leave-and-rejoin. It is destructive and has no undo — a purged user loses their
@@ -204,6 +240,12 @@ Rank/rating math is centralized in `common/utilities/RankingUtilities.kt` (`rati
 `rankToKyuDanString`, `kyuDanStringToRank`) — don't reimplement conversions locally. Likewise
 `String.sgfProperty(key)` in `common/utilities/SgfExtensions.kt` for reading `SZ`/`HA`/`KM`/`TM` out of an SGF, and
 `discord/GameNotifier.notify(game, server)` for announcing a game (implement `NotifiableGame` on the game model).
+
+`DiscordBot` sends to a channel with `sendMessageEmbeds` and to a person with `sendPrivateMessageEmbeds`. The second takes
+an `onSuccess` callback rather than answering a boolean, and that shape is load-bearing: `queue()` is asynchronous, so a
+synchronous answer could only ever mean "queued", never "delivered". The league records a link as sent from inside that
+callback. Both are best-effort and neither throws — every failure is a log line, as with `modifyRole`, and each keeps a
+synchronous `try/catch` because JDA validates on the calling thread and can throw before anything is queued.
 
 ### Database
 
