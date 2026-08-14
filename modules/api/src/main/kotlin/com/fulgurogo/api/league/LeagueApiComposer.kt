@@ -43,9 +43,13 @@ class LeagueApiComposer(private val season: String) {
      *
      * A session with no row is absent, which reads as "not drawn yet" — the honest answer, since the row is created by the
      * draw. Doing this per session would be sixteen round trips for one page.
+     *
+     * `by lazy` and not eager: the profile block never looks at a session's state, and that is the route this composer is
+     * built on most often. Eager, it cost every profile view a query nothing read.
      */
-    private val states: Map<Int, LeagueSessionState> =
+    private val states: Map<Int, LeagueSessionState> by lazy {
         LeagueDatabaseAccessor.sessionStates(season).associateBy { it.session }
+    }
 
     /** The whole calendar: the sixteen sessions with their bounds and their state. */
     fun calendar(): List<ApiLeagueSession> =

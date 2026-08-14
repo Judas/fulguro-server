@@ -473,11 +473,16 @@ object LeagueDatabaseAccessor {
      *
      * `ogs_match_id IS NOT NULL` because there is nothing to send before OGS has created the challenge — without it a
      * match whose creation failed would be picked up every tick and reported as a DM failure rather than as what it is.
+     *
+     * `result IS NULL` because a challenge whose fate is already decided is not worth sending. A player whose DM never
+     * landed on a match that has since been played knows perfectly well it happened, and one whose match the settlement
+     * voided would be handed a link with a deadline that has passed — an invitation to a game that cannot count.
      */
     fun unnotifiedMatches(season: String, session: Int): List<LeagueMatch> = DatabaseAccessor.withDao { connection ->
         val query = "SELECT * FROM $MATCHES_TABLE " +
                 " WHERE season = :season AND session = :session " +
                 "   AND ogs_match_id IS NOT NULL " +
+                "   AND result IS NULL " +
                 "   AND (black_notified IS NULL OR white_notified IS NULL) "
         connection
             .query(query)
