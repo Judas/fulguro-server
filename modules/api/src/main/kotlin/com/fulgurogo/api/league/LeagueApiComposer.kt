@@ -41,8 +41,8 @@ class LeagueApiComposer(private val season: String) {
      * Driven from `houses` rather than from the members, so a house nobody is in still resolves — and a player whose
      * `house_id` somehow names no house comes back with a null crest instead of failing the whole response.
      */
-    private val crests: Map<Int, ApiLeagueCrest> by lazy {
-        HouseDatabaseAccessor.houses().associate { it.id to ApiLeagueCrest.from(it) }
+    private val crests: Map<Int, ApiHouseCrest> by lazy {
+        HouseDatabaseAccessor.houses().associate { it.id to ApiHouseCrest.from(it) }
     }
 
     val sessionCount: Int = LeagueSession.count(season)
@@ -143,5 +143,5 @@ class LeagueApiComposer(private val season: String) {
         )
     }
 
-    private fun crestOf(standing: LeagueStanding): ApiLeagueCrest? = standing.houseId?.let { crests[it] }
+    private fun crestOf(standing: LeagueStanding): ApiHouseCrest? = standing.houseId?.let { crests[it] }
 }

@@ -16,11 +16,11 @@ data class ApiLeagueMember(
     val discordId: String,
     val discordName: String? = null,
     val discordAvatar: String? = null,
-    val house: ApiLeagueCrest? = null,
+    val house: ApiHouseCrest? = null,
     val active: Boolean = true
 ) {
     companion object {
-        fun from(standing: LeagueStanding, crest: ApiLeagueCrest?): ApiLeagueMember = ApiLeagueMember(
+        fun from(standing: LeagueStanding, crest: ApiHouseCrest?): ApiLeagueMember = ApiLeagueMember(
             discordId = standing.discordId,
             discordName = standing.discordName,
             discordAvatar = standing.discordAvatar,

@@ -15,7 +15,7 @@ data class ApiLeagueExemption(
     val discordId: String,
     val discordName: String? = null,
     val discordAvatar: String? = null,
-    val house: ApiLeagueCrest? = null,
+    val house: ApiHouseCrest? = null,
     val reason: String
 ) {
     companion object {

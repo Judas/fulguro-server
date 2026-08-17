@@ -63,8 +63,24 @@ class Api {
         }
     }
 
+    /**
+     * Every player of the ladder, each with the badge of the house they belong to.
+     *
+     * Two extra reads for the whole list, not two per player: [HouseDatabaseAccessor.members] takes the ids in one
+     * batch — it was written for the scanner, for this same reason — and the four houses are read once and kept in a
+     * map. A membership naming a house that does not exist yields a null crest rather than failing the response,
+     * the same call the league composer makes.
+     *
+     * The crest and not [ApiPlayerHouse]: a roster of every player has no use for four houses' worth of tagline,
+     * description, points breakdown and rank repeated down it. That block stays on the profile route.
+     */
     fun getPlayers(context: Context) = context.handle("getPlayers") {
         val players = ApiDatabaseAccessor.apiPlayers()
+        val memberships = HouseDatabaseAccessor.members(players.map { it.discordId })
+        val crests = HouseDatabaseAccessor.houses().associate { it.id to ApiHouseCrest.from(it) }
+
+        players.forEach { player -> player.crest = memberships[player.discordId]?.houseId?.let { crests[it] } }
+
         context.standardResponse(players)
     }
 
