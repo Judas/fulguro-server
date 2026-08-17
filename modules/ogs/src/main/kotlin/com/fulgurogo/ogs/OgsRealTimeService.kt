@@ -104,11 +104,10 @@ class OgsRealTimeService : PeriodicFlowService(0, 10), OgsWsClient.Listener {
         val gameData = message.data
 
         // Skip weird result
-        val result = gameData.result()
-        if (result == null) return
+        val result = gameData.result() ?: return
 
-        // Fetch SGF
-        val sgf = fetchSgf(gameData.id)
+        // Fetch SGF (skip ongoing games as SGF is not available yet)
+        val sgf = if (result == "unfinished") "" else fetchSgf(gameData.id)
 
         // Make it a DB game
         val game = OgsGame(

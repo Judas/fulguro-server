@@ -105,8 +105,8 @@ class OgsService : StalestFirstService<OgsUserInfo>(0, 15, TAG) {
         val now = ZonedDateTime.now(DATE_ZONE)
         if (now.minusDays(32).toDate().after(date)) return null
 
-        // Fetch SGF
-        val sgf = fetchSgf(game)
+        // Fetch SGF (skip ongoing games as SGF is not available yet)
+        val sgf = if (result == "unfinished") "" else fetchSgf(game)
 
         return OgsGame(
             goldId = game.goldId(),
