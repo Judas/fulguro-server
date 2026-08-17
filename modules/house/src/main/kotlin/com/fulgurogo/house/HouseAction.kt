@@ -11,7 +11,11 @@ enum class HouseAction {
     /** Nothing happens. Same as no intention at all, and only ever recorded because a player said so out loud. */
     STAY,
 
-    /** Redrawn into one of the three other houses when the season opens. */
+    /**
+     * Moved into the house the player named when the season opens. The target is recorded alongside, in
+     * `house_members.pending_house_id`, so this action alone does not say where the player is going — see
+     * [com.fulgurogo.house.db.model.HouseMember.pendingHouseId].
+     */
     CHANGE,
 
     /** The membership is deleted when the season opens. Points already earned stay with the house. */

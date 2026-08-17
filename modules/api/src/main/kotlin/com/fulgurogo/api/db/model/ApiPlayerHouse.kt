@@ -35,20 +35,38 @@ data class ApiPlayerHouse(
      * an intention is applied and cleared the moment a season opens. Null the rest of the year, and null all summer for a
      * member who has not chosen yet — [period] is what tells those two apart.
      */
-    val pendingAction: HouseAction? = null
+    val pendingAction: HouseAction? = null,
+    /**
+     * The house a `CHANGE` will move the player to, so the site can name it back to them rather than only saying that
+     * they asked to move. Null on every other intention, since none of them has a destination.
+     *
+     * Filled under the same condition as [pendingAction] and dropped with it outside the break. A crest and not an
+     * [ApiHouseIdentity]: this names a house the player already read the lore of when they picked it.
+     */
+    val pendingHouse: ApiHouseCrest? = null
 ) {
     companion object {
-        fun from(period: HousePeriod, season: String, standing: HousePlayerStanding): ApiPlayerHouse = ApiPlayerHouse(
-            period = period,
-            season = season,
-            slug = standing.house.slug,
-            name = standing.house.name,
-            tagline = standing.house.tagline,
-            color = standing.house.color,
-            points = ApiHousePoints.from(standing.standing),
-            rank = standing.standing.rank,
-            // Parsed rather than echoed, so a value the column should never hold cannot reach the website as one.
-            pendingAction = if (period == HousePeriod.VACATION) HouseAction.from(standing.pendingAction) else null
-        )
+        fun from(period: HousePeriod, season: String, standing: HousePlayerStanding): ApiPlayerHouse {
+            // Parsed rather than echoed, so a value the column should never hold cannot reach the website as one, and
+            // read once: the destination is only shown for the action it belongs to.
+            val action = if (period == HousePeriod.VACATION) HouseAction.from(standing.pendingAction) else null
+
+            return ApiPlayerHouse(
+                period = period,
+                season = season,
+                slug = standing.house.slug,
+                name = standing.house.name,
+                tagline = standing.house.tagline,
+                color = standing.house.color,
+                points = ApiHousePoints.from(standing.standing),
+                rank = standing.standing.rank,
+                pendingAction = action,
+                // Only on a CHANGE, whatever the column happens to hold: a destination shown next to a STAY or a LEAVE
+                // would describe a move that is not going to happen.
+                pendingHouse = standing.pendingHouse
+                    ?.takeIf { action == HouseAction.CHANGE }
+                    ?.let { ApiHouseCrest.from(it) }
+            )
+        }
     }
 }

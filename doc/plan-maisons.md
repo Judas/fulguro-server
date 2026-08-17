@@ -11,7 +11,7 @@ l'ordre — les dépendances sont indiquées.
 | Sujet | Décision |
 |---|---|
 | Stockage des points | Registre : une ligne par (partie, joueur), avec détail par type et maison au moment du scoring |
-| Attribution d'une maison | Tirage au sort restreint aux maisons ayant le moins de membres |
+| Attribution d'une maison | ~~Tirage au sort restreint aux maisons ayant le moins de membres~~ → le joueur choisit sa maison (amendement, étapes 7 et 9) |
 | Choix de vacances | Enregistrés comme intention, appliqués à l'ouverture de la saison |
 | Auth des mutations | Aucune — même pattern que `POST /gold/api/link` |
 | Parties éligibles | Toute partie finie sur KGS / OGS, sans filtre de taille, handicap ou komi |
@@ -228,7 +228,7 @@ Dépend de : 0, 1.
 `modules/house/src/main/kotlin/com/fulgurogo/house/db/model/` :
 
 - `House` — `id`, `slug`, `name`, `tagline`, `color`, `description`
-- `HouseMember` — `discordId`, `houseId`, `joined`, `pendingAction`
+- `HouseMember` — `discordId`, `houseId`, `joined`, `pendingAction` (+ `pendingHouseId` en 9.1, la destination d'un `CHANGE`)
 - `HouseGame` — `goldId`, `date`, `result`, `ranked`, `longGame`, `handicap`, `blackDiscordId?`, `whiteDiscordId?`
 - `HousePoints` — les 7 compteurs, un `total()`, plus `goldId` / `discordId` / `houseId` / `season`
 - `HouseStanding` — agrégat par maison : `House` + `memberCount`, `totalPoints`, leader
@@ -241,7 +241,7 @@ via `connection.query(...)` (jamais `createQuery`, sinon la dérivation `snake_c
 
 - `houses()`, `house(slug)`
 - `member(discordId)`
-- `memberCounts()` → `Map<Int, Int>`, pour l'attribution équilibrée
+- ~~`memberCounts()` → `Map<Int, Int>`, pour l'attribution équilibrée~~ (supprimée en 9.1 avec le tirage)
 - `standings(season)` → agrégation `SUM` sur `house_points` groupée par `house_id`, jointe à `houses`
 - `ranking(season, houseId)` → membres de la maison triés par total décroissant, avec le détail par type
 - `playerPoints(season, discordId)` → totaux par type du joueur
@@ -441,6 +441,15 @@ nom ni avatar à montrer et sort du classement.
 
 Dépend de : 6.
 
+> **Amendement (9.1) — le joueur choisit sa maison.** Le tirage au sort a été retiré : les deux corps de requête
+> portent un `slug`, `HouseAssignment` et `HouseDatabaseAccessor.memberCounts()` ont été supprimés, et rien
+> n'équilibre plus les effectifs. Ce qui suit décrit la version d'origine ; les écarts effectifs sont : `join`
+> exige un `slug` et répond `404` sur un slug inconnu ; `choice` accepte un `slug`, obligatoire sur `CHANGE`
+> (`400` sans, `404` sur un slug inconnu, `400` si c'est la maison actuelle) et ignoré sur `STAY` et `LEAVE` ; la
+> destination d'un `CHANGE` est stockée dans `house_members.pending_house_id`
+> (`doc/migration choix de maison.sql`). Le reste — codes de retour, absence d'auth, forme du 200, double 409,
+> 404 lu et pas déduit — tient tel quel.
+
 `POST /gold/api/house/join` — corps `{ "discordId": "..." }`. Attribution au sort parmi les maisons les moins
 peuplées.
 
@@ -537,6 +546,9 @@ Quatre points de ce contrat qui ne se devinent pas :
   la seule source de vérité sur le calendrier.
 - **`pendingAction` n'est rempli qu'en `VACATION`**, et il est *parsé* en `HouseAction` au lieu d'être recopié :
   une valeur que la colonne ne devrait jamais contenir ne ressort donc pas telle quelle vers le site.
+  *Amendement (9.1)* : un `pendingHouse` l'accompagne — le blason (slug, nom, couleur) de la maison visée — rempli
+  sous la même condition et seulement sur un `CHANGE`, puisque c'est la seule intention qui ait une destination. Le
+  `pending_house_id` de la base, lui, ne sort pas : les identifiants internes de maison restent hors de l'API.
 - **Pas de `description`, ni d'effectif, ni de total de maison.** Le bloc porte le blason (slug, nom, slogan,
   couleur), pas la page de la maison — sinon chaque profil traînerait quatre paragraphes de RP. Les noms de champs
   partagés sont les mêmes qu'à l'étape 6, donc le site stylise le badge avec le même code.
@@ -578,6 +590,11 @@ clôture d'une saison vide.
 1. Appliquer les intentions : `STAY` ou `NULL` → rien ; `CHANGE` → réattribution au sort parmi les 3 autres,
    effectif minimum d'abord, `joined` remis à maintenant, et annonce d'arrivée comme un join ordinaire ;
    `LEAVE` → suppression de la ligne
+
+> **Amendement (9.1)** — un `CHANGE` va dans la maison que le joueur a nommée, lue dans `pending_house_id` ; il n'y
+> a plus de tirage. Une destination inapplicable — absente, supprimée depuis, ou la maison actuelle — laisse le
+> membre où il est, avec une ligne de log : le tick suivant n'y changerait rien, et le nettoyage groupé de fin
+> d'ouverture efface l'intention. Le nettoyage remet les deux colonnes à `NULL`, pas seulement `pending_action`.
 2. Remettre tous les `pending_action` à `NULL`
 3. `opened = NOW()`
 

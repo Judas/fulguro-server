@@ -24,12 +24,12 @@ import com.fulgurogo.discord.db.DiscordDatabaseAccessor
 import com.fulgurogo.fgc.db.FgcDatabaseAccessor
 import com.fulgurogo.gold.db.GoldDatabaseAccessor
 import com.fulgurogo.house.HouseAction
-import com.fulgurogo.house.HouseAssignment
 import com.fulgurogo.house.HouseNotifier
 import com.fulgurogo.house.HousePeriod
 import com.fulgurogo.house.HouseRoles
 import com.fulgurogo.house.HouseSeason
 import com.fulgurogo.house.db.HouseDatabaseAccessor
+import com.fulgurogo.house.db.model.House
 import com.fulgurogo.league.LeagueSession
 import com.fulgurogo.league.db.LeagueDatabaseAccessor
 import com.fulgurogo.ogs.api.OgsApiClient
@@ -154,11 +154,11 @@ class Api {
     }
 
     /**
-     * Joins a house: 400 on a bad body, 403 during the summer break, 404 on an unknown player or one with no linked
-     * account, 409 when they already have a house, 200 with the house they were drawn into.
+     * Joins a house: 400 on a bad body, 403 during the summer break, 404 on an unknown player, one with no linked
+     * account or an unknown house, 409 when they already have a house, 200 with the house they joined.
      *
-     * The player does not pick — [HouseAssignment] draws among the emptiest houses. Nothing identifies the caller, as
-     * with `link`: the id in the body is taken as it comes, so anyone can join on anyone's behalf.
+     * The player picks their own house — the body names it by slug and nothing balances the four. Nothing identifies the
+     * caller either, as with `link`: the id in the body is taken as it comes, so anyone can join anyone into any house.
      *
      * The 409 is answered twice over. The read is what makes it the normal answer, and [HouseDatabaseAccessor.addMember]
      * repeats it from the primary key, which is the only one of the two that holds when two joins for the same player
@@ -168,7 +168,8 @@ class Api {
         // Gson does not honour Kotlin nullability, so treat every field as possibly absent.
         val body = gson.fromJson(context.body(), HouseJoinRequestBody::class.java)
         val discordId = body?.discordId
-        if (discordId.isNullOrBlank()) {
+        val slug = body?.slug
+        if (discordId.isNullOrBlank() || slug.isNullOrBlank()) {
             context.badRequest()
             return@handle
         }
@@ -189,11 +190,13 @@ class Api {
             return@handle
         }
 
-        val house = HouseAssignment.draw()
+        // Read last, where the draw used to be, so a player who already has a house is told that rather than being sent
+        // to check their slug. A slug naming no house is a 404 like an unknown player, for the same reason -- the body
+        // points at something that does not exist -- and logged apart, since the two answers look alike from outside.
+        val house = HouseDatabaseAccessor.house(slug)
         if (house == null) {
-            // Nothing to draw from: the `houses` table was never seeded. A server problem, not the caller's.
-            log(TAG, "joinHouse FAILURE no house to draw from")
-            context.internalError()
+            log(TAG, "joinHouse $discordId asked for unknown house $slug")
+            context.notFoundError()
             return@handle
         }
 
@@ -211,11 +214,15 @@ class Api {
     }
 
     /**
-     * Records what a member wants for next season: 400 on a bad body or an unknown action, 403 outside the summer break,
-     * 404 when the player has no house, 204 once recorded.
+     * Records what a member wants for next season: 400 on a bad body, an unknown action, a `CHANGE` with no house or one
+     * naming the house they are already in, 403 outside the summer break, 404 when the player has no house or the house
+     * they named does not exist, 204 once recorded.
+     *
+     * A `CHANGE` carries its destination, since there is no draw left to invent one: the slug is required on that action
+     * and ignored on the other two, which have nowhere to go.
      *
      * Nothing is applied here — the season transition reads these back on 1 September. A choice can therefore be changed
-     * as often as the player likes all summer, the last one recorded being the one that counts.
+     * as often as the player likes all summer, the last one recorded being the one that counts, destination included.
      */
     fun setHouseChoice(context: Context) = context.handle("setHouseChoice") {
         val body = gson.fromJson(context.body(), HouseChoiceRequestBody::class.java)
@@ -232,14 +239,41 @@ class Api {
         }
 
         // The existence check the write cannot make: an UPDATE reports 0 rows both for an unknown member and for a
-        // choice already set to that value, so a 404 read off it would fire on recording the same action twice.
-        if (HouseDatabaseAccessor.member(discordId) == null) {
+        // choice already set to that value, so a 404 read off it would fire on recording the same action twice. The
+        // membership is also what a CHANGE is checked against, so it is read before the destination either way.
+        val member = HouseDatabaseAccessor.member(discordId)
+        if (member == null) {
             context.notFoundError()
             return@handle
         }
 
-        HouseDatabaseAccessor.setPendingAction(discordId, action.name)
-        log(TAG, "setHouseChoice $discordId chose $action")
+        // Only a CHANGE has a destination, and it must be one: an absent slug is a 400 and an unknown one a 404, the
+        // same two answers `join` gives. Naming the house they are already in is a 400 rather than a quiet STAY --
+        // recording a change that changes nothing would read on the profile as a move that never comes.
+        var house: House? = null
+        if (action == HouseAction.CHANGE) {
+            val slug = body?.slug
+            if (slug.isNullOrBlank()) {
+                context.badRequest()
+                return@handle
+            }
+
+            house = HouseDatabaseAccessor.house(slug)
+            if (house == null) {
+                log(TAG, "setHouseChoice $discordId asked for unknown house $slug")
+                context.notFoundError()
+                return@handle
+            }
+
+            if (house.id == member.houseId) {
+                log(TAG, "setHouseChoice $discordId asked to change to their own house $slug")
+                context.badRequest()
+                return@handle
+            }
+        }
+
+        HouseDatabaseAccessor.setPendingAction(discordId, action.name, house?.id)
+        log(TAG, "setHouseChoice $discordId chose $action${house?.let { " to ${it.slug}" } ?: ""}")
         context.standardResponse()
     }
 

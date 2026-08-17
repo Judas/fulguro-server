@@ -133,14 +133,16 @@ class HouseSeasonService : PeriodicFlowService(INITIAL_DELAY_IN_SECONDS, INTERVA
             }
 
             HouseAction.CHANGE -> {
-                // Drawn among the *other* three, and among the emptiest of those — the same draw a join makes, from the
-                // same place, so the two cannot diverge. Counts are read afresh per member, so moving one player is
-                // taken into account when drawing for the next.
-                val house = HouseAssignment.draw(excluding = member.houseId)
+                // The house the player picked themselves, back in the summer. Nothing is chosen here: a target that
+                // cannot be honoured -- absent, since deleted, or the house they are already in -- leaves the member
+                // where they are, because the alternative is moving them somewhere they did not ask for. There is no
+                // point retrying either, so the bulk clear at the end of the opening is what forgets the intention.
+                val house = member.pendingHouseId
+                    ?.takeIf { it != member.houseId }
+                    ?.let { HouseDatabaseAccessor.house(it) }
                 if (house == null) {
-                    // Only reachable with an unseeded `houses` table. Leaving the intention in place is the useful
-                    // failure: the member keeps their house and the next tick tries again.
-                    log(TAG, "${member.discordId} wanted a change but there was no house to draw from")
+                    log(TAG, "${member.discordId} wanted to change to house [${member.pendingHouseId}], " +
+                            "which is not a house they can move to: staying in ${member.houseId}")
                     return
                 }
 

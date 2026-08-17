@@ -38,6 +38,21 @@ Pour l'exploitation
 - Le jour d'un tirage, surveiller /gold/api/health : un scraper en panne met des joueurs en erreur de rating et les
   sort du tirage.
 
+Changement hors ligue : on choisit sa maison
+- Rejoindre une maison, c'est maintenant choisir laquelle. Plus de tirage au sort dans la moins remplie : le site
+  envoie le slug de la maison, le serveur la prend telle quelle. POST /gold/api/house/join demande donc un champ
+  `slug` en plus du `discordId`, et répond 404 si aucune maison ne porte ce slug.
+- Le choix de fin de saison marche pareil : un `CHANGE` nomme sa maison de destination.
+  POST /gold/api/house/choice accepte un `slug`, obligatoire sur `CHANGE` et ignoré sur `STAY` et `LEAVE`. Nommer sa
+  propre maison est un 400 — un changement qui ne change rien n'est pas un changement.
+- Le bloc "house" de GET /gold/api/player/{id} porte un `pendingHouse` pendant les vacances, à côté du
+  `pendingAction`, pour que le site puisse afficher la maison visée et pas seulement l'intention de partir.
+- Rien n'équilibre plus les effectifs. C'est assumé : les quatre maisons peuvent grossir à des vitesses différentes.
+- Pour l'exploitation : une colonne nouvelle, `house_members.pending_house_id`. Appliquer
+  `doc/migration choix de maison.sql` AVANT de déployer — le jar en a besoin, alors que l'ancien jar tourne sans
+  problème avec la colonne en place. Le script efface au passage les `CHANGE` enregistrés avant lui, qui ne nomment
+  aucune maison : les joueurs concernés ont jusqu'au 31 août pour rechoisir.
+
 Corrections apportées au passage, hors ligue
 - Les parties annulées après ingestion sont maintenant défaites. Le poll OGS supprime la partie et les points de
   maison qu'elle avait crédités, au lieu de se contenter de ne pas la réimporter — un cas constaté en production.

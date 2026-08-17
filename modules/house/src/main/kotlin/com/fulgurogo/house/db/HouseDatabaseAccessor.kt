@@ -96,29 +96,6 @@ object HouseDatabaseAccessor {
     }
 
     /**
-     * How many members each house has, for the balanced draw.
-     *
-     * Driven from `houses` with a LEFT JOIN rather than grouping `house_members`, so that an empty house comes back
-     * with a count of 0 instead of being absent from the map. Getting that wrong is not loud: a missing key read as
-     * "no data" instead of "no members" makes the draw skip the emptiest house, which is the one it exists to pick.
-     *
-     * `COUNT(m.discord_id)` and not `COUNT(*)`, for the same reason and just as quietly: on the unmatched row of a LEFT
-     * JOIN, `COUNT(*)` counts the row itself and answers 1 for a house with nobody in it.
-     */
-    fun memberCounts(): Map<Int, Int> = DatabaseAccessor.withDao { connection ->
-        val query = "SELECT h.id AS house_id, COUNT(m.discord_id) AS member_count " +
-                " FROM $HOUSES_TABLE h " +
-                " LEFT JOIN $MEMBERS_TABLE m ON m.house_id = h.id " +
-                " GROUP BY h.id "
-        connection
-            .query(query)
-            .throwOnMappingFailure(false)
-            .executeAndFetch(HouseTotals::class.java)
-            ?.associate { it.houseId to it.memberCount }
-            ?: mapOf()
-    }
-
-    /**
      * The four houses with their size, their season total and their best current member.
      *
      * Three queries on one connection: the houses, the aggregates, and every ranked member at once — grouped per house
@@ -203,7 +180,14 @@ object HouseDatabaseAccessor {
                 .firstOrNull { it.discordId == discordId }
                 ?: return@withDao null
 
-            HousePlayerStanding(house = house, standing = standing, pendingAction = member.pendingAction)
+            HousePlayerStanding(
+                house = house,
+                standing = standing,
+                pendingAction = member.pendingAction,
+                // Resolved on the same connection as the rest, and null when the column names a house that no longer
+                // exists -- a profile showing no target reads better than one failing over an unseeded row.
+                pendingHouse = member.pendingHouseId?.let { house(connection, it) }
+            )
         }
 
     /**
@@ -320,20 +304,26 @@ object HouseDatabaseAccessor {
     }
 
     /**
-     * Records what a member wants for next season, or clears it with a null [action]. Nothing is applied here — the
-     * season transition is what reads these back.
+     * Records what a member wants for next season — the action and, for a `CHANGE`, the house it names. Nothing is
+     * applied here; the season transition is what reads these back.
+     *
+     * [houseId] is written on every call, null included, and that is what keeps the two columns consistent: a player who
+     * asked to change and then settles on `STAY` must not keep the target of the choice they replaced, or the next
+     * `CHANGE` recorded without a house would inherit it. One statement, so the pair can never be half-written.
      *
      * Returns nothing on purpose. The obvious signal, the number of rows the UPDATE touched, cannot tell "no such
      * member" from "already set to that value": MySQL reports 0 rows changed for both, so a caller using it for its 404
      * would answer 404 to a player recording `LEAVE` twice. Existence is the caller's [member] read; the write is then
      * best-effort, and a membership deleted in between simply updates nothing.
      */
-    fun setPendingAction(discordId: String, action: String?) {
+    fun setPendingAction(discordId: String, action: String?, houseId: Int? = null) {
         DatabaseAccessor.withDao { connection ->
-            val query = "UPDATE $MEMBERS_TABLE SET pending_action = :action WHERE discord_id = :discordId "
+            val query = "UPDATE $MEMBERS_TABLE SET pending_action = :action, pending_house_id = :houseId " +
+                    " WHERE discord_id = :discordId "
             connection
                 .query(query)
                 .addParameter("action", action)
+                .addParameter("houseId", houseId)
                 .addParameter("discordId", discordId)
                 .executeUpdate()
         }
@@ -442,7 +432,7 @@ object HouseDatabaseAccessor {
     fun changeHouse(discordId: String, houseId: Int) {
         DatabaseAccessor.withDao { connection ->
             val query = "UPDATE $MEMBERS_TABLE " +
-                    " SET house_id = :houseId, joined = NOW(), pending_action = NULL " +
+                    " SET house_id = :houseId, joined = NOW(), pending_action = NULL, pending_house_id = NULL " +
                     " WHERE discord_id = :discordId "
             connection
                 .query(query)
@@ -465,11 +455,18 @@ object HouseDatabaseAccessor {
     /**
      * Clears every remaining intention, which by then is every `STAY` — the two acted-on ones clear themselves as they
      * are applied. Idempotent, so a repeated season opening costs nothing.
+     *
+     * Both columns, and the WHERE tests both: a `CHANGE` the opening could not apply — one naming no house, or a house
+     * since deleted — leaves its target behind, and it is this sweep that forgets it rather than the next season
+     * inheriting a target nobody asked for any more.
      */
     fun clearPendingActions() {
         DatabaseAccessor.withDao { connection ->
             connection
-                .query("UPDATE $MEMBERS_TABLE SET pending_action = NULL WHERE pending_action IS NOT NULL")
+                .query(
+                    "UPDATE $MEMBERS_TABLE SET pending_action = NULL, pending_house_id = NULL " +
+                            " WHERE pending_action IS NOT NULL OR pending_house_id IS NOT NULL"
+                )
                 .executeUpdate()
         }
     }

@@ -163,11 +163,15 @@ CREATE TABLE `houses` (
 -- One house at most per player, which is what the PK enforces; leaving a house is deleting the row. `joined` stops
 -- retroactive scoring -- the scanner only credits games dated at or after it. `pending_action` is a summer
 -- intention (NULL, 'STAY', 'CHANGE', 'LEAVE') that HouseSeasonService applies and clears when the season opens.
+-- `pending_house_id` is where a 'CHANGE' goes: players pick their own house, there is no draw to make one up, so a
+-- 'CHANGE' with a NULL here cannot be applied and the member stays put. NULL on every other intention, written and
+-- cleared with `pending_action` in the same statement. No foreign key, like everywhere else in these five tables.
 CREATE TABLE `house_members` (
   `discord_id` VARCHAR(255) NOT NULL,
   `house_id` INT(11) NOT NULL,
   `joined` DATETIME NOT NULL,
   `pending_action` VARCHAR(16) NULL,
+  `pending_house_id` INT(11) NULL,
   PRIMARY KEY (`discord_id`),
   KEY `house_members_house` (`house_id`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
