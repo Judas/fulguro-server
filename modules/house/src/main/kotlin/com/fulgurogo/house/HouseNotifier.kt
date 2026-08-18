@@ -22,9 +22,12 @@ import com.fulgurogo.house.db.model.ranked
  * formatter that reached for the database to decide whether to speak would be much harder to reason about.
  */
 object HouseNotifier {
-    // TODO Emoji update when ready
     private const val EMOJI = ":homes:"
+    private const val EMOJI_KEY_PREFIX = "house.emoji."
+    private const val CREST_BASE_OVERRIDE_KEY = "house.crest.base.override"
     private const val HOUSES_PATH = "/houses"
+    private const val CRESTS_PATH = "/crests"
+    private const val CREST_SUFFIX = "_BG.png"
 
     /**
      * A player joining a house, from whichever of the two paths put them there: `POST /gold/api/house/join` during the
@@ -32,10 +35,15 @@ object HouseNotifier {
      *
      * One function for both on purpose. Two call sites writing their own wording is how the same event ends up
      * described two different ways depending on the month it happened in.
+     *
+     * The only one of the three dressed in the colours of a single house — its own emoji instead of the generic one,
+     * its crest as the embed thumbnail. The other two are about the four houses at once and have nobody's colours to
+     * wear.
      */
     fun notifyArrival(discordId: String, house: House) = send(
-        title = "$EMOJI Une nouvelle recrue chez les ${house.name} !",
-        message = "**${nameOf(discordId)}** rejoint la maison **${house.name}**.\n*${house.tagline}*"
+        title = "**${nameOf(discordId)}** rejoint la maison **${house.name}** !",
+        message = "${emojiOf(house)} *${house.tagline}*",
+        imageUrl = crestOf(house)
     )
 
     /** Today's standing: the four houses in order, each with its best current member. */
@@ -92,6 +100,42 @@ object HouseNotifier {
 
     private fun points(total: Int): String = "**$total point${if (total > 1) "s" else ""}**"
 
+    /**
+     * A house's own Discord emoji, falling back to the generic [EMOJI] when it has none configured.
+     *
+     * Config and not a constant, for the reason the roles next door are config: the value is a custom emoji tag,
+     * `<:name:id>`, and that id only means anything on the guild that owns the emoji. The dev and prod files already
+     * name different guilds, so the same four crests uploaded to both have two different sets of ids — a hardcoded tag
+     * would render as raw text on whichever guild it was not taken from.
+     *
+     * Unlike [HouseRoles], a missing value is not logged. The fallback is right there in the channel for anyone to see,
+     * and prod legitimately runs without these until someone fills them in.
+     */
+    private fun emojiOf(house: House): String =
+        Config.getOrNull("$EMOJI_KEY_PREFIX${house.slug.lowercase()}")?.trim()?.takeIf { it.isNotEmpty() } ?: EMOJI
+
+    /**
+     * The house's crest, shown as the embed thumbnail. Built from the slug, the way the website builds it.
+     *
+     * No per-house config: the crests are website assets, so the slug and the site's address are all it takes — the
+     * same two things [fullRankingLink] already puts together. The four houses could only ever be four keys saying the
+     * same thing four times, and a fifth house would then need a deploy to get a picture.
+     *
+     * `_BG.png` and not the `.svg` the site itself shows, for two reasons that both come from Discord: it renders no
+     * SVG in an embed at all, and the plain crest is transparent, which turns half of it invisible against a dark
+     * client. `_BG` is the version with the background baked in.
+     *
+     * The base is overridable because dev cannot use its own: `frontend.url` is `localhost` there, and Discord fetches
+     * the image from its own servers, so a local run would post announcements with no thumbnail and nobody could ever
+     * check what one looks like before it ships. The override points dev at the deployed site's images — read-only,
+     * and the same four files prod would serve.
+     */
+    private fun crestOf(house: House): String {
+        val base = Config.getOrNull(CREST_BASE_OVERRIDE_KEY)?.trim()?.takeIf { it.isNotEmpty() }
+            ?: Config.get("frontend.url")
+        return "$base$CRESTS_PATH/${house.slug}$CREST_SUFFIX"
+    }
+
     private fun fullRankingLink(): String = "[Classement complet](${Config.get("frontend.url")}$HOUSES_PATH)"
 
     /**
@@ -108,12 +152,13 @@ object HouseNotifier {
      * One log line per announcement, because JDA's `queue()` reports nothing back: without this, whether the
      * once-a-year recap actually went out is unanswerable after the fact. The title alone — the body is in the channel.
      */
-    private fun send(title: String, message: String) {
+    private fun send(title: String, message: String, imageUrl: String = "") {
         log(TAG, "Announcing [$title]")
         DiscordModule.discordBot.sendMessageEmbeds(
             channelId = Config.get("bot.notification.channel.id"),
             message = message,
-            title = title
+            title = title,
+            imageUrl = imageUrl
         )
     }
 }
