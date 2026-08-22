@@ -94,6 +94,17 @@ CREATE TABLE `ogs_user_info` (
   PRIMARY KEY (`discord_id`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
 
+-- One immutable snapshot per Discord user who linked a FOX account. The public fox-go-api resolves the typed username
+-- to the canonical UID, name and rank at link time; this first integration deliberately has no refresh service.
+CREATE TABLE `fox_user_info` (
+  `discord_id` VARCHAR(255) NOT NULL,
+  `fox_id` VARCHAR(255) NOT NULL,
+  `fox_name` VARCHAR(255) NOT NULL,
+  `fox_rank` VARCHAR(255) NOT NULL,
+  PRIMARY KEY (`discord_id`),
+  UNIQUE KEY `fox_user_info_fox_id_uq` (`fox_id`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
+
 -- `gold_id` is OGS_<id>. Written by two services -- OgsService polling the REST API and OgsRealTimeService on its
 -- WebSocket -- which is why GameStore's addGame/finishGame are idempotent and only the winning writer notifies.
 CREATE TABLE `ogs_games` (
@@ -356,6 +367,7 @@ CREATE OR REPLACE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `api_players` 
   `discord`.`discord_id`, `discord`.`discord_name`, `discord`.`discord_avatar`,
   `kgs_id`, `kgs_rank`,
   `ogs_id`, `ogs_name`, `ogs_rank`,
+  `fox_id`, `fox_name`, `fox_rank`,
   `gold`.`rating`, `gold`.`tier_rank`, `tier`.`name` AS `tier_name`,
   `fgc`.`total_ranked_games`, `fgc`.`gold_ranked_games`
   FROM `discord_user_info` AS `discord`
@@ -363,7 +375,8 @@ CREATE OR REPLACE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `api_players` 
   LEFT JOIN `gold_tiers` AS `tier` ON `gold`.`tier_rank` = `tier`.`rank`
   LEFT JOIN `fgc_validity` AS `fgc` ON `fgc`.`discord_id` = `discord`.`discord_id`
   LEFT JOIN `kgs_user_info` AS `kgs` ON `discord`.`discord_id` = `kgs`.`discord_id`
-  LEFT JOIN `ogs_user_info` AS `ogs` ON `discord`.`discord_id` = `ogs`.`discord_id`;
+  LEFT JOIN `ogs_user_info` AS `ogs` ON `discord`.`discord_id` = `ogs`.`discord_id`
+  LEFT JOIN `fox_user_info` AS `fox` ON `discord`.`discord_id` = `fox`.`discord_id`;
 
 -- Games between two known players, one branch per platform that stores games. INNER JOINs, so a game against
 -- someone outside the community never shows up, and the `result` filter keeps unfinished games out of the API.

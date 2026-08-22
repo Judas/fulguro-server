@@ -12,6 +12,9 @@ data class ApiDbPlayer(
     val ogsId: Int? = null,
     val ogsName: String? = null,
     val ogsRank: String? = null,
+    val foxId: String? = null,
+    val foxName: String? = null,
+    val foxRank: String? = null,
     val rating: Double = 0.0,
     val tierRank: Int = 0,
     val tierName: String? = null,
@@ -39,7 +42,8 @@ data class ApiDbPlayer(
     fun toApiPlayerAccounts(): List<ApiPlayerAccount> =
         listOf(
             "KGS" to kgsId,
-            "OGS" to ogsId
+            "OGS" to ogsId,
+            "FOX" to foxId
         )
             .filter { it.second != null }
             .mapNotNull {
@@ -58,6 +62,13 @@ data class ApiDbPlayer(
                         name = ogsName,
                         rank = ogsRank.orUnknown(),
                         link = "https://online-go.com/player/$ogsId"
+                    )
+
+                    "FOX" -> ApiPlayerAccount(
+                        server = "FOX",
+                        id = foxId,
+                        name = foxName,
+                        rank = foxRank.orUnknown()
                     )
 
                     else -> null
