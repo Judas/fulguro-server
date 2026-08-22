@@ -5,6 +5,7 @@ import com.fulgurogo.api.db.ApiDatabaseAccessor
 import com.fulgurogo.api.db.model.*
 import com.fulgurogo.api.league.LeagueApiComposer
 import com.fulgurogo.api.link.AccountLinkers
+import com.fulgurogo.api.link.FoxApiClient
 import com.fulgurogo.api.utilities.badRequest
 import com.fulgurogo.api.utilities.conflict
 import com.fulgurogo.api.utilities.forbidden
@@ -42,7 +43,7 @@ import java.time.ZonedDateTime
 
 class Api {
     private val gson: Gson = Gson()
-    private val accountLinkers = AccountLinkers(OgsApiClient())
+    private val accountLinkers = AccountLinkers(OgsApiClient(), FoxApiClient())
 
     /**
      * Rate limits, then runs [handler], turning anything unexpected into a 500.
@@ -588,19 +589,19 @@ class Api {
             return@handle
         }
 
-        val storedId = linker.resolveAccountId(accountId)
-        if (storedId == null) {
+        val resolvedAccount = linker.resolveAccount(accountId)
+        if (resolvedAccount == null) {
             context.notFoundError()  // No such account on that platform
             return@handle
         }
 
         // Check if this account is free to link
-        if (linker.isTaken(storedId)) {
+        if (linker.isLinked(discordId) || linker.isTaken(resolvedAccount)) {
             context.conflict()
             return@handle
         }
 
-        linker.link(discordId, storedId)
+        linker.link(discordId, resolvedAccount)
 
         // Add in others DB
         GoldDatabaseAccessor.addPlayer(discordId)

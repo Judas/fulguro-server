@@ -39,3 +39,6 @@ export
 assets
 app/src/main/resources/id_*
 *config.properties*
+
+# Graphify generated knowledge graph
+graphify-out/
