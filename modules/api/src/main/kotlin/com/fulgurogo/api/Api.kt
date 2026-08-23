@@ -5,7 +5,6 @@ import com.fulgurogo.api.db.ApiDatabaseAccessor
 import com.fulgurogo.api.db.model.*
 import com.fulgurogo.api.league.LeagueApiComposer
 import com.fulgurogo.api.link.AccountLinkers
-import com.fulgurogo.api.link.FoxApiClient
 import com.fulgurogo.api.utilities.badRequest
 import com.fulgurogo.api.utilities.conflict
 import com.fulgurogo.api.utilities.forbidden
@@ -23,6 +22,7 @@ import com.fulgurogo.common.utilities.toDate
 import com.fulgurogo.discord.DiscordModule
 import com.fulgurogo.discord.db.DiscordDatabaseAccessor
 import com.fulgurogo.fgc.db.FgcDatabaseAccessor
+import com.fulgurogo.fox.api.FoxApiClient
 import com.fulgurogo.gold.db.GoldDatabaseAccessor
 import com.fulgurogo.house.HouseAction
 import com.fulgurogo.house.HouseNotifier

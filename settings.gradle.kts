@@ -4,6 +4,7 @@ include(":modules:common")
 include(":modules:discord")
 include(":modules:kgs")
 include(":modules:ogs")
+include(":modules:fox")
 
 include(":modules:gold")
 include(":modules:fgc")

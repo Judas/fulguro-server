@@ -15,7 +15,7 @@
 --   fgc_validity_games -> fgc/db/model/FgcValidityGame
 --   house_games        -> house/db/model/HouseGame
 --
--- Only KGS and OGS are aggregated. FOX, IGS, FFG and EGF were removed in 8.8 -- see
+-- KGS, OGS and the account-only FOX scanner are aggregated. IGS, FFG and EGF were removed in 8.8 -- see
 -- `migration remove servers - 1 before deploy.sql` and `- 2 after deploy.sql` for the change that got us here.
 --
 -- The four house_* tables and the house_games view come from `migration maisons.sql`, which is where their
@@ -94,15 +94,45 @@ CREATE TABLE `ogs_user_info` (
   PRIMARY KEY (`discord_id`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
 
--- One immutable snapshot per Discord user who linked a FOX account. The public fox-go-api resolves the typed username
--- to the canonical UID, name and rank at link time; this first integration deliberately has no refresh service.
+-- One row per Discord user who linked a FOX account. Identity and rank remain the link-time snapshot; the three game
+-- counters drive the low-frequency scanner and stay NULL until its first successful import.
 CREATE TABLE `fox_user_info` (
   `discord_id` VARCHAR(255) NOT NULL,
   `fox_id` VARCHAR(255) NOT NULL,
   `fox_name` VARCHAR(255) NOT NULL,
   `fox_rank` VARCHAR(255) NOT NULL,
+  `total_win` INT(11) NULL,
+  `total_lost` INT(11) NULL,
+  `total_equal` INT(11) NULL,
+  `updated` DATETIME NULL,
+  `error` TINYINT(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (`discord_id`),
   UNIQUE KEY `fox_user_info_fox_id_uq` (`fox_id`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
+
+-- Finished public FOX games inside the same 32-day retention window as KGS and OGS. FOX SGFs encode komi in
+-- fiftieths of a point (375 means 7.5), but this table stores the normalized point value. `ranked` and `long_game`
+-- are deliberately false: fox-go-api exposes no stable contract for either classification.
+CREATE TABLE `fox_games` (
+  `gold_id` VARCHAR(255) NOT NULL,
+  `chess_id` VARCHAR(255) NOT NULL,
+  `date` DATETIME NOT NULL,
+  `black_id` VARCHAR(255) NOT NULL,
+  `black_name` VARCHAR(255) NOT NULL,
+  `black_rank` VARCHAR(255) NOT NULL,
+  `white_id` VARCHAR(255) NOT NULL,
+  `white_name` VARCHAR(255) NOT NULL,
+  `white_rank` VARCHAR(255) NOT NULL,
+  `size` INT(11) NOT NULL,
+  `komi` DOUBLE NOT NULL,
+  `handicap` INT(11) NOT NULL,
+  `ranked` TINYINT(1) NOT NULL DEFAULT 0,
+  `long_game` TINYINT(1) NOT NULL DEFAULT 0,
+  `result` VARCHAR(255) NOT NULL,
+  `sgf` TEXT NOT NULL,
+  PRIMARY KEY (`gold_id`),
+  UNIQUE KEY `fox_games_chess_id_uq` (`chess_id`),
+  KEY `fox_games_date_idx` (`date`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
 
 -- `gold_id` is OGS_<id>. Written by two services -- OgsService polling the REST API and OgsRealTimeService on its
@@ -454,6 +484,18 @@ CREATE OR REPLACE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `fgc_validity_
     AND `game`.`size` = 19
     AND `game`.`handicap` = 0
     AND `game`.`result` != 'unfinished'
+    AND `game`.`komi` > 6 AND `game`.`komi` < 9
+  UNION
+  SELECT `game`.`gold_id`,
+  `black`.`discord_id` AS `black_discord_id`, `white`.`discord_id` AS `white_discord_id`,
+  1 AS `ranked`
+  FROM `fox_games` AS `game`
+  LEFT JOIN `fox_user_info` AS `black` ON `game`.`black_id` = `black`.`fox_id`
+  LEFT JOIN `fox_user_info` AS `white` ON `game`.`white_id` = `white`.`fox_id`
+  WHERE DATEDIFF(NOW(), `game`.`date`) <= 30
+    AND `game`.`size` = 19
+    AND `game`.`handicap` = 0
+    AND `game`.`result` != 'unfinished'
     AND `game`.`komi` > 6 AND `game`.`komi` < 9;
 
 -- Every finished game either platform stores, flattened to the two Discord ids, for the house scanner to score.
@@ -476,4 +518,12 @@ CREATE OR REPLACE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `house_games` 
   FROM `kgs_games` AS `game`
   LEFT JOIN `kgs_user_info` AS `black` ON `game`.`black_id` = `black`.`kgs_id`
   LEFT JOIN `kgs_user_info` AS `white` ON `game`.`white_id` = `white`.`kgs_id`
+  WHERE `game`.`result` != 'unfinished'
+  UNION
+  SELECT `game`.`gold_id`, `game`.`date`, `game`.`result`,
+  `game`.`ranked`, `game`.`long_game`, `game`.`handicap`,
+  `black`.`discord_id` AS `black_discord_id`, `white`.`discord_id` AS `white_discord_id`
+  FROM `fox_games` AS `game`
+  LEFT JOIN `fox_user_info` AS `black` ON `game`.`black_id` = `black`.`fox_id`
+  LEFT JOIN `fox_user_info` AS `white` ON `game`.`white_id` = `white`.`fox_id`
   WHERE `game`.`result` != 'unfinished';

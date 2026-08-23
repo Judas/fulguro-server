@@ -6,6 +6,7 @@ import com.fulgurogo.common.config.Config
 import com.fulgurogo.common.db.ssh.SSHConnector
 import com.fulgurogo.discord.DiscordModule
 import com.fulgurogo.fgc.FgcModule
+import com.fulgurogo.fox.FoxModule
 import com.fulgurogo.gold.GoldModule
 import com.fulgurogo.house.HouseModule
 import com.fulgurogo.kgs.KgsModule
@@ -23,6 +24,7 @@ fun main() {
     DiscordModule.init()
     KgsModule.init()
     OgsModule.init()
+    FoxModule.init()
 
     // Community modules
     GoldModule.init()

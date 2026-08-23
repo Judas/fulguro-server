@@ -38,7 +38,7 @@ object CleanDatabaseAccessor {
 
             listOf(
                 "discord_user_info",
-                "kgs_user_info", "ogs_user_info",
+                "kgs_user_info", "ogs_user_info", "fox_user_info",
                 "gold_ratings", "fgc_validity",
                 "house_members",
                 "league_members", "league_players"
@@ -56,7 +56,7 @@ object CleanDatabaseAccessor {
         DatabaseAccessor.withDao { connection ->
             log(TAG, "removeOldGames $days")
 
-            listOf("kgs_games", "ogs_games").forEach { table ->
+            listOf("kgs_games", "ogs_games", "fox_games").forEach { table ->
                 val query = "DELETE FROM $table WHERE DATEDIFF(NOW(), date) > :days"
                 connection
                     .query(query)

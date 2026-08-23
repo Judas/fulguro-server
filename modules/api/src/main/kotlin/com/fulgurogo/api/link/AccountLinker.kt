@@ -1,6 +1,8 @@
 package com.fulgurogo.api.link
 
 import com.fulgurogo.common.config.Config
+import com.fulgurogo.fox.api.FoxApiClient
+import com.fulgurogo.fox.db.FoxDatabaseAccessor
 import com.fulgurogo.kgs.db.KgsDatabaseAccessor
 import com.fulgurogo.ogs.api.OgsApiClient
 import com.fulgurogo.ogs.api.model.OgsUserList
@@ -85,5 +87,5 @@ private class FoxAccountLinker(private val foxApiClient: FoxApiClient) : Account
     override fun isTaken(account: ResolvedAccount) = FoxDatabaseAccessor.userByFoxId(account.id) != null
     override fun isLinked(discordId: String) = FoxDatabaseAccessor.userByDiscordId(discordId) != null
     override fun link(discordId: String, account: ResolvedAccount) =
-        FoxDatabaseAccessor.addUser(discordId, account)
+        FoxDatabaseAccessor.addUser(discordId, account.id, account.name ?: "?", account.rank ?: "?")
 }

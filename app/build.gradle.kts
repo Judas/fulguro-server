@@ -26,6 +26,7 @@ dependencies {
 
     implementation(project(":modules:kgs"))
     implementation(project(":modules:ogs"))
+    implementation(project(":modules:fox"))
 
     implementation(project(":modules:gold"))
     implementation(project(":modules:fgc"))
