@@ -16,7 +16,10 @@ object SSHConnector {
             this["ConnectionAttempts"] = "3"
         }
         with(JSch()) {
-            addIdentity(Config.get("ssh.private.key.file"))
+            if (Config.get("ssh.private.key.passphrase").isNotBlank())
+              addIdentity(Config.get("ssh.private.key.file"), Config.get("ssh.private.key.passphrase"))
+            else
+              addIdentity(Config.get("ssh.private.key.file"))
             val session = getSession(Config.get("ssh.user"), Config.get("ssh.host"), Config.get("ssh.port").toInt())
             session.setConfig(config)
             session.connect()
