@@ -4,6 +4,7 @@ import com.fulgurogo.api.ApiModule
 import com.fulgurogo.clean.CleanModule
 import com.fulgurogo.common.config.Config
 import com.fulgurogo.common.db.ssh.SSHConnector
+import com.fulgurogo.common.logger.ServerLog
 import com.fulgurogo.discord.DiscordModule
 import com.fulgurogo.fgc.FgcModule
 import com.fulgurogo.fox.FoxModule
@@ -16,6 +17,7 @@ import com.fulgurogo.ping.PingModule
 
 fun main() {
     val isDebug = Config.get("debug").toBoolean()
+    ServerLog.initialize(isDebug)
 
     // In dev we need to connect via SSH to the server for the MySQL access (only local connection allowed)
     if (isDebug) SSHConnector.connect()

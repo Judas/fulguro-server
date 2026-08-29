@@ -1,6 +1,12 @@
 package com.fulgurogo.api
 
 import com.fulgurogo.api.ApiModule.TAG
+import com.fulgurogo.api.admin.AdminAccess
+import com.fulgurogo.api.admin.LogReader
+import com.fulgurogo.api.admin.ServerLogReader
+import com.fulgurogo.api.auth.DiscordSessionResolver
+import com.fulgurogo.api.auth.SessionResolution
+import com.fulgurogo.api.auth.SessionResolver
 import com.fulgurogo.api.db.ApiDatabaseAccessor
 import com.fulgurogo.api.db.model.*
 import com.fulgurogo.api.league.LeagueApiComposer
@@ -13,13 +19,13 @@ import com.fulgurogo.api.utilities.jsonResponse
 import com.fulgurogo.api.utilities.notFoundError
 import com.fulgurogo.api.utilities.rateLimit
 import com.fulgurogo.api.utilities.standardResponse
+import com.fulgurogo.api.utilities.serviceUnavailable
+import com.fulgurogo.api.utilities.unauthorized
 import com.fulgurogo.common.config.Config
 import com.fulgurogo.common.logger.log
 import com.fulgurogo.common.service.ServiceRegistry
 import com.fulgurogo.common.utilities.DATE_ZONE
 import com.fulgurogo.common.utilities.okHttpClient
-import com.fulgurogo.common.utilities.toDate
-import com.fulgurogo.discord.DiscordModule
 import com.fulgurogo.discord.db.DiscordDatabaseAccessor
 import com.fulgurogo.fgc.db.FgcDatabaseAccessor
 import com.fulgurogo.fox.api.FoxApiClient
@@ -41,7 +47,11 @@ import okhttp3.Request
 import okhttp3.RequestBody
 import java.time.ZonedDateTime
 
-class Api {
+class Api(
+    private val sessionResolver: SessionResolver = DiscordSessionResolver(),
+    private val logReader: LogReader = ServerLogReader(),
+    private val adminRoleIds: () -> Set<String> = AdminAccess::configuredRoleIds,
+) {
     private val gson: Gson = Gson()
     private val accountLinkers = AccountLinkers(OgsApiClient(), FoxApiClient())
 
@@ -465,46 +475,47 @@ class Api {
     }
 
     fun getAuthProfile(context: Context) = context.handle("getAuthProfile") {
-        val goldIdParam = context.queryParam("goldId")
-        goldIdParam?.let { goldId ->
-            // Get corresponding token
-            val credentials = ApiDatabaseAccessor.getAuthCredentials(goldId)
-            credentials?.let { creds ->
-                var validCredentials: AuthCredentials? = creds
+        when (val resolution = sessionResolver.resolve(context.queryParam("goldId"))) {
+            is SessionResolution.Authenticated -> {
+                val session = resolution.session
+                DiscordDatabaseAccessor.createUser(session.discordId, session.name, session.avatar)
+                context.standardResponse(
+                    ApiProfile(
+                        discordId = session.discordId,
+                        name = session.name,
+                        avatar = session.avatar,
+                        expirationDate = session.expirationDate,
+                        admin = AdminAccess.isAllowed(session.roleIds, adminRoleIds()),
+                    )
+                )
+            }
+            SessionResolution.Unauthorized -> context.notFoundError()
+            SessionResolution.Unavailable -> context.internalError()
+        }
+    }
 
-                // Check expiration
-                if (creds.expirationDate.before(ZonedDateTime.now(DATE_ZONE).toDate())) {
-                    val authRequestResponse = refreshAuthToken(refreshToken = creds.refreshToken)
-                    ApiDatabaseAccessor.saveAuthCredentials(goldId, authRequestResponse)
-                    validCredentials = ApiDatabaseAccessor.getAuthCredentials(goldId)
+    fun getAdminLogs(context: Context) = context.handle("getAdminLogs") {
+        when (val resolution = sessionResolver.resolve(context.header("X-Gold-Id"))) {
+            SessionResolution.Unauthorized -> context.unauthorized()
+            SessionResolution.Unavailable -> context.serviceUnavailable()
+            is SessionResolution.Authenticated -> {
+                if (!AdminAccess.isAllowed(resolution.session.roleIds, adminRoleIds())) {
+                    context.forbidden()
+                    return@handle
                 }
-
-                validCredentials?.let { validCreds ->
-                    DiscordModule.discordBot.jda?.let { jda ->
-                        // Fetch user discord info
-                        val discordId = getUserDiscordId(validCreds)
-                        val discordUser = jda.getUserById(discordId)
-                        val guild = jda.getGuildById(Config.get("bot.guild.id"))
-                        val discordName = discordUser?.let {
-                            guild?.getMember(it)?.effectiveName ?: it.name
-                        } ?: discordId
-                        if (discordName == discordId) {
-                            context.notFoundError()  // User is not on the server
-                        } else {
-                            val discordAvatar = DiscordModule.discordBot.jda?.getUserById(discordId)?.effectiveAvatarUrl
-                                ?: Config.get("gold.default.avatar")
-
-                            // Create user in DB if needed
-                            DiscordDatabaseAccessor.createUser(discordId, discordName, discordAvatar)
-
-                            // Return API Profile
-                            val profile = ApiProfile(discordId, discordName, discordAvatar, validCreds.expirationDate)
-                            context.standardResponse(profile)
-                        }
-                    } ?: throw IllegalStateException("JDA is null")
-                } ?: context.notFoundError()
-            } ?: context.notFoundError()
-        } ?: context.notFoundError()
+                val lines = logReader.tail()
+                if (lines == null) {
+                    context.serviceUnavailable()
+                    return@handle
+                }
+                context.standardResponse(
+                    AdminLogsResponse(
+                        lines = lines,
+                        generatedAt = ZonedDateTime.now(DATE_ZONE).toOffsetDateTime().toString(),
+                    )
+                )
+            }
+        }
     }
 
     private fun requestAuthToken(authCode: String): AuthRequestResponse {
@@ -523,43 +534,6 @@ class Api {
             response.body.string()
         }
         return gson.fromJson(responseBody, AuthRequestResponse::class.java)
-    }
-
-    private fun refreshAuthToken(refreshToken: String): AuthRequestResponse {
-        val body: RequestBody = AuthRefreshPayload(refreshToken = refreshToken).toFormBody()
-        val request: Request = Request.Builder().url(Config.get("gold.discord.auth.token.uri")).post(body).build()
-
-        val responseBody = okHttpClient.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                val error = Exception("DISCORD AUTH REFRESH FAILURE " + response.code)
-                log(TAG, error.message!!, error)
-                throw error
-            }
-
-            log(TAG, "DISCORD AUTH REFRESH SUCCESS ${response.code}")
-            response.body.string()
-        }
-        return gson.fromJson(responseBody, AuthRequestResponse::class.java)
-    }
-
-    private fun getUserDiscordId(authCredentials: AuthCredentials): String {
-        val url = "${Config.get("gold.discord.api.url")}/users/@me"
-        val request: Request = Request.Builder()
-            .url(url)
-            .header("Authorization", "${authCredentials.tokenType} ${authCredentials.accessToken}")
-            .get().build()
-
-        val responseBody = okHttpClient.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                val error = Exception("DISCORD PROFILE REQUEST FAILURE " + response.code)
-                log(TAG, error.message!!, error)
-                throw error
-            }
-
-            log(TAG, "DISCORD PROFILE REQUEST SUCCESS ${response.code}")
-            response.body.string()
-        }
-        return gson.fromJson(responseBody, ProfileRequestResponse::class.java).id
     }
 
     fun getAccounts(context: Context) = context.handle("getAccounts") {

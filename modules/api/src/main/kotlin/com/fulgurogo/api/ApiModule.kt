@@ -53,6 +53,9 @@ object ApiModule {
                 post("/gold/api/auth", api::authenticateUser)
                 get("/gold/api/auth/profile", api::getAuthProfile)
 
+                // Read-only administration
+                get("/gold/api/admin/logs", api::getAdminLogs)
+
                 // Accounts
                 get("/gold/api/accounts", api::getAccounts)
                 post("/gold/api/link", api::link)
