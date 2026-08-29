@@ -14,4 +14,6 @@ dependencies {
 
     implementation(libs.gson)
     implementation(libs.javalin)
+
+    testImplementation(kotlin("test"))
 }

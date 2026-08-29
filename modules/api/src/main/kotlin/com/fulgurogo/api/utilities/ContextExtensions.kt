@@ -36,6 +36,14 @@ fun Context.forbidden() {
     status(403)
 }
 
+fun Context.unauthorized() {
+    status(401)
+}
+
+fun Context.serviceUnavailable() {
+    status(503)
+}
+
 /** The request was understood but conflicts with stored state, e.g. an account already linked to someone. */
 fun Context.conflict() {
     status(409)

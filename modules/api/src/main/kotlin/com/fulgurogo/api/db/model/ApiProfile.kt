@@ -6,5 +6,6 @@ data class ApiProfile(
     val discordId: String,
     val name: String? = null,
     val avatar: String? = null,
-    val expirationDate: Date
+    val expirationDate: Date,
+    val admin: Boolean,
 )
