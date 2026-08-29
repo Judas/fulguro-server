@@ -38,6 +38,14 @@ object FoxDatabaseAccessor {
         }
     }
 
+    fun removeUser(discordId: String, foxId: String): Boolean = DatabaseAccessor.withDao { connection ->
+        connection.query("DELETE FROM $USER_TABLE WHERE discord_id = :discordId AND fox_id = :foxId")
+            .addParameter("discordId", discordId)
+            .addParameter("foxId", foxId)
+            .executeUpdate()
+        connection.result == 1
+    }
+
     fun stalestUser(): FoxUserInfo? = DatabaseAccessor.withDao { connection ->
         connection.query("SELECT * FROM $USER_TABLE ORDER BY updated IS NOT NULL, updated LIMIT 1")
             .throwOnMappingFailure(false)

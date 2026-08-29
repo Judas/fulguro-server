@@ -11,6 +11,9 @@ import com.fulgurogo.api.db.ApiDatabaseAccessor
 import com.fulgurogo.api.db.model.*
 import com.fulgurogo.api.league.LeagueApiComposer
 import com.fulgurogo.api.link.AccountLinkers
+import com.fulgurogo.api.link.AccountUnlinkResult
+import com.fulgurogo.api.link.AccountUnlinkService
+import com.fulgurogo.api.link.AccountUnlinker
 import com.fulgurogo.api.utilities.badRequest
 import com.fulgurogo.api.utilities.conflict
 import com.fulgurogo.api.utilities.forbidden
@@ -51,9 +54,10 @@ class Api(
     private val sessionResolver: SessionResolver = DiscordSessionResolver(),
     private val logReader: LogReader = ServerLogReader(),
     private val adminRoleIds: () -> Set<String> = AdminAccess::configuredRoleIds,
+    private val accountLinkers: AccountLinkers = AccountLinkers(OgsApiClient(), FoxApiClient()),
+    private val accountUnlinker: AccountUnlinker = AccountUnlinkService(accountLinkers),
 ) {
     private val gson: Gson = Gson()
-    private val accountLinkers = AccountLinkers(OgsApiClient(), FoxApiClient())
 
     /**
      * Rate limits, then runs [handler], turning anything unexpected into a 500.
@@ -514,6 +518,42 @@ class Api(
                         generatedAt = ZonedDateTime.now(DATE_ZONE).toOffsetDateTime().toString(),
                     )
                 )
+            }
+        }
+    }
+
+    fun unlinkAccount(context: Context) = context.handle("unlinkAccount") {
+        when (val resolution = sessionResolver.resolve(context.header("X-Gold-Id"))) {
+            SessionResolution.Unauthorized -> context.unauthorized()
+            SessionResolution.Unavailable -> context.serviceUnavailable()
+            is SessionResolution.Authenticated -> {
+                if (!AdminAccess.isAllowed(resolution.session.roleIds, adminRoleIds())) {
+                    context.forbidden()
+                    return@handle
+                }
+
+                val body = gson.fromJson(context.body(), AccountUnlinkRequestBody::class.java)
+                val discordId = body?.discordId
+                val account = body?.account
+                val accountId = body?.accountId
+                if (discordId.isNullOrBlank() || account.isNullOrBlank() || accountId.isNullOrBlank()) {
+                    context.badRequest()
+                    return@handle
+                }
+
+                when (accountUnlinker.unlink(discordId, account, accountId)) {
+                    AccountUnlinkResult.UNKNOWN_SERVER -> context.badRequest()
+                    AccountUnlinkResult.UNKNOWN_PLAYER,
+                    AccountUnlinkResult.ASSOCIATION_NOT_FOUND -> context.notFoundError()
+                    AccountUnlinkResult.REMOVED -> {
+                        log(
+                            TAG,
+                            "unlinkAccount admin=${resolution.session.discordId} target=$discordId " +
+                                "account=$account accountId=$accountId OK"
+                        )
+                        context.status(200)
+                    }
+                }
             }
         }
     }

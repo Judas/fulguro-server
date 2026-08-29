@@ -21,6 +21,21 @@ object KgsDatabaseAccessor : GameStore<KgsGame> {
             .executeAndFetchFirst(KgsUserInfo::class.java)
     }
 
+    fun userByDiscordId(discordId: String): KgsUserInfo? = DatabaseAccessor.withDao { connection ->
+        connection.query("SELECT * FROM $USER_TABLE WHERE discord_id = :discordId LIMIT 1")
+            .throwOnMappingFailure(false)
+            .addParameter("discordId", discordId)
+            .executeAndFetchFirst(KgsUserInfo::class.java)
+    }
+
+    fun removeUser(discordId: String, kgsId: String): Boolean = DatabaseAccessor.withDao { connection ->
+        connection.query("DELETE FROM $USER_TABLE WHERE discord_id = :discordId AND kgs_id = :kgsId")
+            .addParameter("discordId", discordId)
+            .addParameter("kgsId", kgsId)
+            .executeUpdate()
+        connection.result == 1
+    }
+
     fun addUser(discordId: String, kgsId: String) {
         DatabaseAccessor.withDao { connection ->
             val query = "INSERT INTO $USER_TABLE(discord_id, kgs_id, kgs_rank, updated, error) " +
