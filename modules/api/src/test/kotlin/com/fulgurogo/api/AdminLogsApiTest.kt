@@ -63,7 +63,7 @@ class AdminLogsApiTest {
     private fun withApi(resolution: SessionResolution, lines: List<String>?, assertion: (Int) -> Unit) {
         val resolver = SessionResolver { resolution }
         val reader = LogReader { lines }
-        val api = Api(resolver, reader) { adminRoles }
+        val api = Api(resolver, reader, adminRoleIds = { adminRoles })
         val app = Javalin.create().get("/gold/api/admin/logs", api::getAdminLogs).start(0)
         try {
             assertion(app.port())

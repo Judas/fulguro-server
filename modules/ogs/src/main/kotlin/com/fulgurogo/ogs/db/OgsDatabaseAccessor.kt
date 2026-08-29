@@ -76,6 +76,21 @@ object OgsDatabaseAccessor : GameStore<OgsGame> {
             .executeAndFetchFirst(OgsUserInfo::class.java)
     }
 
+    fun userByDiscordId(discordId: String): OgsUserInfo? = DatabaseAccessor.withDao { connection ->
+        connection.query("SELECT * FROM $USER_TABLE WHERE discord_id = :discordId LIMIT 1")
+            .throwOnMappingFailure(false)
+            .addParameter("discordId", discordId)
+            .executeAndFetchFirst(OgsUserInfo::class.java)
+    }
+
+    fun removeUser(discordId: String, ogsId: String): Boolean = DatabaseAccessor.withDao { connection ->
+        connection.query("DELETE FROM $USER_TABLE WHERE discord_id = :discordId AND ogs_id = :ogsId")
+            .addParameter("discordId", discordId)
+            .addParameter("ogsId", ogsId)
+            .executeUpdate()
+        connection.result == 1
+    }
+
     fun addUser(discordId: String, ogsId: String) {
         DatabaseAccessor.withDao { connection ->
             val query = "INSERT INTO ${USER_TABLE}(discord_id, ogs_id, ogs_name, ogs_rank, updated, error) " +

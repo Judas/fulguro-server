@@ -88,6 +88,18 @@ object GoldDatabaseAccessor {
         }
     }
 
+    /** Removes a stale ladder position when the player's last platform account is unlinked. */
+    fun resetPlayer(discordId: String) {
+        DatabaseAccessor.withDao { connection ->
+            connection.query(
+                "UPDATE $RATINGS_TABLE SET rating = 0, tier_rank = 0, updated = NOW(), error = 0 " +
+                    "WHERE discord_id = :discordId"
+            )
+                .addParameter("discordId", discordId)
+                .executeUpdate()
+        }
+    }
+
     fun updatePlayer(goldPlayer: GoldPlayer) {
         DatabaseAccessor.withDao { connection ->
             val query = "UPDATE $RATINGS_TABLE SET " +

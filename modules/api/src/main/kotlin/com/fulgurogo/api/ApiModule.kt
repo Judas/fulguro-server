@@ -55,6 +55,7 @@ object ApiModule {
 
                 // Read-only administration
                 get("/gold/api/admin/logs", api::getAdminLogs)
+                post("/gold/api/admin/unlink", api::unlinkAccount)
 
                 // Accounts
                 get("/gold/api/accounts", api::getAccounts)
