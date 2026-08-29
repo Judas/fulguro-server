@@ -1,0 +1,12 @@
+[tools]
+java = "temurin-17"
+
+[tasks.build]
+description = "Compile le serveur et exécute les tests"
+run = "./gradlew build"
+run_windows = "gradlew.bat build"
+
+[tasks.start]
+description = "Démarre le serveur local"
+run = "./gradlew :app:run"
+run_windows = "gradlew.bat :app:run"
