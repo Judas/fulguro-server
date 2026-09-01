@@ -49,6 +49,12 @@ Par partie et par joueur, cumulatif :
 
 Maximum : 11 points sur une victoire longue, classée et à égalité contre un membre d'une maison adverse.
 
+> **Mise à jour, après la livraison** — ce total est désormais divisé par la taille du goban : inchangé en
+> 19×19, divisé par 2 en 13×13, par 4 en 9×9, arrondi au supérieur dans les deux cas ; tout autre format n'est
+> pas compté du tout. La vue `house_games` porte donc `size`, et `house_points` une colonne `total` — le détail
+> par type reste brut et ne s'additionne plus au total. L'autorité sur ce point est
+> `doc/migration taille de goban.sql`, pas la suite de ce document.
+
 Trois précisions qui ne se devinent pas à la lecture du barème :
 
 **« Partie à égalité » veut dire sans handicap**, pas score nul. Un vrai score nul est quasi impossible avec un

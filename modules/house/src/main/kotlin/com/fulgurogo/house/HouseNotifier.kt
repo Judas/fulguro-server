@@ -96,7 +96,7 @@ object HouseNotifier {
      * the client collapses it, and it is the one part of these messages the server cannot check for itself.
      */
     private fun leaderLine(leader: HouseRankedMember): String =
-        "↳ Leader : ${leader.discordName ?: "?"} *(${points(leader.total())})*"
+        "↳ Leader : ${leader.discordName ?: "?"} *(${points(leader.total)})*"
 
     private fun points(total: Int): String = "**$total point${if (total > 1) "s" else ""}**"
 

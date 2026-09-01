@@ -9,6 +9,9 @@ import com.fulgurogo.common.utilities.GenerateNoArgConstructor
  * staying with the old house. Within one season that case cannot normally arise — a change is only ever applied when a
  * season opens — but the accessor matches on house anyway rather than relying on that.
  *
+ * The seven columns are raw sums and [total] is the sum of what each game actually credited, so on a player who
+ * has been playing small boards the two do not match — see [HousePointsBreakdown].
+ *
  * [rank] is filled in Kotlin after sorting, not by SQL, so that the order shown, [total] and the rank can never
  * disagree. It is a competition rank: equal totals share a rank and the next one skips (1, 2, 2, 4).
  */
@@ -25,5 +28,7 @@ data class HouseRankedMember(
     override val victory: Int,
     override val evenGame: Int,
     override val ranked: Int,
+    /** The sum of the per-game totals, coefficients already applied — not the sum of the seven columns above. */
+    override val total: Int,
     val rank: Int = 0
 ) : HousePointsBreakdown

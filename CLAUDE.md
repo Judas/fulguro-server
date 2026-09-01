@@ -177,8 +177,15 @@ not open every connection at once.
    scale is in `HousePointsCalculator`, and the primary key `(gold_id, discord_id)` is the whole of the idempotence,
    so there is no cursor and nothing to reset. Every row carries its `season` and its `house_id` frozen at write time,
    which is what makes a house's total survive a player leaving it, and why `CleanService` purges `house_members` but
-   never `house_points`. `HouseSeasonService` runs the calendar: a season is 1 September to 31 May (`HouseSeason`,
-   overridable for dev with `house.period.override`), June to August is the break, and the once-a-year events —
+   never `house_points`. ⚠ The seven bonus columns are the *detail*, not the amount: since
+   `doc/migration taille de goban.sql` the scale is divided by the board — 19×19 as it stands, 13×13 halved, 9×9
+   quartered, both rounded **up** — and the awarded figure lives in `house_points.total`, which everything that ranks,
+   sums or prints reads. Rounding up is what makes it a stored column rather than a sum: ceil(11/2) is 6, while
+   halving each of the seven columns gives 7. Any other board is not scored at all, and it is
+   `HouseDatabaseAccessor.gamesToScore` that leaves it out rather than the scale returning zero — a game the selection
+   returns and the scale refuses comes back on every tick for ever, filling the batch. `HouseSeasonService` runs the
+   calendar: a season is 1 September to 31 May (`HouseSeason`, overridable for dev with `house.period.override`),
+   June to August is the break, and the once-a-year events —
    applying the summer intentions, closing a season, posting the daily ranking — are each guarded by a column of
    `house_seasons` rather than by the calendar, because the calendar cannot say whether something has already been
    done. Announcements go through `HouseNotifier`, and the Discord role that goes with a membership through

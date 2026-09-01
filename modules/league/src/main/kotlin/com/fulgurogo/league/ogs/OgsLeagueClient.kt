@@ -192,6 +192,8 @@ class OgsLeagueClient(private val client: OgsApiClient = OgsApiClient(sendCookie
          * league game is meant to score in every existing count.
          *
          * - [BOARD_SIZE] 19: `fgc_validity_games` keeps only 19×19, so a 13×13 would drop league games from the FGC count.
+ *   It is also the only board the house scale does not divide — 13×13 halves a game's points and 9×9 quarters
+ *   them — so it is what keeps a league game worth the full 11.
          * - [RULES] japanese: komi **6.5**, measured — a half point, so no score can be level and the renown
          *   scale has no hole. It sits inside the `komi > 6 AND komi < 9` window FGC accepts, ⚠ but with only 0.5 of
          *   margin rather than the 1.5 a komi of 7.5 would have given: if OGS ever moved its japanese default to

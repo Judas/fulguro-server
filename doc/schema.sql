@@ -20,7 +20,10 @@
 --
 -- The four house_* tables and the house_games view come from `migration maisons.sql`, which is where their
 -- design is argued at length. They are additive and were applied ahead of the jar that uses them, so on a server
--- that has run that script but not yet deployed the Houses they exist and stay empty.
+-- that has run that script but not yet deployed the Houses they exist and stay empty. Two later scripts changed
+-- them: `migration choix de maison.sql` for `house_members`.`pending_house_id`, and
+-- `migration taille de goban.sql` for `house_points`.`total` and the `size` column of `house_games` -- the board
+-- coefficient, which is where the reasoning for both lives.
 --
 -- The six league_* tables come from `migration ligue.sql`, same story and same authority for the reasoning. They add
 -- no view: the standings depend on the current season, which only Kotlin knows, so they are hand-written queries in
@@ -222,6 +225,10 @@ CREATE TABLE `house_members` (
 -- time, so a house total only ever grows and the history needs no extra table. No foreign key on purpose:
 -- CleanService deletes games after 32 days and members when they leave the Discord server, and these rows have to
 -- outlive both.
+-- `total` is what the game actually credited and is NOT the sum of the seven columns: the scale is divided by the
+-- board -- 1 on 19x19, 2 on 13x13, 4 on 9x9 -- and rounded up, which cannot be spread over the columns. Everything
+-- that ranks or totals reads it; the seven columns are the detail of how the game was judged. From
+-- `migration taille de goban.sql`, where a 0 in it is defined as the mark of a row written by a jar predating it.
 -- ROW_FORMAT is explicit because that PK is 2040 bytes in utf8mb4 -- fine under DYNAMIC, too wide for COMPACT.
 CREATE TABLE `house_points` (
   `gold_id` VARCHAR(255) NOT NULL,
@@ -235,6 +242,7 @@ CREATE TABLE `house_points` (
   `victory` INT(11) NOT NULL,
   `even_game` INT(11) NOT NULL,
   `ranked` INT(11) NOT NULL,
+  `total` INT(11) NOT NULL DEFAULT 0,
   `scored_at` DATETIME NOT NULL,
   PRIMARY KEY (`gold_id`, `discord_id`),
   KEY `house_points_season_house` (`season`, `house_id`),
@@ -499,13 +507,14 @@ CREATE OR REPLACE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `fgc_validity_
     AND `game`.`komi` > 6 AND `game`.`komi` < 9;
 
 -- Every finished game either platform stores, flattened to the two Discord ids, for the house scanner to score.
--- Same union as fgc_validity_games with none of its filters -- house scoring takes any size, handicap and komi.
--- The LEFT JOINs are load-bearing: an opponent unknown to the server comes back with a NULL discord_id, and that
--- null is what tells the `gold_opponent` bonus apart from no bonus. `handicap` is here for the "even game" bonus,
--- which is handicap = 0 and not a drawn result.
+-- Same union as fgc_validity_games with none of its filters -- house scoring takes any handicap and any komi, and
+-- filters the board size in the scanner's own query rather than here. The LEFT JOINs are load-bearing: an opponent
+-- unknown to the server comes back with a NULL discord_id, and that null is what tells the `gold_opponent` bonus
+-- apart from no bonus. `handicap` is here for the "even game" bonus, which is handicap = 0 and not a drawn result,
+-- and `size` for the coefficient the scale divides a total by -- see `migration taille de goban.sql`.
 CREATE OR REPLACE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `house_games` AS
   SELECT `game`.`gold_id`, `game`.`date`, `game`.`result`,
-  `game`.`ranked`, `game`.`long_game`, `game`.`handicap`,
+  `game`.`ranked`, `game`.`long_game`, `game`.`handicap`, `game`.`size`,
   `black`.`discord_id` AS `black_discord_id`, `white`.`discord_id` AS `white_discord_id`
   FROM `ogs_games` AS `game`
   LEFT JOIN `ogs_user_info` AS `black` ON `game`.`black_id` = `black`.`ogs_id`
@@ -513,7 +522,7 @@ CREATE OR REPLACE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `house_games` 
   WHERE `game`.`result` != 'unfinished'
   UNION
   SELECT `game`.`gold_id`, `game`.`date`, `game`.`result`,
-  `game`.`ranked`, `game`.`long_game`, `game`.`handicap`,
+  `game`.`ranked`, `game`.`long_game`, `game`.`handicap`, `game`.`size`,
   `black`.`discord_id` AS `black_discord_id`, `white`.`discord_id` AS `white_discord_id`
   FROM `kgs_games` AS `game`
   LEFT JOIN `kgs_user_info` AS `black` ON `game`.`black_id` = `black`.`kgs_id`
@@ -521,7 +530,7 @@ CREATE OR REPLACE ALGORITHM = UNDEFINED SQL SECURITY DEFINER VIEW `house_games` 
   WHERE `game`.`result` != 'unfinished'
   UNION
   SELECT `game`.`gold_id`, `game`.`date`, `game`.`result`,
-  `game`.`ranked`, `game`.`long_game`, `game`.`handicap`,
+  `game`.`ranked`, `game`.`long_game`, `game`.`handicap`, `game`.`size`,
   `black`.`discord_id` AS `black_discord_id`, `white`.`discord_id` AS `white_discord_id`
   FROM `fox_games` AS `game`
   LEFT JOIN `fox_user_info` AS `black` ON `game`.`black_id` = `black`.`fox_id`

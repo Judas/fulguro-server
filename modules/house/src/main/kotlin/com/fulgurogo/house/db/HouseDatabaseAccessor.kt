@@ -25,15 +25,13 @@ object HouseDatabaseAccessor {
     private const val DISCORD_TABLE = "discord_user_info"
 
     /**
-     * The seven scoring columns summed into one value, for the one case SQL has to do the totalling itself.
-     *
-     * This is the second copy of [HousePointsBreakdown.total] and the only one that cannot be avoided: totalling a
-     * house has to include the points of players who have left it, so it cannot be folded over a list of current
-     * members. Add a column to the scale and both have to change.
+     * The boards the scale scores, as a SQL list. Everything else is left out of [gamesToScore] entirely rather than
+     * scored at zero, which is what "not counted" has to mean for a register whose primary key makes a row permanent.
+     * The same three sizes, with the divisor that goes with each, are in `HousePointsCalculator`.
      */
-    private const val TOTAL_SUM = "played + gold_opponent + rival_house + long_game + victory + even_game + ranked"
+    private const val SCORED_SIZES = "(19, 13, 9)"
 
-    /** The seven columns as SUMs, aliased back to their own names so the auto-derivation still maps them. */
+    /** The seven columns and the awarded total as SUMs, aliased back so the auto-derivation still maps them. */
     private const val POINTS_SUMS =
         " COALESCE(SUM(p.played), 0) AS played, " +
                 " COALESCE(SUM(p.gold_opponent), 0) AS gold_opponent, " +
@@ -41,7 +39,10 @@ object HouseDatabaseAccessor {
                 " COALESCE(SUM(p.long_game), 0) AS long_game, " +
                 " COALESCE(SUM(p.victory), 0) AS victory, " +
                 " COALESCE(SUM(p.even_game), 0) AS even_game, " +
-                " COALESCE(SUM(p.ranked), 0) AS ranked "
+                " COALESCE(SUM(p.ranked), 0) AS ranked, " +
+                // Never SUM of the seven above: below 19x19 a game credits less than its breakdown, and the register
+                // is what remembers how much. See HousePointsBreakdown.
+                " COALESCE(SUM(p.total), 0) AS total "
 
     fun houses(): List<House> = DatabaseAccessor.withDao { connection ->
         connection
@@ -204,6 +205,9 @@ object HouseDatabaseAccessor {
      * - **The season window** puts June, July and August games permanently out of reach, which is "no points outside
      *   the season" with no extra state. It is a window over the *game* date, so a late-May game scanned in June still
      *   scores — which is why the scanner keeps running through the summer instead of stopping on the period.
+     * - **[SCORED_SIZES]** drops the boards the scale does not know. It has to be here rather than in the scale: a game
+     *   the selection returns and the scale refuses comes back on every tick for ever, so "worth nothing" and "not
+     *   selected" are the same statement, made once, in the WHERE.
      *
      * `DISTINCT` because the join matches twice on a game between two members, and a duplicate would waste a slot in
      * the batch. `p.gold_id IS NULL` marks progress per *game* while eligibility is per *player*: a game A and B
@@ -218,6 +222,7 @@ object HouseDatabaseAccessor {
                     "  AND g.date >= m.joined " +
                     " LEFT JOIN $POINTS_TABLE p ON p.gold_id = g.gold_id " +
                     " WHERE p.gold_id IS NULL " +
+                    "   AND g.size IN $SCORED_SIZES " +
                     "   AND g.date >= :seasonStart AND g.date < :seasonEnd " +
                     " ORDER BY g.date " +
                     " LIMIT :batchSize "
@@ -251,9 +256,9 @@ object HouseDatabaseAccessor {
         return DatabaseAccessor.withDao { connection ->
             val sql = "INSERT IGNORE INTO $POINTS_TABLE( " +
                     " gold_id, discord_id, house_id, season, " +
-                    " played, gold_opponent, rival_house, long_game, victory, even_game, ranked, scored_at) " +
+                    " played, gold_opponent, rival_house, long_game, victory, even_game, ranked, total, scored_at) " +
                     " VALUES (:goldId, :discordId, :houseId, :season, " +
-                    " :played, :goldOpponent, :rivalHouse, :longGame, :victory, :evenGame, :ranked, NOW()) "
+                    " :played, :goldOpponent, :rivalHouse, :longGame, :victory, :evenGame, :ranked, :total, NOW()) "
 
             var inserted = 0
             points.forEach { row ->
@@ -270,6 +275,7 @@ object HouseDatabaseAccessor {
                     .addParameter("victory", row.victory)
                     .addParameter("evenGame", row.evenGame)
                     .addParameter("ranked", row.ranked)
+                    .addParameter("total", row.total)
                     .executeUpdate()
 
                 // 1 on an insert, 0 when the row was already there and IGNORE dropped this one.
@@ -487,7 +493,7 @@ object HouseDatabaseAccessor {
     private fun houseTotals(connection: Connection, season: String): List<HouseTotals> {
         val query = "SELECT h.id AS house_id, " +
                 " (SELECT COUNT(*) FROM $MEMBERS_TABLE m WHERE m.house_id = h.id) AS member_count, " +
-                " (SELECT COALESCE(SUM($TOTAL_SUM), 0) FROM $POINTS_TABLE p " +
+                " (SELECT COALESCE(SUM(p.total), 0) FROM $POINTS_TABLE p " +
                 "   WHERE p.house_id = h.id AND p.season = :season) AS total_points " +
                 " FROM $HOUSES_TABLE h ORDER BY h.id "
         return connection
@@ -533,13 +539,13 @@ object HouseDatabaseAccessor {
         var lastRank = 0
         return this
             .sortedWith(
-                compareByDescending<HouseRankedMember> { it.total() }
+                compareByDescending<HouseRankedMember> { it.total }
                     .thenBy { it.discordName ?: it.discordId }
             )
             .mapIndexed { index, member ->
-                if (member.total() != lastTotal) {
+                if (member.total != lastTotal) {
                     lastRank = index + 1
-                    lastTotal = member.total()
+                    lastTotal = member.total
                 }
                 member.copy(rank = lastRank)
             }

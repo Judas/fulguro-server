@@ -26,6 +26,11 @@ data class HousePoints(
     override val evenGame: Int,
     override val ranked: Int,
     /**
+     * What the game actually credited: the seven columns summed, then divided by the board and rounded up. Stored
+     * rather than derived, because rounding up cannot be spread over the columns — see [HousePointsBreakdown].
+     */
+    override val total: Int,
+    /**
      * When the scanner scored this row. Nothing reads it yet: with no anti-farming cap in this delivery, it plus
      * [goldId] is what makes a cap computable after the fact, mid-season, without a migration.
      */

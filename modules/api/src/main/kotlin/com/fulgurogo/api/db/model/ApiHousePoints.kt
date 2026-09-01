@@ -5,10 +5,11 @@ import com.fulgurogo.house.db.model.HousePointsBreakdown
 /**
  * The seven scoring columns as the website reads them, plus the total.
  *
- * [total] is in the response on purpose, and this is the one place the API produces it: it comes from
- * [HousePointsBreakdown.total], so the figure the site prints is the one the server ranks on. Left out, every consumer
- * would sum the seven columns itself, and a scale that gains a column would then be wrong on the site while staying
- * right on the server — the quietest possible way for the two to drift apart.
+ * ⚠ [total] is **not** the sum of the seven columns and the site must print it rather than add them up. The scale is
+ * divided by the board — halved on 13×13, quartered on 9×9, both rounded up — so below 19×19 a game credits less than
+ * its breakdown says. Summing the columns client-side gives a bigger figure than the one the server ranks on, and it
+ * would look right, which is the whole reason [total] is in the response at all: it comes from
+ * [HousePointsBreakdown.total], the one value the server itself ranks and totals with.
  */
 data class ApiHousePoints(
     val played: Int,
@@ -29,7 +30,7 @@ data class ApiHousePoints(
             victory = points.victory,
             evenGame = points.evenGame,
             ranked = points.ranked,
-            total = points.total()
+            total = points.total
         )
     }
 }

@@ -58,7 +58,7 @@ class HousePointsService : PeriodicFlowService(INITIAL_DELAY_IN_SECONDS, INTERVA
         // at least one row. If it does not, the selection and the scale disagree and that game will come back on every
         // tick from now on, taking a slot in the batch with it.
         if (points.isEmpty()) log(TAG, "Game ${game.goldId} scored nothing, it will be selected again")
-        else log(TAG, "Scored ${game.goldId}: " + points.joinToString { "${it.discordId} +${it.total()}" })
+        else log(TAG, "Scored ${game.goldId}: " + points.joinToString { "${it.discordId} +${it.total}" })
 
         return points
     }

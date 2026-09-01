@@ -20,6 +20,11 @@ data class HouseGame(
     val longGame: Boolean,
     /** 0 on an even game, which is what the `even_game` bonus keys on — not a drawn result. */
     val handicap: Int,
+    /**
+     * The side of the board, 19, 13 or 9 — what the scale divides by. Any other size is filtered out of the scanner's
+     * selection, so it never reaches the scale at all.
+     */
+    val size: Int,
     val blackDiscordId: String? = null,
     val whiteDiscordId: String? = null
 )
