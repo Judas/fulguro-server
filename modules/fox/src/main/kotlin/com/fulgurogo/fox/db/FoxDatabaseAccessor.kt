@@ -63,9 +63,10 @@ object FoxDatabaseAccessor {
     fun markScanned(user: FoxUserInfo, player: FoxApiPlayer) {
         DatabaseAccessor.withDao { connection ->
             connection.query(
-                "UPDATE $USER_TABLE SET total_win = :totalWin, total_lost = :totalLost, " +
+                "UPDATE $USER_TABLE SET fox_rank = :foxRank, total_win = :totalWin, total_lost = :totalLost, " +
                     "total_equal = :totalEqual, updated = NOW(), error = 0 WHERE discord_id = :discordId"
             )
+                .addParameter("foxRank", player.rank ?: user.foxRank)
                 .addParameter("totalWin", player.totalwin)
                 .addParameter("totalLost", player.totallost)
                 .addParameter("totalEqual", player.totalequal)
