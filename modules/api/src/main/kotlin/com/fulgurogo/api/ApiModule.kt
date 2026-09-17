@@ -53,9 +53,11 @@ object ApiModule {
                 post("/gold/api/auth", api::authenticateUser)
                 get("/gold/api/auth/profile", api::getAuthProfile)
 
-                // Read-only administration
+                // Administration
                 get("/gold/api/admin/logs", api::getAdminLogs)
                 post("/gold/api/admin/unlink", api::unlinkAccount)
+                // Destructive, and the only route that deletes what a player earned. Same admin role gate as the two above.
+                post("/gold/api/admin/purge", api::purgePlayer)
 
                 // Accounts
                 get("/gold/api/accounts", api::getAccounts)

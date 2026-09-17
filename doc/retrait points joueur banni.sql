@@ -1,5 +1,23 @@
 -- Houses: removing a banned player's points from their house total.
 --
+-- ⚠ SUPERSEDED, as of the admin purge endpoint. `POST /gold/api/admin/purge` now does all of this and more, behind the
+-- same admin role gate as the logs and unlink routes, and it is what should be used. It removes the account, the house
+-- points, the academy and the league exemptions in ONE TRANSACTION, in the order that makes the deletion stick -- see
+-- `CleanDatabaseAccessor.purgePlayer`, which owns that order, and the trap section below for why the order is the whole
+-- of the correctness.
+--
+--     curl -X POST https://<host>/gold/api/admin/purge \
+--          -H 'X-Gold-Id: <the admin's browser gold id>' \
+--          -H 'Content-Type: application/json' \
+--          -d '{"discordId":"<discord_id>"}'
+--
+-- It answers 200 with a per-table count of what went. An all-zero report means the id matched nothing.
+--
+-- This file is kept for the two things the endpoint does not do: **looking before you delete**, and **verifying
+-- afterwards**. Sections 1, 2 and 4 are still the right queries for that, and section 3 is now the fallback for the day
+-- the API is down. The scope notes at the foot still hold, with one correction: the endpoint deletes EVERY season's
+-- points, not just the current one, because a banned player should appear nowhere.
+--
 -- Not a migration and not a deploy step -- no schema, no view, nothing for `release.sh` to care about. It is a one-off
 -- admin correction, kept here because it is the only hand-run SQL in the project that *destroys* earned data, and the
 -- order of its two DELETEs is the whole of its correctness. Written for the case it was first needed for: a player
@@ -190,5 +208,25 @@ SELECT `h`.`name`, SUM(`p`.`total`) AS `points`
 --   `kgs_games` by `gold_id`, which is what `removeAnnulledGames` does, and do it BEFORE the points, for the same
 --   reason the membership goes first. FGC self-corrects on its next tick because `FgcService` overwrites its counts
 --   from the view rather than incrementing them.
--- * If this stops being a one-off, the right shape is a method on `HouseDatabaseAccessor` mirroring
---   `removeAnnulledGames`, not this file run again from memory.
+-- * The league is not in this file at all, and the endpoint is where it is handled. The rule there: `league_members`
+--   and `league_players` go -- which is what drops the player out of `standings`, since `tallies` is driven from the
+--   academy -- and `league_matches` stays. Deleting a match would take the OPPONENT's two points for having played it,
+--   their five for having won it, and possibly their perfect-attendance bonus. The pairing stays on display with this
+--   player named by a bare id, which is what `LeagueApiComposer.member` already answers for anyone the standings no
+--   longer hold.
+-- * One residue the endpoint does not clear, named here so nobody hunts for it: `academyStandings` groups on the house
+--   ids frozen on each match, so this player's side of their match still credits their old academy. It is read by the
+--   end-of-season Discord recap and by nothing in the API. Clearing it would mean writing to the match row, which is
+--   the one row that must not move.
+-- * The games stay in `ogs_games`/`kgs_games`, but they LEAVE THE WEBSITE, which is the one consequence people do not
+--   expect. `api_games` INNER JOINs both sides' `ogs_user_info`, `discord_user_info` and `gold_ratings`, so removing the
+--   account drops every game the player was in out of the view -- the opponent's game list is one shorter until the game
+--   expires on its own at 32 days. `fgc_validity_games` LEFT JOINs instead, on purpose, so the opponent's FGC validity
+--   keeps counting it. Verified on fg_dev on 2026-09-17, not deduced. `CleanService` has always done this to anyone who
+--   leaves the guild; the purge is not doing anything new.
+-- * `auth_credentials` is keyed on the browser's `gold_id`, not on a Discord id, so there is nothing to delete there by
+--   player. Nothing needs to be: `DiscordSessionResolver` resolves a session through `guild.getMemberById`, and a banned
+--   player is no longer a member, so their session stops authenticating on its own.
+-- * This file predicted "a method on `HouseDatabaseAccessor` mirroring `removeAnnulledGames`". It landed on
+--   `CleanDatabaseAccessor` instead, because the module that already owns "every trace of a player" is the one whose
+--   table list must not be duplicated -- `removeAllFrom` and `purgePlayer` now share it.

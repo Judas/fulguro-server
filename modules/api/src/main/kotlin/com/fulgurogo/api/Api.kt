@@ -3,6 +3,8 @@ package com.fulgurogo.api
 import com.fulgurogo.api.ApiModule.TAG
 import com.fulgurogo.api.admin.AdminAccess
 import com.fulgurogo.api.admin.LogReader
+import com.fulgurogo.api.admin.PlayerPurgeService
+import com.fulgurogo.api.admin.PlayerPurger
 import com.fulgurogo.api.admin.ServerLogReader
 import com.fulgurogo.api.auth.DiscordSessionResolver
 import com.fulgurogo.api.auth.SessionResolution
@@ -56,6 +58,7 @@ class Api(
     private val adminRoleIds: () -> Set<String> = AdminAccess::configuredRoleIds,
     private val accountLinkers: AccountLinkers = AccountLinkers(OgsApiClient(), FoxApiClient()),
     private val accountUnlinker: AccountUnlinker = AccountUnlinkService(accountLinkers),
+    private val playerPurger: PlayerPurger = PlayerPurgeService(),
 ) {
     private val gson: Gson = Gson()
 
@@ -554,6 +557,49 @@ class Api(
                         context.status(200)
                     }
                 }
+            }
+        }
+    }
+
+    /**
+     * Removes a banned player from the ladder: 401/503/403 as the other admin routes, 400 on a bad body, 200 with a
+     * per-table count of what went.
+     *
+     * The destructive admin action, and the only route in the project that deletes data a player earned. It exists
+     * because the hand-written alternative — `doc/retrait points joueur banni.sql` — has a trap in it that a human
+     * running it at 1am gets wrong: the deletions have to happen in an order, or the house scanner rewrites the register
+     * rows within thirty seconds. [PlayerPurger] owns that order.
+     *
+     * **The opponent keeps everything.** `league_matches` and the games are left alone, so a match this player was drawn
+     * into still credits the other side with having played and won it, and still shows on the site — named by a bare id
+     * on this player's side, which is the answer `LeagueApiComposer.member` already gives for anyone the standings no
+     * longer hold. See `CleanDatabaseAccessor.purgePlayer` for the full list of what is and is not touched.
+     *
+     * No 404, deliberately: see [PlayerPurger]. An all-zero report is how a mistyped id reads.
+     *
+     * The log line names the administrator and the target. It is the only trace of who removed whom, and there is no undo.
+     */
+    fun purgePlayer(context: Context) = context.handle("purgePlayer") {
+        when (val resolution = sessionResolver.resolve(context.header("X-Gold-Id"))) {
+            SessionResolution.Unauthorized -> context.unauthorized()
+            SessionResolution.Unavailable -> context.serviceUnavailable()
+            is SessionResolution.Authenticated -> {
+                if (!AdminAccess.isAllowed(resolution.session.roleIds, adminRoleIds())) {
+                    context.forbidden()
+                    return@handle
+                }
+
+                // Gson does not honour Kotlin nullability, so treat every field as possibly absent.
+                val body = gson.fromJson(context.body(), PlayerPurgeRequestBody::class.java)
+                val discordId = body?.discordId
+                if (discordId.isNullOrBlank()) {
+                    context.badRequest()
+                    return@handle
+                }
+
+                val report = playerPurger.purge(discordId)
+                log(TAG, "purgePlayer admin=${resolution.session.discordId} target=$discordId removed=${report.total()}")
+                context.standardResponse(report)
             }
         }
     }
