@@ -15,9 +15,10 @@ pas lue.
 La page `/api-docs/` est rendue en JavaScript : un `curl` dessus ne rend que l'en-tête. La spec exploitable est sur
 `/api-docs/schema/?format=json`, ~590 Ko.
 
-**Vérifié les 10 et 11 août 2026**, contre la ligue de production `FulguroGo`. Ce qui est marqué ✅ a été exécuté ; le
-reste est lu dans la spec. Le 11 août ajoute ce qu'une partie réellement lancée est seule à pouvoir dire — voir « La
-partie qu'une rencontre crée ».
+**Vérifié les 10 et 11 août puis le 17 septembre 2026**, contre la ligue de production `FulguroGo`. Ce qui est marqué
+✅ a été exécuté ; le reste est lu dans la spec. Le 11 août ajoute ce qu'une partie réellement lancée est seule à
+pouvoir dire — voir « La partie qu'une rencontre crée ». Le 17 septembre ajoute le parcours joueur et ce que
+`DELETE /member` fait vraiment, mesurés en réparant un compte réellement bloqué.
 
 ---
 
@@ -51,13 +52,13 @@ Méthodes confirmées par `OPTIONS` ✅ et par la spec.
 
 | Endpoint | Méthodes | Usage |
 |---|---|---|
-| `GET,PUT,DELETE /member/{member_id}` | ✅ GET, PUT, DELETE | Inscrire un membre, lire son état, le retirer |
+| `GET,PUT,DELETE /member/{member_id}` | ✅ GET, PUT, DELETE | Inscrire un membre, lire son état, **délier** son compte OGS — le `DELETE` ne retire pas le membre |
 | `GET,POST /matches/` | ✅ GET, POST | Lister et créer des rencontres |
 | `PUT,DELETE /matches/` | spec seulement | ⚠ voir les dangers plus bas |
 | `GET /matches/{match_id}` | ✅ GET, HEAD, OPTIONS | Lire une rencontre. **Ni PUT ni DELETE ici** |
 | `GET,PUT,PATCH /callback` | ✅ GET, PUT, PATCH | Le callback de fin de partie |
 | `GET,POST,DELETE /leagues/` | spec seulement | Créer et supprimer des ligues |
-| `GET,PUT /commence` | spec seulement | Le parcours joueur, appelé par le navigateur du joueur — **jamais par nous** |
+| `GET,PUT /commence` | ✅ GET, PUT | Le parcours joueur, appelé par le navigateur du joueur. Le serveur ne l'appelle jamais — mais c'est le seul outil de réparation d'un rattachement croisé, voir plus bas |
 | `GET /match/{id}` | ✅ GET | Le même objet, côté joueur |
 
 ---
@@ -105,12 +106,100 @@ Deux choses utiles. `ogs_player` porte le **pseudo OGS** du joueur, donc un `GET
 membre a réellement connecté son compte — sans rien demander à l'API des parties. Et `league_rating` est un objet
 Glicko complet, pas un entier : c'est bien OGS qui tient ce classement.
 
-⚠ En revanche `pending_rating_change` **reste renseigné après la liaison**, et rien ne dit quand il est consommé. Un
-`PUT /member` rejoué sur un membre déjà lié laisse donc un changement de rating en attente. Tant que la question n'est
-pas tranchée, ne re-`PUT`er que les membres dont on n'a pas encore l'inscription — ce que fait `ogs_registered`.
+✅ **`pending_rating_change` est consommé au moment de la liaison** — mesuré le 17 septembre 2026, il repasse à `null`
+dès que le compte OGS se rattache, et `league_rating` prend sa place. ⚠ La lecture du 10 août ci-dessus, où il restait
+renseigné sur un membre déjà lié, portait sur un membre qui venait de se lier : les deux mesures se contredisent et
+c'est la seconde qui est reproductible. Ce qui reste vrai dans la précaution d'origine : ne re-`PUT`er que les membres
+dont on n'a pas encore l'inscription — ce que fait `ogs_registered` — puisque rien ne dit ce qu'un `PUT` rejoué fait au
+`league_rating` d'un joueur en cours de saison.
 
-`DELETE /member/{member_id}` existe (spec, non essayé). Un membre **peut** donc être retiré d'une ligue, contrairement
-à ce que le wiki laisse croire.
+### ⚠ `DELETE /member/{member_id}` ne supprime pas le membre : il délie son compte OGS
+
+✅ Mesuré le 17 septembre 2026, et le nom de l'endpoint est trompeur au point d'être dangereux à lire de travers.
+
+```
+DELETE /member/80d11af49e88de908f030a3a933017d7   ->  200
+{"OGS player link deleted": {"membership_id": "80d11af4…", "league_rating": null,
+                             "ogs_player": null, "pending_rating_change": null}}
+```
+
+Ce qui se passe, et ce qui ne se passe pas :
+
+- **200**, pas 204, et le corps nomme lui-même l'opération : `OGS player link deleted`.
+- Le membership **survit** : un `GET` juste après répond 200 avec le même `membership_id`. `ogs_player` et
+  `league_rating` sont repassés à `null`.
+- Un `PUT` rejoué derrière répond **200**, pas 201 : le membre n'était jamais parti.
+- La rencontre qui référence ce membre est **intacte** — `black_member_id`, les deux liens d'invitation, le lien
+  spectateur, tout tient. Un `DELETE` sur un membre engagé dans une rencontre ne casse donc rien.
+
+✅ **Et le compte OGS est réellement libéré** : après le `DELETE`, le même compte a pu se rattacher à un **autre**
+membership de la même ligue. C'est ce qui fait de cet appel la réparation d'un rattachement croisé — le seul cas de
+panne que l'API des organisateurs sache réparer seule.
+
+✅ **Le membership délié, lui, se rattache à neuf sans rien qu'on lui rende.** Un `DELETE` laisse ses trois champs à
+`null`, `pending_rating_change` compris — donc dans un état qu'aucune inscription fraîche ne produit, puisque
+`PUT /member` y met toujours le rating envoyé. Mesuré quand même : le rattachement suivant lui redonne un
+`league_rating` complet `{1500.0, 350.0, 0.06}`, OGS retombant sur son propre défaut. **Il n'y a donc pas de
+`PUT /member` à rejouer après un `DELETE`**, et c'était la crainte raisonnable — un membre sans rien d'où tirer un
+rating est exactement ce qui fait planter `/commence` en `getOverallRating`.
+
+---
+
+## `GET|PUT /commence` — le parcours joueur, et la panne qu'il produit
+
+✅ Mesuré le 17 septembre 2026, en rejouant le parcours complet avec le compte OGS `ogs.auth.username` — donc sans
+navigateur et sans déranger un joueur. Le serveur n'appelle jamais ces deux endpoints en fonctionnement normal ; ils
+sont ici parce qu'ils sont le seul moyen de **diagnostiquer** et de **réparer** un compte mal rattaché.
+
+Les deux prennent la clé de 22 caractères du lien d'invitation, et le côté, en query :
+`?side=black|white&id=<clé>`. Ils s'authentifient avec une **session utilisateur OGS**, pas avec les en-têtes de ligue
+— `POST /api/v0/login` avec `{username, password}` pose le cookie `sessionid` et rend le `csrf_token` que le `PUT`
+exige en en-tête `X-CSRFToken`.
+
+**`GET /commence` ne lie rien.** Il rend l'état de la rencontre vue du joueur — `black_ready`, `white_ready`, `game`,
+`challenge` — et rien d'autre. Deux `GET` de suite sur les deux côtés d'une rencontre laissent `ogs_player` à `null`.
+C'est donc une lecture sûre, y compris sur une rencontre de saison.
+
+⚠ **C'est le `PUT` qui rattache le compte, et il le fait même avec `ready=false`.** Le frontend n'appelle le `PUT` que
+sur le bouton « prêt », si bien que cliquer un lien d'invitation ne lie rien tant que le joueur n'a pas appuyé — mais
+dès qu'il appuie, le compte est lié, `ready=false` compris.
+
+```
+PUT /commence?side=black&id=<clé>&ready=false   ->  200
+GET /member/<le membre de ce côté>              ->  ogs_player: "<le compte connecté>",
+                                                    league_rating: {1500.0, 350.0, 0.06}
+```
+
+**Un compte OGS ne peut détenir qu'un seul membership par ligue**, et c'est là que ça casse :
+
+```
+PUT /commence?side=white&…   ->  400
+{"error":"This user has a pre-existing different membership to this league"}
+```
+
+C'est exactement ce que voit un joueur qui a appuyé sur « prêt » sur le **mauvais côté** de son propre match — celui de
+son adversaire — avant d'ouvrir le sien. Son compte est alors collé au membership d'en face, le sien reste vierge, et
+**les deux joueurs** sont bloqués : l'un ne peut plus rejoindre, l'autre trouve sa place prise. Un `GET /member` sur
+les deux côtés le montre en deux appels.
+
+**La réparation**, et son ordre, qui n'est pas négociable :
+
+1. `DELETE /member/<le membership usurpé>` — délie le compte fautif, voir plus haut.
+2. **Le joueur légitime de ce côté se rattache d'abord**, pour que le membership retrouve un `league_rating`.
+3. **Puis** le joueur fautif ouvre son propre lien et appuie sur « prêt ».
+
+⚠ **Inverser 2 et 3 casse la partie**, et de façon salissante. Si un côté est resté `ready` alors que son membership
+vient d'être délié, le `PUT` du côté opposé répond :
+
+```
+{"error":"'NoneType' object has no attribute 'getOverallRating'"}
+```
+
+— une exception Python nue, remontée telle quelle en 400. Le rattachement, lui, **a déjà eu lieu** : l'erreur survient
+en aval, quand OGS crée la partie et cherche le rating d'un adversaire qui n'en a plus. Mesuré : une partie fantôme est
+créée quand même (`game` renseigné sur la rencontre, aucun joueur dessus, zéro coup, jamais démarrée). Elle est inerte
+pour notre pipeline — ni `OgsService` ni le WebSocket ne voient une partie sans joueur connu — mais la rencontre porte
+désormais un `game` qui ne sera jamais joué.
 
 ---
 
@@ -413,8 +502,8 @@ n'accepte que la lecture.
 - La forme d'`outcome` sur une partie **gagnée** : `"Cancellation"` est la seule valeur vue. Une victoire normale porte
   vraisemblablement quelque chose comme `"Resignation"` ou `"12.5 points"`, mais ce n'est pas mesuré. Sans importance
   pour la ligue, qui lit `black_lost` / `white_lost` et non `outcome`.
-- Quand `pending_rating_change` est consommé, et si un `PUT /member` rejoué après la liaison peut réinitialiser le
-  `league_rating` d'un joueur en cours de saison.
+- Si un `PUT /member` rejoué après la liaison peut réinitialiser le `league_rating` d'un joueur en cours de saison.
+  *(Quand `pending_rating_change` est consommé est en revanche tranché : à la liaison, cf. `PUT /member`.)*
 - Ce que valent `annulment_reason` et `moderator_annulled` sur une annulation **par un modérateur** — sur celle du
   11 août, faite autrement, les deux sont restés `null`.
 - Ce que `game` contient exactement, et le `speed` que la partie créée déclare — ce qui décide si une partie de ligue
@@ -449,3 +538,36 @@ Exécutée contre la ligue de production `FulguroGo`, qui ne contenait aucune re
 **Ce que la sonde laisse derrière elle, définitivement** : deux membres — Drooxi et JudasImov, dont les `member_id`
 sont ceux que la production utilisera — et la rencontre `13688`, `probe_idempotence_01`, jamais jouée. Les deux
 `member_id` dérivent de `league.member.salt`, donc ils resteront valides tant que ce sel ne change pas.
+
+---
+
+## Journal de la sonde du 17 septembre 2026
+
+Motivée par une panne réelle : un joueur de la session 1 recevait
+`This user has a pre-existing different membership to this league` en ouvrant son propre lien. Le diagnostic tenait en
+deux `GET /member` — son membership à lui vierge, celui de son adversaire portant **son** pseudo OGS —, mais la
+réparation supposait de savoir ce que `DELETE /member` fait vraiment. D'où deux membres et une rencontre bidon, sur des
+identifiants préfixés `probe_`, donc hors de tout balayage `fg_prod_`/`fg_dev_`.
+
+| # | Appel | Résultat |
+|---|---|---|
+| 1 | `PUT /member/80d11af4…`, `PUT /member/bfaec0ad…` | **201** chacun |
+| 2 | `POST /matches/` `probe_member_delete_01` | **201**, rencontre `14021` |
+| 3 | `DELETE /member/80d11af4…` sur un membre **non lié** | **200**, `{"OGS player link deleted": …}` |
+| 4 | `GET /member/80d11af4…` après le `DELETE` | **200**, le membre est toujours là |
+| 5 | `GET /matches/?…` après le `DELETE` | rencontre inchangée, liens d'invitation compris |
+| 6 | `PUT /member/80d11af4…` à nouveau | **200** — jamais parti |
+| 7 | `GET /commence?side=black&id=…`, deux côtés | **200**, aucune liaison : `ogs_player` reste `null` |
+| 8 | `PUT /commence?side=black&…&ready=false` | **200**, et **le compte est lié** |
+| 9 | `PUT /commence?side=white&…` avec le même compte | **400** `pre-existing different membership` — la panne reproduite |
+| 10 | `DELETE /member/80d11af4…` sur un membre **lié** | **200**, `ogs_player` repasse à `null` |
+| 11 | `PUT /commence?side=white&…` à nouveau | **400** `'NoneType' … getOverallRating`, **mais le compte est bien lié** |
+| 12 | `DELETE` des deux membres bidon | **200** — le compte du bot ressort libre de la ligue |
+| 13 | `PUT /commence` sur un membre **délié**, `pending_rating_change` à `null` | **200**, rattaché, `league_rating` de retour à `{1500.0, 350.0, 0.06}` |
+
+**Ce que la sonde laisse derrière elle** : la rencontre `14021`, deux membres bidon déliés, et la partie fantôme
+`90784664` née de l'appel 11 — sans joueur, zéro coup, jamais démarrée, invisible de notre pipeline. Aucun défi en
+attente sur le compte du bot (vérifié).
+
+⚠ **Ce que l'appel 11 apprend et qu'il faut retenir** : un 400 de `/commence` ne veut pas dire « rien ne s'est
+passé ». La liaison précède la création de la partie, donc elle survit à l'erreur qui suit.
