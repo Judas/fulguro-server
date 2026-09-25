@@ -3,6 +3,25 @@ Notes de version de FulguroGo Server.
 l'historique des versions antérieures est dans les messages de commit.
 
 
+9.10 — Arbitrage de la ligue
+----------------------------
+
+Pour les joueurs
+- Un administrateur peut arbitrer un match de ligue, pendant la session ou après : quand un joueur refuse de jouer, son
+  adversaire peut être déclaré exempté (0 point, bonus conservé), participant (2 points, bonus conservé) ou vainqueur
+  (7 points, bonus conservé), et le fautif perd la session. Un arbitrage se corrige ou s'annule.
+- Un administrateur peut retirer un joueur de la ligue. Comme une désinscription : les points restent acquis.
+- L'arbitrage ne concerne que la renommée de la ligue : il ne donne aucun point de maison.
+
+Pour le site
+- POST /gold/api/admin/league/remove {discordId} et POST /gold/api/admin/league/adjudicate
+  {session, blackDiscordId, blackAward, whiteAward}, réservées aux administrateurs (en-tête X-Gold-Id).
+- Un match arbitré a `result: "adjudicated"` et un bloc `adjudication`. Chaque match du profil a un `award`.
+
+Pour l'exploitation
+- Appliquer `doc/migration ligue arbitrage.sql` avant le déploiement : quatre colonnes nullables sur `league_matches`.
+
+
 9.1 — La Ligue d'Aurak
 ----------------------
 

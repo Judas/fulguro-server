@@ -13,6 +13,8 @@ import com.fulgurogo.league.db.model.LeagueMatch
  * [result] has **three** states and the site has to tell them apart. `null` means the session is running and the match
  * has not been played; `"unplayed"` means the session was settled without it being played, so it will never count; and
  * anything else is a real result. Showing the first two alike would make a forfeit look like a game still to play.
+ * A match an administrator ruled on reads `"adjudicated"` whatever OGS said underneath, and [adjudication] carries the
+ * ruling — without that value a ruled match still open on OGS would show as a game to play.
  *
  * [winnerDiscordId] is computed rather than left to be deduced. [result] carries `"black"` or `"white"`, and matching that
  * to a player means knowing which side they were on — the server knows, so it says. Null when nobody won, which covers an
@@ -23,15 +25,22 @@ data class ApiLeagueMatch(
     val white: ApiLeagueMember,
     val spectatorLink: String? = null,
     val result: String? = null,
-    val winnerDiscordId: String? = null
+    val winnerDiscordId: String? = null,
+    val adjudication: ApiLeagueAdjudication? = null
 ) {
     companion object {
         fun from(match: LeagueMatch, black: ApiLeagueMember, white: ApiLeagueMember): ApiLeagueMatch = ApiLeagueMatch(
             black = black,
             white = white,
             spectatorLink = match.spectatorLink,
-            result = match.result,
-            winnerDiscordId = match.winner()
+            result = apiResult(match),
+            winnerDiscordId = match.winner(),
+            adjudication = ApiLeagueAdjudication.from(match)
         )
+
+        /** The value the site reads: [ADJUDICATED] over whatever `result` holds once an administrator has ruled. */
+        fun apiResult(match: LeagueMatch): String? = if (match.isAdjudicated()) ADJUDICATED else match.result
+
+        const val ADJUDICATED = "adjudicated"
     }
 }

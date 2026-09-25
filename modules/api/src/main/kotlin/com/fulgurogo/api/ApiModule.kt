@@ -58,6 +58,9 @@ object ApiModule {
                 post("/gold/api/admin/unlink", api::unlinkAccount)
                 // Destructive, and the only route that deletes what a player earned. Same admin role gate as the two above.
                 post("/gold/api/admin/purge", api::purgePlayer)
+                // League administration: take a player out, rule on a match. Renown only, never house points.
+                post("/gold/api/admin/league/remove", api::removeLeagueMember)
+                post("/gold/api/admin/league/adjudicate", api::adjudicateLeagueMatch)
 
                 // Accounts
                 get("/gold/api/accounts", api::getAccounts)

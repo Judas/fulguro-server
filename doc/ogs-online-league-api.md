@@ -109,9 +109,13 @@ Glicko complet, pas un entier : c'est bien OGS qui tient ce classement.
 ✅ **`pending_rating_change` est consommé au moment de la liaison** — mesuré le 17 septembre 2026, il repasse à `null`
 dès que le compte OGS se rattache, et `league_rating` prend sa place. ⚠ La lecture du 10 août ci-dessus, où il restait
 renseigné sur un membre déjà lié, portait sur un membre qui venait de se lier : les deux mesures se contredisent et
-c'est la seconde qui est reproductible. Ce qui reste vrai dans la précaution d'origine : ne re-`PUT`er que les membres
-dont on n'a pas encore l'inscription — ce que fait `ogs_registered` — puisque rien ne dit ce qu'un `PUT` rejoué fait au
-`league_rating` d'un joueur en cours de saison.
+c'est la seconde qui est reproductible.
+
+✅ **Et un `PUT` rejoué sur un membre déjà lié est inoffensif** — la crainte d'origine tombe. Mesuré : **200**,
+`ogs_player` conservé, `league_rating` conservé, et `pending_rating_change` simplement reposé. Un `PUT` ne délie donc
+pas, ne réinitialise pas un classement de ligue, et reste le geste à faire pour redonner de quoi initialiser un rating
+à un membre qui n'en a pas. La règle « ne re-`PUT`er que les membres dont on n'a pas encore l'inscription » —
+ce que fait `ogs_registered` — reste la bonne en fonctionnement normal, mais par économie d'appels, plus par prudence.
 
 ### ⚠ `DELETE /member/{member_id}` ne supprime pas le membre : il délie son compte OGS
 
@@ -127,7 +131,9 @@ Ce qui se passe, et ce qui ne se passe pas :
 
 - **200**, pas 204, et le corps nomme lui-même l'opération : `OGS player link deleted`.
 - Le membership **survit** : un `GET` juste après répond 200 avec le même `membership_id`. `ogs_player` et
-  `league_rating` sont repassés à `null`.
+  `league_rating` sont repassés à `null`. ✅ `pending_rating_change`, lui, **n'est pas touché** : celui qui en avait un
+  le garde, celui dont la liaison l'avait consommé ressort sans — et ce membre-là se rattachera donc sans rating
+  initial si son compte OGS est inconnu de la ligue.
 - Un `PUT` rejoué derrière répond **200**, pas 201 : le membre n'était jamais parti.
 - La rencontre qui référence ce membre est **intacte** — `black_member_id`, les deux liens d'invitation, le lien
   spectateur, tout tient. Un `DELETE` sur un membre engagé dans une rencontre ne casse donc rien.
@@ -184,8 +190,11 @@ les deux côtés le montre en deux appels.
 
 **La réparation**, et son ordre, qui n'est pas négociable :
 
-1. `DELETE /member/<le membership usurpé>` — délie le compte fautif, voir plus haut.
-2. **Le joueur légitime de ce côté se rattache d'abord**, pour que le membership retrouve un `league_rating`.
+1. `DELETE /member/<le membership usurpé>` — délie le compte fautif, voir plus haut. Enchaîner avec un
+   `PUT /member/<le même>` : la liaison fautive a consommé son `pending_rating_change`, que le `DELETE` ne rend pas, et
+   le joueur légitime se rattacherait donc sans rating initial si son compte est inconnu de la ligue. Le `PUT` est
+   inoffensif sur un membre lié comme délié, mesuré.
+2. **Le joueur légitime de ce côté se rattache d'abord**, pour que le membership porte à nouveau un compte OGS.
 3. **Puis** le joueur fautif ouvre son propre lien et appuie sur « prêt ».
 
 ⚠ **Inverser 2 et 3 casse la partie**, et de façon salissante. Si un côté est resté `ready` alors que son membership
@@ -502,8 +511,10 @@ n'accepte que la lecture.
 - La forme d'`outcome` sur une partie **gagnée** : `"Cancellation"` est la seule valeur vue. Une victoire normale porte
   vraisemblablement quelque chose comme `"Resignation"` ou `"12.5 points"`, mais ce n'est pas mesuré. Sans importance
   pour la ligue, qui lit `black_lost` / `white_lost` et non `outcome`.
-- Si un `PUT /member` rejoué après la liaison peut réinitialiser le `league_rating` d'un joueur en cours de saison.
-  *(Quand `pending_rating_change` est consommé est en revanche tranché : à la liaison, cf. `PUT /member`.)*
+- D'où vient le `league_rating` d'un membre qui vient de se lier **sans** `pending_rating_change` — un compte déjà
+  connu de la ligue en retrouve un, un compte qui ne l'est pas reste à `null`. L'hypothèse est qu'OGS retombe sur le
+  classement de ligue du compte quand il en a un, mais ce n'est pas mesuré, et rien ne dit si ce `null` se comble
+  plus tard.
 - Ce que valent `annulment_reason` et `moderator_annulled` sur une annulation **par un modérateur** — sur celle du
   11 août, faite autrement, les deux sont restés `null`.
 - Ce que `game` contient exactement, et le `speed` que la partie créée déclare — ce qui décide si une partie de ligue
@@ -563,7 +574,9 @@ identifiants préfixés `probe_`, donc hors de tout balayage `fg_prod_`/`fg_dev_
 | 10 | `DELETE /member/80d11af4…` sur un membre **lié** | **200**, `ogs_player` repasse à `null` |
 | 11 | `PUT /commence?side=white&…` à nouveau | **400** `'NoneType' … getOverallRating`, **mais le compte est bien lié** |
 | 12 | `DELETE` des deux membres bidon | **200** — le compte du bot ressort libre de la ligue |
-| 13 | `PUT /commence` sur un membre **délié**, `pending_rating_change` à `null` | **200**, rattaché, `league_rating` de retour à `{1500.0, 350.0, 0.06}` |
+| 13 | `PUT /commence` sur un membre **délié**, `pending_rating_change` à `null` | **200**, rattaché, `league_rating` de retour à `{1500.0, 350.0, 0.06}` — compte déjà connu de la ligue |
+| 14 | `PUT /member/…` sur un membre **déjà lié** | **200**, liaison et `league_rating` conservés, `pending_rating_change` reposé |
+| 15 | `DELETE` derrière ce `PUT` | **200**, `pending_rating_change` **survit** au délien |
 
 **Ce que la sonde laisse derrière elle** : la rencontre `14021`, deux membres bidon déliés, et la partie fantôme
 `90784664` née de l'appel 11 — sans joueur, zéro coup, jamais démarrée, invisible de notre pipeline. Aucun défi en

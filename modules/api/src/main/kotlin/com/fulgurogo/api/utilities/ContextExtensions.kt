@@ -29,8 +29,9 @@ fun Context.badRequest() {
 }
 
 /**
- * The request is well formed and the caller known, but the calendar forbids it — joining a house during the summer
- * break, or recording a holiday choice outside it. Not an authentication failure: nothing here is authenticated.
+ * The request is well formed and the caller known, but it is not theirs to make — the calendar forbids it (joining a
+ * house during the summer break, recording a holiday choice outside it), or an `/admin` route was called without an
+ * administrator role. Not a missing session: that is [unauthorized].
  */
 fun Context.forbidden() {
     status(403)

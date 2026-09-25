@@ -38,6 +38,9 @@ data class ApiPlayerLeague(
  * [won] is a three-state answer and null is meaningful: true when this player won, false when they lost, **null when
  * there is no winner** — a match not yet played, one the settlement voided, or an annulled game. Reading a null as false
  * would show a defeat that never happened.
+ *
+ * [award] is this player's side of an administrator's ruling (`FORFEIT`, `EXEMPT`, `PARTICIPANT`, `WINNER`), null when
+ * nobody ruled — in which case [result] reads `"adjudicated"` and [won] follows the ruling.
  */
 data class ApiPlayerLeagueMatch(
     val session: Int,
@@ -45,5 +48,6 @@ data class ApiPlayerLeagueMatch(
     val opponent: ApiLeagueMember,
     val spectatorLink: String? = null,
     val result: String? = null,
-    val won: Boolean? = null
+    val won: Boolean? = null,
+    val award: String? = null
 )

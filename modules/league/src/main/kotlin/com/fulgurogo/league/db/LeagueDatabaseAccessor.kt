@@ -6,6 +6,7 @@ import com.fulgurogo.league.LeaguePairing
 import com.fulgurogo.league.LeagueSession
 import com.fulgurogo.league.db.model.*
 import org.sql2o.Connection
+import org.sql2o.Query
 import java.util.*
 
 /**
@@ -428,12 +429,15 @@ object LeagueDatabaseAccessor {
      * `result IS NULL` because a challenge whose fate is already decided is not worth sending. A player whose DM never
      * landed on a match that has since been played knows perfectly well it happened, and one whose match the settlement
      * voided would be handed a link with a deadline that has passed — an invitation to a game that cannot count.
+     *
+     * `black_award IS NULL` for the same reason: a match an administrator already ruled on is decided, whatever `result`
+     * still says underneath.
      */
     fun unnotifiedMatches(season: String, session: Int): List<LeagueMatch> = DatabaseAccessor.withDao { connection ->
         val query = "SELECT * FROM $MATCHES_TABLE " +
                 " WHERE season = :season AND session = :session " +
                 "   AND ogs_match_id IS NOT NULL " +
-                "   AND result IS NULL " +
+                "   AND result IS NULL AND black_award IS NULL " +
                 "   AND (black_notified IS NULL OR white_notified IS NULL) "
         connection
             .query(query)
@@ -661,6 +665,73 @@ object LeagueDatabaseAccessor {
         connection.result
     }
 
+    /**
+     * Records an administrator's ruling on a match, and answers whether the match exists.
+     *
+     * **No guard on `result`**, unlike every other write to this table, and that is the point: the ruling exists to
+     * overrule what OGS or the settlement said, during the session or after it. It leaves `result` alone, so
+     * [clearAdjudication] can hand the match back to it. A second ruling simply replaces the first — the row is matched
+     * on its key, so the answer means "this match exists", which is the 404 the route needs.
+     */
+    fun adjudicate(
+        season: String,
+        session: Int,
+        blackDiscordId: String,
+        blackAward: LeagueAward,
+        whiteAward: LeagueAward,
+        adminDiscordId: String
+    ): Boolean = DatabaseAccessor.withDao { connection ->
+        val query = "UPDATE $MATCHES_TABLE " +
+                " SET black_award = :blackAward, white_award = :whiteAward, " +
+                "     adjudicated = NOW(), adjudicated_by = :adminDiscordId " +
+                " WHERE season = :season AND session = :session AND black_discord_id = :blackDiscordId "
+        connection
+            .query(query)
+            .addParameter("blackAward", blackAward.name)
+            .addParameter("whiteAward", whiteAward.name)
+            .addParameter("adminDiscordId", adminDiscordId)
+            .addParameter("season", season)
+            .addParameter("session", session)
+            .addParameter("blackDiscordId", blackDiscordId)
+            .executeUpdate()
+
+        connection.result == 1
+    }
+
+    /**
+     * Withdraws a ruling, and answers whether the match exists. The match goes back to whatever `result` says: the OGS
+     * result or `unplayed` on a settled session, still open on a running one — where the settlement will close it as it
+     * would any other.
+     */
+    fun clearAdjudication(season: String, session: Int, blackDiscordId: String): Boolean =
+        DatabaseAccessor.withDao { connection ->
+            val query = "UPDATE $MATCHES_TABLE " +
+                    " SET black_award = NULL, white_award = NULL, adjudicated = NULL, adjudicated_by = NULL " +
+                    " WHERE season = :season AND session = :session AND black_discord_id = :blackDiscordId "
+            connection
+                .query(query)
+                .addParameter("season", season)
+                .addParameter("session", session)
+                .addParameter("blackDiscordId", blackDiscordId)
+                .executeUpdate()
+
+            connection.result == 1
+        }
+
+    /** One match by its key, or null when there is none. */
+    fun match(season: String, session: Int, blackDiscordId: String): LeagueMatch? =
+        DatabaseAccessor.withDao { connection ->
+            val query = "SELECT * FROM $MATCHES_TABLE " +
+                    " WHERE season = :season AND session = :session AND black_discord_id = :blackDiscordId LIMIT 1"
+            connection
+                .query(query)
+                .throwOnMappingFailure(false)
+                .addParameter("season", season)
+                .addParameter("session", session)
+                .addParameter("blackDiscordId", blackDiscordId)
+                .executeAndFetchFirst(LeagueMatch::class.java)
+        }
+
     // ---------------------------------------------------------------------------------------------------------------
     // Exemptions
     // ---------------------------------------------------------------------------------------------------------------
@@ -717,7 +788,8 @@ object LeagueDatabaseAccessor {
 
         tallies(connection, season)
             .map { tally ->
-                val exemptions = exempted[tally.discordId] ?: 0
+                // The draw's bench and the administrator's rulings: both neutralise a session for the bonus.
+                val exemptions = (exempted[tally.discordId] ?: 0) + tally.adjudgedExempt
                 LeagueStanding(
                     discordId = tally.discordId,
                     discordName = tally.discordName,
@@ -750,13 +822,11 @@ object LeagueDatabaseAccessor {
     fun academyStandings(season: String): List<LeagueAcademyStanding> = DatabaseAccessor.withDao { connection ->
         val sql = "SELECT s.house_id, SUM(s.played) AS played, SUM(s.won) AS won FROM ( " +
                 "   SELECT black_house_id AS house_id, " +
-                "          CASE WHEN result IS NOT NULL AND result <> :unplayed THEN 1 ELSE 0 END AS played, " +
-                "          CASE WHEN result = :blackWins THEN 1 ELSE 0 END AS won " +
+                "          ${played("black")} AS played, ${won("black", ":blackWins")} AS won " +
                 "   FROM $MATCHES_TABLE WHERE season = :season " +
                 "   UNION ALL " +
                 "   SELECT white_house_id AS house_id, " +
-                "          CASE WHEN result IS NOT NULL AND result <> :unplayed THEN 1 ELSE 0 END AS played, " +
-                "          CASE WHEN result = :whiteWins THEN 1 ELSE 0 END AS won " +
+                "          ${played("white")} AS played, ${won("white", ":whiteWins")} AS won " +
                 "   FROM $MATCHES_TABLE WHERE season = :season " +
                 " ) s GROUP BY s.house_id "
 
@@ -766,6 +836,7 @@ object LeagueDatabaseAccessor {
             .addParameter("unplayed", LeagueMatch.UNPLAYED)
             .addParameter("blackWins", LeagueMatch.BLACK_WINS)
             .addParameter("whiteWins", LeagueMatch.WHITE_WINS)
+            .addAwardParameters(withExempt = false)
             .addParameter("season", season)
             .executeAndFetch(LeagueAcademyStanding::class.java)
             ?: listOf()
@@ -792,28 +863,33 @@ object LeagueDatabaseAccessor {
      * two played matches into one. That is the kind of undercount nobody notices until a player disputes their total.
      *
      * A result that designates neither player counts as played and as neither won nor lost, which is why the three
-     * counts are three independent CASEs rather than one.
+     * counts are three independent CASEs rather than one. The CASEs themselves are [played], [won], [lost] and
+     * [adjudgedExempt], shared with [academyStandings] so the individual and the academy totals cannot disagree on a ruling.
      */
     private fun tallies(connection: Connection, season: String): List<LeagueTally> {
         val sql = "SELECT m.discord_id, d.discord_name, d.discord_avatar, h.house_id, m.active, " +
-                " COALESCE(t.played, 0) AS played, COALESCE(t.won, 0) AS won, COALESCE(t.lost, 0) AS lost " +
+                " COALESCE(t.played, 0) AS played, COALESCE(t.won, 0) AS won, COALESCE(t.lost, 0) AS lost, " +
+                " COALESCE(t.adjudged_exempt, 0) AS adjudged_exempt " +
                 " FROM $MEMBERS_TABLE m " +
                 " LEFT JOIN $DISCORD_TABLE d ON d.discord_id = m.discord_id " +
                 " LEFT JOIN $HOUSE_MEMBERS_TABLE h ON h.discord_id = m.discord_id " +
                 " LEFT JOIN ( " +
                 "   SELECT s.discord_id, " +
-                "          SUM(s.played) AS played, SUM(s.won) AS won, SUM(s.lost) AS lost " +
+                "          SUM(s.played) AS played, SUM(s.won) AS won, SUM(s.lost) AS lost, " +
+                "          SUM(s.adjudged_exempt) AS adjudged_exempt " +
                 "   FROM ( " +
                 "     SELECT black_discord_id AS discord_id, " +
-                "            CASE WHEN result IS NOT NULL AND result <> :unplayed THEN 1 ELSE 0 END AS played, " +
-                "            CASE WHEN result = :blackWins THEN 1 ELSE 0 END AS won, " +
-                "            CASE WHEN result = :whiteWins THEN 1 ELSE 0 END AS lost " +
+                "            ${played("black")} AS played, " +
+                "            ${won("black", ":blackWins")} AS won, " +
+                "            ${lost("black", "white", ":whiteWins")} AS lost, " +
+                "            ${adjudgedExempt("black")} AS adjudged_exempt " +
                 "     FROM $MATCHES_TABLE WHERE season = :season " +
                 "     UNION ALL " +
                 "     SELECT white_discord_id AS discord_id, " +
-                "            CASE WHEN result IS NOT NULL AND result <> :unplayed THEN 1 ELSE 0 END AS played, " +
-                "            CASE WHEN result = :whiteWins THEN 1 ELSE 0 END AS won, " +
-                "            CASE WHEN result = :blackWins THEN 1 ELSE 0 END AS lost " +
+                "            ${played("white")} AS played, " +
+                "            ${won("white", ":whiteWins")} AS won, " +
+                "            ${lost("white", "black", ":blackWins")} AS lost, " +
+                "            ${adjudgedExempt("white")} AS adjudged_exempt " +
                 "     FROM $MATCHES_TABLE WHERE season = :season " +
                 "   ) s GROUP BY s.discord_id " +
                 " ) t ON t.discord_id = m.discord_id " +
@@ -825,10 +901,47 @@ object LeagueDatabaseAccessor {
             .addParameter("unplayed", LeagueMatch.UNPLAYED)
             .addParameter("blackWins", LeagueMatch.BLACK_WINS)
             .addParameter("whiteWins", LeagueMatch.WHITE_WINS)
+            .addAwardParameters(withExempt = true)
             .addParameter("season", season)
             .executeAndFetch(LeagueTally::class.java)
             ?: listOf()
     }
+
+    // A side's counts over one match, as SQL. A ruling decides when there is one (`<side>_award IS NOT NULL`, and the
+    // accessor only ever writes both awards together), and only otherwise does `result` get a say. Written once here
+    // because [tallies] and [academyStandings] must agree on every match, ruled or not. [side] is always one of two
+    // literals from this file, never input, so interpolating it is safe.
+
+    /** Played: [LeagueAward.PARTICIPANT] or [LeagueAward.WINNER] when ruled, any result but `unplayed` otherwise. */
+    private fun played(side: String) =
+        "CASE WHEN ${side}_award IS NOT NULL THEN (CASE WHEN ${side}_award IN (:participant, :winner) THEN 1 ELSE 0 END) " +
+                " WHEN result IS NOT NULL AND result <> :unplayed THEN 1 ELSE 0 END"
+
+    /** Won: [LeagueAward.WINNER] when ruled, the result naming this side otherwise. */
+    private fun won(side: String, sideWins: String) =
+        "CASE WHEN ${side}_award IS NOT NULL THEN (CASE WHEN ${side}_award = :winner THEN 1 ELSE 0 END) " +
+                " WHEN result = $sideWins THEN 1 ELSE 0 END"
+
+    /**
+     * Lost: when ruled, having played ([LeagueAward.PARTICIPANT]) against a [LeagueAward.WINNER] — a forfeit is not a
+     * defeat, it is a game that did not happen. The result naming the other side otherwise.
+     */
+    private fun lost(side: String, other: String, otherWins: String) =
+        "CASE WHEN ${side}_award IS NOT NULL " +
+                " THEN (CASE WHEN ${side}_award = :participant AND ${other}_award = :winner THEN 1 ELSE 0 END) " +
+                " WHEN result = $otherWins THEN 1 ELSE 0 END"
+
+    /** Ruled [LeagueAward.EXEMPT]: counted with the draw's exemptions, towards the bonus only. */
+    private fun adjudgedExempt(side: String) = "CASE WHEN ${side}_award = :exempt THEN 1 ELSE 0 END"
+
+    /**
+     * Binds the award names the CASEs above use. [withExempt] because sql2o refuses a parameter the SQL does not declare,
+     * and only [tallies] counts exemptions — an academy's total is match points, the bonus is individual.
+     */
+    private fun Query.addAwardParameters(withExempt: Boolean): Query = this
+        .addParameter("participant", LeagueAward.PARTICIPANT.name)
+        .addParameter("winner", LeagueAward.WINNER.name)
+        .let { if (withExempt) it.addParameter("exempt", LeagueAward.EXEMPT.name) else it }
 
     /**
      * Sorts best first and stamps a competition rank: equal totals share a rank and the next one skips, so two players

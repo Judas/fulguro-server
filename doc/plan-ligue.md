@@ -1456,6 +1456,51 @@ dans le dépôt — à créer ou à retirer de la doc.
 
 ---
 
+## Étape 12 — Arbitrage administrateur
+
+Ajoutée après la mise en service, pour les matchs qu'un joueur refuse de jouer. Deux routes réservées aux
+administrateurs (même garde que `/admin/purge` : en-tête `X-Gold-Id`, rôle de `gold.admin.role.ids`) :
+
+- `POST /gold/api/admin/league/remove` `{discordId}` — retire un joueur de la ligue de la saison en cours. Même écriture
+  que sa propre désinscription (`active = 0`), **sans blocage** : il peut se réinscrire. Le match déjà tiré pour lui
+  n'est pas touché : il sera joué, réglé en « non joué », ou arbitré.
+- `POST /gold/api/admin/league/adjudicate` `{session, blackDiscordId, blackAward, whiteAward}` — arbitre un match de la
+  saison en cours, pendant la session ou après. Les deux prix à `null` annulent l'arbitrage.
+
+Un prix par joueur, au choix, **au plus un vainqueur** :
+
+| Prix | Renommée | Compte pour le bonus comme |
+|---|---|---|
+| `FORFEIT` | 0 | rien : le bonus est perdu, comme un match non joué |
+| `EXEMPT` | 0 | une exemption : le bonus est conservé |
+| `PARTICIPANT` | 2 | un match joué : le bonus est conservé |
+| `WINNER` | 7 | un match joué et gagné : le bonus est conservé |
+
+Le fautif reçoit `FORFEIT`, l'autre `EXEMPT`, `PARTICIPANT` ou `WINNER` ; le choix libre couvre aussi « les deux
+exemptés » (panne OGS) et la correction d'un résultat faux. Un `FORFEIT` n'est pas une défaite : `lost` ne le compte pas,
+et le profil laisse `won` à `null`.
+
+**L'arbitrage se superpose au résultat, il ne le remplace pas.** Quatre colonnes nullables sur `league_matches`
+(`black_award`, `white_award`, `adjudicated`, `adjudicated_by`, voir `doc/migration ligue arbitrage.sql`). `result` n'est
+jamais touché par l'administrateur : le balayage et le règlement continuent de l'écrire, et les classements lisent les
+prix d'abord. Conséquences : l'arbitrage est réversible, le tick ne peut pas l'écraser, et la trace reste. Les
+expressions SQL sont écrites une fois (`played`, `won`, `lost`, `adjudgedExempt` dans `LeagueDatabaseAccessor`) et
+partagées par le classement individuel et celui des académies. Les exemptions arbitrées comptent pour le bonus, **pas**
+pour l'équité du banc au tirage (`exemptions(season)`), qui ne concerne que le banc.
+
+⚠ **Renommée seulement.** Les points de maison et la validité FGC viennent de `ogs_games`, pas de cette table : un
+`WINNER` arbitré sur une partie jamais jouée rapporte 7 de renommée et aucun point de maison. Et le défi OGS reste
+ouvert (`DELETE` répond 405) : si les joueurs le jouent quand même, la partie rapporte ses points de maison comme
+n'importe quelle autre, et l'arbitrage continue de décider la renommée. Aucun MP n'est envoyé pour un match arbitré, ni
+à l'arbitrage (pas de notification, choix assumé), ni ensuite (`unnotifiedMatches` l'écarte).
+
+Côté site : `result` vaut `"adjudicated"` et un bloc `adjudication {black, white, date}` s'ajoute sur `ApiLeagueMatch` ;
+un `award` s'ajoute à chaque match du profil. L'API ne sert que la saison en cours, donc un arbitrage sur une saison
+passée n'est pas possible par cette route. Le récapitulatif Discord de fin de saison n'est pas renvoyé si un arbitrage
+arrive après la clôture.
+
+---
+
 ## Ce qui reste en suspens
 
 Les vingt questions du plan sont tranchées, la clé d'API est en main, et le journal complet suit. **Rien ne bloque plus

@@ -7,7 +7,7 @@ import com.fulgurogo.common.utilities.GenerateNoArgConstructor
  * [LeagueStanding] is what callers get.
  *
  * [played], [won] and [lost] are counted over both colours at once, and they do not add up to the number of matches
- * drawn: a match still open, or one the settlement voided, is in none of the three.
+ * drawn: a match still open, one the settlement voided, or one ruled a forfeit or an exemption is in none of the three.
  */
 @GenerateNoArgConstructor
 data class LeagueTally(
@@ -19,5 +19,7 @@ data class LeagueTally(
     val active: Boolean = true,
     val played: Int = 0,
     val won: Int = 0,
-    val lost: Int = 0
+    val lost: Int = 0,
+    /** Matches an administrator ruled [LeagueAward.EXEMPT] for this player: they count with the draw's exemptions. */
+    val adjudgedExempt: Int = 0
 )

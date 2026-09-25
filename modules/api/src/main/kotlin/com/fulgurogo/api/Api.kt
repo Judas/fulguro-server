@@ -6,6 +6,9 @@ import com.fulgurogo.api.admin.LogReader
 import com.fulgurogo.api.admin.PlayerPurgeService
 import com.fulgurogo.api.admin.PlayerPurger
 import com.fulgurogo.api.admin.ServerLogReader
+import com.fulgurogo.api.admin.LeagueAdministrationService
+import com.fulgurogo.api.admin.LeagueAdministrator
+import com.fulgurogo.api.auth.DiscordSession
 import com.fulgurogo.api.auth.DiscordSessionResolver
 import com.fulgurogo.api.auth.SessionResolution
 import com.fulgurogo.api.auth.SessionResolver
@@ -44,6 +47,7 @@ import com.fulgurogo.house.db.HouseDatabaseAccessor
 import com.fulgurogo.house.db.model.House
 import com.fulgurogo.league.LeagueSession
 import com.fulgurogo.league.db.LeagueDatabaseAccessor
+import com.fulgurogo.league.db.model.LeagueAward
 import com.fulgurogo.ogs.api.OgsApiClient
 import com.google.gson.Gson
 import io.javalin.http.Context
@@ -59,6 +63,7 @@ class Api(
     private val accountLinkers: AccountLinkers = AccountLinkers(OgsApiClient(), FoxApiClient()),
     private val accountUnlinker: AccountUnlinker = AccountUnlinkService(accountLinkers),
     private val playerPurger: PlayerPurger = PlayerPurgeService(),
+    private val leagueAdministrator: LeagueAdministrator = LeagueAdministrationService(),
 ) {
     private val gson: Gson = Gson()
 
@@ -78,6 +83,21 @@ class Api(
         } catch (e: Exception) {
             log(TAG, "$route FAILURE ${e.message}", e)
             internalError()
+        }
+    }
+
+    /**
+     * Runs [block] for an administrator: 401 without a valid session, 503 when Discord cannot be asked, 403 when the
+     * caller lacks every role of `gold.admin.role.ids`. The one gate every `/admin` route goes through, so the four
+     * answers cannot drift from one route to the next.
+     */
+    private inline fun Context.asAdmin(block: (DiscordSession) -> Unit) {
+        when (val resolution = sessionResolver.resolve(header("X-Gold-Id"))) {
+            SessionResolution.Unauthorized -> unauthorized()
+            SessionResolution.Unavailable -> serviceUnavailable()
+            is SessionResolution.Authenticated ->
+                if (AdminAccess.isAllowed(resolution.session.roleIds, adminRoleIds())) block(resolution.session)
+                else forbidden()
         }
     }
 
@@ -502,60 +522,43 @@ class Api(
     }
 
     fun getAdminLogs(context: Context) = context.handle("getAdminLogs") {
-        when (val resolution = sessionResolver.resolve(context.header("X-Gold-Id"))) {
-            SessionResolution.Unauthorized -> context.unauthorized()
-            SessionResolution.Unavailable -> context.serviceUnavailable()
-            is SessionResolution.Authenticated -> {
-                if (!AdminAccess.isAllowed(resolution.session.roleIds, adminRoleIds())) {
-                    context.forbidden()
-                    return@handle
-                }
-                val lines = logReader.tail()
-                if (lines == null) {
-                    context.serviceUnavailable()
-                    return@handle
-                }
-                context.standardResponse(
-                    AdminLogsResponse(
-                        lines = lines,
-                        generatedAt = ZonedDateTime.now(DATE_ZONE).toOffsetDateTime().toString(),
-                    )
-                )
+        context.asAdmin {
+            val lines = logReader.tail()
+            if (lines == null) {
+                context.serviceUnavailable()
+                return@handle
             }
+            context.standardResponse(
+                AdminLogsResponse(
+                    lines = lines,
+                    generatedAt = ZonedDateTime.now(DATE_ZONE).toOffsetDateTime().toString(),
+                )
+            )
         }
     }
 
     fun unlinkAccount(context: Context) = context.handle("unlinkAccount") {
-        when (val resolution = sessionResolver.resolve(context.header("X-Gold-Id"))) {
-            SessionResolution.Unauthorized -> context.unauthorized()
-            SessionResolution.Unavailable -> context.serviceUnavailable()
-            is SessionResolution.Authenticated -> {
-                if (!AdminAccess.isAllowed(resolution.session.roleIds, adminRoleIds())) {
-                    context.forbidden()
-                    return@handle
-                }
+        context.asAdmin { admin ->
+            val body = gson.fromJson(context.body(), AccountUnlinkRequestBody::class.java)
+            val discordId = body?.discordId
+            val account = body?.account
+            val accountId = body?.accountId
+            if (discordId.isNullOrBlank() || account.isNullOrBlank() || accountId.isNullOrBlank()) {
+                context.badRequest()
+                return@handle
+            }
 
-                val body = gson.fromJson(context.body(), AccountUnlinkRequestBody::class.java)
-                val discordId = body?.discordId
-                val account = body?.account
-                val accountId = body?.accountId
-                if (discordId.isNullOrBlank() || account.isNullOrBlank() || accountId.isNullOrBlank()) {
-                    context.badRequest()
-                    return@handle
-                }
-
-                when (accountUnlinker.unlink(discordId, account, accountId)) {
-                    AccountUnlinkResult.UNKNOWN_SERVER -> context.badRequest()
-                    AccountUnlinkResult.UNKNOWN_PLAYER,
-                    AccountUnlinkResult.ASSOCIATION_NOT_FOUND -> context.notFoundError()
-                    AccountUnlinkResult.REMOVED -> {
-                        log(
-                            TAG,
-                            "unlinkAccount admin=${resolution.session.discordId} target=$discordId " +
-                                "account=$account accountId=$accountId OK"
-                        )
-                        context.status(200)
-                    }
+            when (accountUnlinker.unlink(discordId, account, accountId)) {
+                AccountUnlinkResult.UNKNOWN_SERVER -> context.badRequest()
+                AccountUnlinkResult.UNKNOWN_PLAYER,
+                AccountUnlinkResult.ASSOCIATION_NOT_FOUND -> context.notFoundError()
+                AccountUnlinkResult.REMOVED -> {
+                    log(
+                        TAG,
+                        "unlinkAccount admin=${admin.discordId} target=$discordId " +
+                            "account=$account accountId=$accountId OK"
+                    )
+                    context.status(200)
                 }
             }
         }
@@ -580,27 +583,97 @@ class Api(
      * The log line names the administrator and the target. It is the only trace of who removed whom, and there is no undo.
      */
     fun purgePlayer(context: Context) = context.handle("purgePlayer") {
-        when (val resolution = sessionResolver.resolve(context.header("X-Gold-Id"))) {
-            SessionResolution.Unauthorized -> context.unauthorized()
-            SessionResolution.Unavailable -> context.serviceUnavailable()
-            is SessionResolution.Authenticated -> {
-                if (!AdminAccess.isAllowed(resolution.session.roleIds, adminRoleIds())) {
-                    context.forbidden()
-                    return@handle
-                }
-
-                // Gson does not honour Kotlin nullability, so treat every field as possibly absent.
-                val body = gson.fromJson(context.body(), PlayerPurgeRequestBody::class.java)
-                val discordId = body?.discordId
-                if (discordId.isNullOrBlank()) {
-                    context.badRequest()
-                    return@handle
-                }
-
-                val report = playerPurger.purge(discordId)
-                log(TAG, "purgePlayer admin=${resolution.session.discordId} target=$discordId removed=${report.total()}")
-                context.standardResponse(report)
+        context.asAdmin { admin ->
+            // Gson does not honour Kotlin nullability, so treat every field as possibly absent.
+            val body = gson.fromJson(context.body(), PlayerPurgeRequestBody::class.java)
+            val discordId = body?.discordId
+            if (discordId.isNullOrBlank()) {
+                context.badRequest()
+                return@handle
             }
+
+            val report = playerPurger.purge(discordId)
+            log(TAG, "purgePlayer admin=${admin.discordId} target=$discordId removed=${report.total()}")
+            context.standardResponse(report)
+        }
+    }
+
+    /**
+     * Takes a player out of the current season's league: 401/503/403 as the other admin routes, 400 on a bad body, 404
+     * when they are not a member of the season, 204 once recorded.
+     *
+     * The same write as [leaveLeague] and nothing more — no rejoin block, and the match already drawn for them is left
+     * alone, to be played, settled as unplayed, or ruled on through [adjudicateLeagueMatch]. What the route adds is the
+     * gate and a log line naming the administrator, which the player's own leave cannot have.
+     */
+    fun removeLeagueMember(context: Context) = context.handle("removeLeagueMember") {
+        context.asAdmin { admin ->
+            // Gson does not honour Kotlin nullability, so treat every field as possibly absent.
+            val body = gson.fromJson(context.body(), LeagueRemovalRequestBody::class.java)
+            val discordId = body?.discordId
+            if (discordId.isNullOrBlank()) {
+                context.badRequest()
+                return@handle
+            }
+
+            if (!leagueAdministrator.remove(discordId)) {
+                context.notFoundError()
+                return@handle
+            }
+
+            log(TAG, "removeLeagueMember admin=${admin.discordId} target=$discordId")
+            context.standardResponse()
+        }
+    }
+
+    /**
+     * Rules on a match of the current season, during its session or after it: 401/503/403 as the other admin routes, 400
+     * on a bad body, 404 when the session has no match with that black player, 200 with the match as the site now shows it.
+     *
+     * One [LeagueAward] per side, chosen freely, at most one `WINNER`. Both awards null withdraws the ruling and hands the
+     * match back to its `result`. The ruling overlays that result rather than replacing it, so the tick can never
+     * overwrite it — see `LeagueMatch.blackAward`.
+     *
+     * ⚠ Renown only. House points and FGC come from the OGS game, not from here, and the OGS challenge stays open: if the
+     * players play it anyway, the game earns its house points as any other and the ruling still decides the renown.
+     */
+    fun adjudicateLeagueMatch(context: Context) = context.handle("adjudicateLeagueMatch") {
+        context.asAdmin { admin ->
+            val body = gson.fromJson(context.body(), LeagueAdjudicationRequestBody::class.java)
+            val session = body?.session
+            val blackDiscordId = body?.blackDiscordId
+            if (session == null || blackDiscordId.isNullOrBlank()) {
+                context.badRequest()
+                return@handle
+            }
+
+            val awards = when {
+                body.blackAward == null && body.whiteAward == null -> null
+                else -> {
+                    val black = LeagueAward.of(body.blackAward)
+                    val white = LeagueAward.of(body.whiteAward)
+                    // Covers one side missing as well as a misspelled award.
+                    if (black == null || white == null || (black == LeagueAward.WINNER && white == LeagueAward.WINNER)) {
+                        context.badRequest()
+                        return@handle
+                    }
+                    black to white
+                }
+            }
+
+            val match = leagueAdministrator.adjudicate(session, blackDiscordId, awards, admin.discordId)
+            if (match == null) {
+                context.notFoundError()
+                return@handle
+            }
+
+            val ruling = awards?.let { "${it.first}/${it.second}" } ?: "cleared"
+            log(
+                TAG,
+                "adjudicateLeagueMatch admin=${admin.discordId} session=$session " +
+                    "black=$blackDiscordId white=${match.white.discordId} ruling=$ruling"
+            )
+            context.standardResponse(match)
         }
     }
 

@@ -220,6 +220,14 @@ not open every connection at once.
    - **A league game scores everywhere**, by construction and not by design effort: 7 renown, the full 11 house points,
      and an FGC-valid game. That is what the game settings in `OgsLeagueClient` exist to guarantee, so none of them is a
      preference — see `doc/ogs-online-league-api.md`, which is the reference for the whole API.
+
+   An administrator can overrule any of it. `POST /gold/api/admin/league/adjudicate` gives each side of a match a
+   `LeagueAward` (`FORFEIT`, `EXEMPT`, `PARTICIPANT`, `WINNER`, at most one winner), stored in `black_award` /
+   `white_award`, and `/admin/league/remove` deactivates a member like their own leave would. The ruling **overlays**
+   `result` rather than replacing it: the sweep and the settlement keep writing `result` underneath, every count reads
+   the awards first, and clearing them hands the match back. So the `result IS NULL` guards still hold, and the tick
+   can never overwrite a ruling. A ruling moves renown only. House points and FGC come from `ogs_games`, so an awarded
+   `WINNER` for a game nobody played earns no house points. See step 12 of `doc/plan-ligue.md`.
 6. `ApiModule` starts Javalin on `gold.api.port`. The players and games routes come almost entirely out of two MySQL
    views, `api_players` and `api_games`. The house routes do not: their figures are counted over the *current* season,
    which only Kotlin knows, so they are hand-written queries in `HouseDatabaseAccessor` and the `house` block of a

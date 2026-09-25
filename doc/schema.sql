@@ -309,10 +309,14 @@ CREATE TABLE `league_members` (
 -- this one. The PK plus the unique key on white state the domain rule: at most one match per player per session,
 -- whichever side they are on, which is what makes a draw run twice harmless. The two house ids are frozen at draw
 -- time so an academy's total never shrinks. `league_match_id` is what OGS keys its idempotence on, prefixed with
--- db.name because dev and prod share the one OGS league. `ogs_match_id` is indexed because the callback arrives on it.
+-- db.name because dev and prod share the one OGS league. `ogs_match_id` is indexed for lookups -- there is no OGS
+-- callback any more, results come from the sweep of OGS's match objects.
 -- `result` is NULL while open, the winner OGS names once played, and 'unplayed' -- terminal -- once the session is
 -- settled without a result. The settlement leaves no match at NULL, which is what stops a match pending forever from
 -- silently costing both players the perfect-attendance bonus.
+-- `black_award` / `white_award` are an administrator's ruling (FORFEIT, EXEMPT, PARTICIPANT, WINNER), both NULL or
+-- both set. They overlay `result` rather than replace it: the standings read them first, and clearing them hands the
+-- match back to `result`. `adjudicated` / `adjudicated_by` say when and who. See `doc/migration ligue arbitrage.sql`.
 -- No foreign key on `gold_id`: CleanService deletes games after 32 days and a November match must stay readable in
 -- May, which is also why `result` is copied here rather than joined.
 -- ROW_FORMAT is explicit because that PK is 1060 bytes in utf8mb4 -- fine under DYNAMIC, too wide for COMPACT.
@@ -334,6 +338,10 @@ CREATE TABLE `league_matches` (
   `ogs_game_id` INT(11) NULL,
   `gold_id` VARCHAR(255) NULL,
   `result` VARCHAR(255) NULL,
+  `black_award` VARCHAR(16) NULL,
+  `white_award` VARCHAR(16) NULL,
+  `adjudicated` DATETIME NULL,
+  `adjudicated_by` VARCHAR(255) NULL,
   `created` DATETIME NOT NULL,
   `finished` DATETIME NULL,
   PRIMARY KEY (`season`, `session`, `black_discord_id`),

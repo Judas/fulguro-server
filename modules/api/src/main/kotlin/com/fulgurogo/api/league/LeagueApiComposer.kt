@@ -6,6 +6,7 @@ import com.fulgurogo.house.db.HouseDatabaseAccessor
 import com.fulgurogo.league.LeagueSession
 import com.fulgurogo.league.db.LeagueDatabaseAccessor
 import com.fulgurogo.league.Session
+import com.fulgurogo.league.db.model.LeagueAward
 import com.fulgurogo.league.db.model.LeagueMatch
 import com.fulgurogo.league.db.model.LeagueSessionState
 import com.fulgurogo.league.db.model.LeagueSide
@@ -125,11 +126,13 @@ class LeagueApiComposer(private val season: String) {
      *
      * [ApiPlayerLeagueMatch.won] is left **null** when the match names no winner, and that is not the same as false: a
      * match still to play, one the settlement voided and an annulled game all have no winner, and showing them as defeats
-     * would invent losses.
+     * would invent losses. Same for a side an administrator ruled a forfeit or an exemption: the standings do not count
+     * that as a defeat — the game did not happen — so the profile does not show one either.
      */
     private fun playerMatch(discordId: String, match: LeagueMatch): ApiPlayerLeagueMatch {
         val isBlack = match.blackDiscordId == discordId
         val winner = match.winner()
+        val award = match.awardOf(discordId)
 
         return ApiPlayerLeagueMatch(
             session = match.session,
@@ -138,8 +141,9 @@ class LeagueApiComposer(private val season: String) {
             color = (if (isBlack) LeagueSide.BLACK else LeagueSide.WHITE).name.lowercase(),
             opponent = member(if (isBlack) match.whiteDiscordId else match.blackDiscordId),
             spectatorLink = match.spectatorLink,
-            result = match.result,
-            won = winner?.let { it == discordId }
+            result = ApiLeagueMatch.apiResult(match),
+            won = if (award == LeagueAward.FORFEIT || award == LeagueAward.EXEMPT) null else winner?.let { it == discordId },
+            award = award?.name
         )
     }
 

@@ -39,7 +39,7 @@ data class LeagueMatch(
      * draws pairing the same players on the same session would send the same id to the same league.
      */
     val leagueMatchId: String,
-    /** OGS's own match id, an int. The callback arrives on this, which is why the column is indexed. */
+    /** OGS's own match id, an int. Indexed for lookups; results come from the sweep, there is no callback any more. */
     val ogsMatchId: Int? = null,
     /** The two player invitations — secrets, sent by DM — and the spectator link, which is the only publishable one. */
     val blackInvite: String? = null,
@@ -68,10 +68,36 @@ data class LeagueMatch(
      */
     val result: String? = null,
     val created: Date,
-    val finished: Date? = null
-) {
+    val finished: Date? = null,
     /**
-     * Whether this match counts as played: it has a result, and that result is not the settlement's.
+     * An administrator's ruling on the match, one [LeagueAward] name per side: both null, or both set.
+     *
+     * It **overlays** [result] rather than replacing it. The sweep and the settlement go on writing [result] as if nothing
+     * had happened, everything that scores reads the awards first, and clearing them brings back whatever OGS or the
+     * settlement said. That is what makes a ruling undoable, and what keeps the tick from ever overwriting one.
+     *
+     * It touches renown only. House points and FGC come from `ogs_games`, so a [LeagueAward.WINNER] on a game that was
+     * never played earns no house points — there is no game for the houses to see.
+     */
+    val blackAward: String? = null,
+    val whiteAward: String? = null,
+    /** When the ruling was made and by which administrator's Discord id — the only trace of it besides a log line. */
+    val adjudicated: Date? = null,
+    val adjudicatedBy: String? = null
+) {
+    /** Whether an administrator has ruled on this match, in which case the awards decide and [result] does not. */
+    fun isAdjudicated(): Boolean = blackAward != null && whiteAward != null
+
+    /** The award [discordId] got, or null when the match is not adjudicated or they are not in it. */
+    fun awardOf(discordId: String): LeagueAward? = when (discordId) {
+        blackDiscordId -> LeagueAward.of(blackAward)
+        whiteDiscordId -> LeagueAward.of(whiteAward)
+        else -> null
+    }
+
+    /**
+     * Whether this match counts as played **by its result**: it has one, and it is not the settlement's. Blind to a
+     * ruling, which can make the answer differ per player — [awardOf] is the question to ask when [isAdjudicated].
      *
      * A finished game whose result designates neither player is still played — 2 points to both, and the session counts
      * for the perfect-attendance bonus. The settings make that unreachable — japanese rules put komi at 6.5, measured, so no score can be level —
@@ -82,8 +108,15 @@ data class LeagueMatch(
     /** Whether the settlement closed this match unplayed. Terminal state. */
     fun isUnplayed(): Boolean = result == UNPLAYED
 
-    /** The Discord id the result designates, or null when it designates neither — including when nothing is set yet. */
-    fun winner(): String? = when (result) {
+    /**
+     * The Discord id that won, or null when nobody did — including when nothing is set yet. A ruling decides when there is
+     * one, and only then does [result] get a say.
+     */
+    fun winner(): String? = if (isAdjudicated()) when {
+        blackAward == LeagueAward.WINNER.name -> blackDiscordId
+        whiteAward == LeagueAward.WINNER.name -> whiteDiscordId
+        else -> null
+    } else when (result) {
         BLACK_WINS -> blackDiscordId
         WHITE_WINS -> whiteDiscordId
         else -> null
