@@ -16,18 +16,18 @@ collections simulées, graine fixe). L'activité des joueurs est mesurée sur la
   cartes.
 - La progression s'affiche en **taux de complétion**, global, par rareté et par catégorie. Il n'y a pas de badges.
 - Les points qui achètent les packs se gagnent **uniquement en jouant des parties gold** (§8.1).
-- Objectif de durée : un joueur actif médian complète l'album en **plus de deux ans**, de l'ordre de trois ans.
+- Objectif de durée : un joueur actif médian complète l'album en **plus de deux ans**, de l'ordre de trois ans et demi.
 
 ## 2. Raretés et effectifs
 
 | Rareté       | Couleur | Symbole | Cartes  | % du set |
 |--------------|---------|---------|--------:|---------:|
-| Commune      | Gris    | ⚪      | 116     | 45,7 %   |
-| Inhabituelle | Vert    | 🟢      | 64      | 25,2 %   |
-| Rare         | Bleu    | 🔵      | 37      | 14,6 %   |
-| Épique       | Violet  | 🟣      | 23      | 9,1 %    |
-| Mythique     | Gold    | 🟡      | 14      | 5,5 %    |
-| **Total**    |         |         | **254** |          |
+| Commune      | Gris    | ⚪      | 127     | 47,0 %   |
+| Inhabituelle | Vert    | 🟢      | 69      | 25,6 %   |
+| Rare         | Bleu    | 🔵      | 37      | 13,7 %   |
+| Épique       | Violet  | 🟣      | 23      | 8,5 %    |
+| Mythique     | Gold    | 🟡      | 14      | 5,2 %    |
+| **Total**    |         |         | **270** |          |
 
 Les effectifs ne sont pas des quotas. Un joueur va dans la rareté que lui donne son palmarès (§6) et le tirage s'adapte
 seul, grâce aux poids par carte (§3).
@@ -53,7 +53,7 @@ Ce choix a deux conséquences :
   toujours plus rare qu'une Violette donnée, elle-même plus rare qu'une Bleue donnée.
 - **Une extension ne rend pas les cartes existantes plus rares les unes par rapport aux autres.** En revanche, la part
   de chaque couleur dans un pack dépend des effectifs, et le temps de complétion s'allonge avec chaque carte ajoutée.
-  Les chiffres de ce document valent pour le set de 254 cartes et sont à refaire à chaque extension.
+  Les chiffres de ce document valent pour le set de 270 cartes et sont à refaire à chaque extension.
 
 ### 3.2 Structure d'un pack
 
@@ -70,32 +70,32 @@ Avec les effectifs actuels, les poids donnent :
 
 | Rareté | Part d'un slot standard | Part du slot garanti |
 |--------|------------------------:|---------------------:|
-| Gris   | 70,3 %                  | —                    |
-| Vert   | 19,4 %                  | 65,2 %               |
-| Bleu   | 6,7 %                   | 22,6 %               |
-| Violet | 2,8 %                   | 9,4 %                |
-| Gold   | 0,8 %                   | 2,9 %                |
+| Gris   | 71,1 %                  | —                    |
+| Vert   | 19,3 %                  | 66,9 %               |
+| Bleu   | 6,2 %                   | 21,5 %               |
+| Violet | 2,6 %                   | 8,9 %                |
+| Gold   | 0,8 %                   | 2,7 %                |
 
 ### 3.3 Ce que contient un pack
 
 | Rareté | Cartes par pack | Au moins une dans le pack | Une carte donnée (hors anti-doublon) |
 |--------|----------------:|--------------------------:|-------------------------------------:|
-| Gris   | 2,81            | 99,2 %                    | tous les 41 packs                    |
-| Vert   | 1,43            | 85,3 %                    | tous les 45 packs                    |
-| Bleu   | 0,49            | 41,4 %                    | tous les 75 packs                    |
-| Violet | 0,21            | 19,1 %                    | tous les 112 packs                   |
-| Gold   | 0,06            | 6,1 %                     | tous les 224 packs                   |
+| Gris   | 2,84            | 99,3 %                    | tous les 45 packs                    |
+| Vert   | 1,44            | 86,0 %                    | tous les 48 packs                    |
+| Bleu   | 0,46            | 39,3 %                    | tous les 80 packs                    |
+| Violet | 0,19            | 17,9 %                    | tous les 120 packs                   |
+| Gold   | 0,06            | 5,7 %                     | tous les 239 packs                   |
 
-En moyenne, une Bleue tous les 2 packs, une Violette tous les 5 packs, une Gold tous les 16 packs.
+En moyenne, une Bleue tous les 2 packs, une Violette tous les 5 packs, une Gold tous les 17 packs.
 
 ### 3.4 Pity sur carte manquante
 
 Un filet de sécurité, réglé pour ne se déclencher que dans environ 5 % des cas, et qui donne toujours une carte **que
 le joueur n'a pas**.
 
-- **Gold** : après **240 cartes** tirées sans Gold, la carte suivante est une Gold manquante (déclenchement : ~4,9 %).
-- **Violet** : après **55 cartes** tirées sans Violette ni Gold, la carte suivante est une Violette manquante
-  (déclenchement : ~4,7 %).
+- **Gold** : après **255 cartes** tirées sans Gold, la carte suivante est une Gold manquante (déclenchement : ~4,9 %).
+- **Violet** : après **60 cartes** tirées sans Violette ni Gold, la carte suivante est une Violette manquante
+  (déclenchement : ~4,4 %).
 
 Règles de détail :
 
@@ -105,7 +105,7 @@ Règles de détail :
   d'abord.
 - Si le joueur possède déjà toutes les cartes de la rareté, le pity donne une carte quelconque de cette rareté.
 
-Sur une collection complète, 0,32 % des cartes tirées viennent du pity.
+Sur une collection complète, 0,27 % des cartes tirées viennent du pity.
 
 ## 4. Algorithme (pseudo-code)
 
@@ -167,8 +167,8 @@ class PackOpener(private val catalog: List<Card>, private val random: Random = R
     private fun List<Card>.slugs() = mapTo(mutableSetOf()) { it.slug }
 
     companion object {
-        const val GOLD_PITY = 240
-        const val VIOLET_PITY = 55
+        const val GOLD_PITY = 255
+        const val VIOLET_PITY = 60
     }
 }
 ```
@@ -194,10 +194,12 @@ Chaque carte est unique dans l'album : un exemplaire suffit à la compter.
 
 ## 6. Classement des joueurs
 
-La rareté d'un joueur se fixe **au palmarès**, quelle que soit l'époque.
+La rareté d'un joueur part de son **palmarès**, quelle que soit l'époque. La grille ci-dessous donne le repère ; ce
+n'est pas un barème, et un joueur peut être classé un cran au-dessus ou au-dessous, selon sa place dans l'histoire du
+go. Un titre mondial isolé, par exemple, ne fait pas à lui seul une Bleue.
 
-| Rareté | Critère |
-|--------|---------|
+| Rareté | Repère |
+|--------|--------|
 | Gris   | Professionnel ou amateur fort, sans titre majeur. |
 | Vert   | Au moins un titre national majeur. |
 | Bleu   | Un titre mondial, ou domination d'un circuit national. |
@@ -214,6 +216,22 @@ La rareté d'un joueur se fixe **au palmarès**, quelle que soit l'époque.
   mondial (Bleu), et une domination longue donne Violet. Dosaku, Shusaku et Go Seigen sont Gold par domination de leur
   époque.
 
+Écarts voulus par rapport au repère :
+
+| Joueur | Rareté | Repère | Palmarès en cause |
+|--------|--------|--------|-------------------|
+| Liao Yuanhe | Gris | Bleu | Une Samsung Cup (2025) |
+| Dang Yifei | Vert | Bleu | Une LG Cup (2017) |
+| Wang Xinghao | Vert | Bleu | Une LG Cup (2026) |
+| Byun Sangil | Vert | Violet | Une Chunlan Cup (2023) et une LG Cup (2025) |
+| Park Younghun | Vert | Violet | Deux Fujitsu Cup |
+| Xie Ke | Bleu | Vert | Aucun titre mondial, finaliste de la MLily Cup et de l'Ing Cup |
+| Artem Kachanovskyi | Gris | Vert | Champion de la ligue professionnelle européenne (2020) |
+| Cho Seungah | Gris | Vert | Une Nanseolheon Cup (2021), titre féminin national |
+| Oh Jeonga | Gris | Vert | Une Dasan Cup (2017), titre féminin national |
+| Suzuki Ayumi | Gris | Vert | Un Kisei féminin (2020) |
+| Tang Jiawen | Gris | Vert | Un Guoshou féminin (2024) |
+
 Le classement de la liste (§7) a été vérifié joueur par joueur.
 
 ## 7. Liste des cartes
@@ -224,7 +242,7 @@ Le classement de la liste (§7) a été vérifié joueur par joueur.
 |-----------|---------|-----:|-----:|-----:|-------:|-----:|------:|
 | Joueurs | Joueurs professionnels et amateurs, classés au palmarès (§6) | 30 | 34 | 21 | 14 | 9 | **108** |
 | Communauté | Maisons, compétitions, vainqueurs de la FGC, émissions, événements, lieux du lore et figures de la communauté | 16 | 14 | 12 | 6 | 4 | **52** |
-| Tournois pro | Tournois mondiaux, grands titres japonais et tournois rapides télévisés | 8 | 7 | — | — | — | **15** |
+| Tournois pro | Tournois mondiaux, grands titres japonais, coréens, chinois et taïwanais, tournois rapides télévisés | 19 | 12 | — | — | — | **31** |
 | Formes complexes | Formes de plusieurs pierres, bonnes ou mauvaises | 8 | 2 | — | 1 | — | **11** |
 | Meta | Concepts et vocabulaire du jeu | 10 | — | — | — | — | **10** |
 | Fuseki | Stratégies d'ouverture, classiques ou non | 5 | 2 | 2 | — | — | **9** |
@@ -235,7 +253,7 @@ Le classement de la liste (§7) a été vérifié joueur par joueur.
 | Matériel | Objets du joueur de go | 6 | — | — | — | — | **6** |
 | Variantes | Autres façons de jouer au go | 4 | 2 | — | — | — | **6** |
 | Serveurs | Serveurs de go en ligne | 5 | — | — | — | — | **5** |
-| **Total** | | **116** | **64** | **37** | **23** | **14** | **254** |
+| **Total** | | **127** | **69** | **37** | **23** | **14** | **270** |
 
 Joueurs et Communauté sont les deux seules catégories présentes dans toutes les raretés ; six catégories n'ont que des
 cartes Gris.
@@ -247,7 +265,7 @@ Toutes les cartes, classement et description, ont été vérifiées.
 Les deux dernières colonnes renvoient aux pages Wikipedia (en français, à défaut en anglais) et Sensei's Library qui décrivent
 le sujet de la carte. « § » signale un lien vers une section d'une page plus large, faute de page dédiée.
 
-Chaque carte porte un `id` entier, de 1 à 254, attribué en triant les cartes par rareté décroissante (Gold d'abord),
+Chaque carte porte un `id` entier, de 1 à 270, attribué en triant les cartes par rareté décroissante (Gold d'abord),
 puis, dans chaque rareté, par catégorie et par titre, dans l'ordre alphabétique sans tenir compte des accents.
 
 #### 🟡 Gold — 14 cartes
@@ -339,7 +357,7 @@ puis, dans chaque rareté, par catégorie et par titre, dans l'ordre alphabétiq
 | 73 | Parties historiques | Atomic Bomb Game | Bleu | Hashimoto Utaro contre Iwamoto Kaoru, en 1945, pour le titre de Honinbo. Le 6 août, la bombe d'Hiroshima, tombée à une dizaine de kilomètres, souffla la salle de jeu ; la partie reprit l'après-midi même. | [en §](https://en.wikipedia.org/wiki/List_of_Go_games#Atomic_bomb_game) | [SL](https://senseis.xmp.net/?AtomicBombGame) |
 | 74 | Parties historiques | Game of the Century | Bleu | Go Seigen contre Honinbo Shusai, en 1933-1934, ouverte au 3-3, au hoshi puis au tengen. Ajournée treize fois au gré de Shusai, qui gagna de deux points grâce au coup 160, soufflé, dit-on, par son élève Maeda Nobuaki. | [en §](https://en.wikipedia.org/wiki/List_of_Go_games#The_Game_of_the_Century) | [SL](https://senseis.xmp.net/?GameOfTheCentury) |
 
-#### 🟢 Vert — 64 cartes
+#### 🟢 Vert — 69 cartes
 
 | Id | Catégorie | Titre | Rareté | Description | Wikipedia | Sensei's Library |
 |---:|-----------|-------|--------|-------------|-----------|-------------------|
@@ -399,135 +417,151 @@ puis, dans chaque rareté, par catégorie et par titre, dans l'ordre alphabétiq
 | 128 | Parties historiques | Nine Dragons Playing with a Pearl | Vert | Partie chinoise du XVIIIᵉ siècle entre Shi Xiangxia et Cheng Lanru, célèbre pour ses combats à grande échelle où le sort de plusieurs grands groupes reste longtemps incertain. |  | [SL](https://senseis.xmp.net/?NineDragonsPlayingWithAPearl) |
 | 129 | Parties historiques | Sixteen Soldiers Game | Vert | Kosugi Tei contre Go Seigen, en 1933, à l'Oteai. L'une des ouvertures les plus déroutantes de l'ère du shinfuseki. |  | [SL](https://senseis.xmp.net/?SixteenSoldiers) |
 | 130 | Tournois pro | Gosei | Vert | Titre japonais, « le sage du go ». Première édition en 1976. Le vainqueur reçoit 8 millions de yens. | [fr](https://fr.wikipedia.org/wiki/Gosei_%28go%29) | [SL](https://senseis.xmp.net/?Gosei) |
-| 131 | Tournois pro | Honinbo | Vert | Le plus ancien titre japonais, du nom de la grande maison de go de l'époque d'Edo. Première édition en 1941. Le vainqueur reçoit 8,5 millions de yens. | [fr](https://fr.wikipedia.org/wiki/Hon'inb%C5%8D) | [SL](https://senseis.xmp.net/?Honinbo) |
-| 132 | Tournois pro | Judan | Vert | Titre japonais, « dixième dan ». Première édition en 1962. Le vainqueur reçoit 7 millions de yens. | [fr](https://fr.wikipedia.org/wiki/Judan_%28go%29) | [SL](https://senseis.xmp.net/?Judan) |
-| 133 | Tournois pro | Kisei | Vert | Le titre japonais le mieux doté, « le saint du go ». Première édition en 1977. Le vainqueur reçoit 43 millions de yens. | [fr](https://fr.wikipedia.org/wiki/Kisei_%28jeu_de_go%29) | [SL](https://senseis.xmp.net/?Kisei) |
-| 134 | Tournois pro | Meijin | Vert | Titre japonais, héritier du rang suprême de l'époque d'Edo. Première édition en 1961-1962. Le vainqueur reçoit 33 millions de yens. | [fr](https://fr.wikipedia.org/wiki/Meijin_%28jeu_de_go%29) | [SL](https://senseis.xmp.net/?Meijin) |
-| 135 | Tournois pro | Oza | Vert | Titre japonais, « le trône ». Première édition en 1953. Le vainqueur reçoit 14 millions de yens. | [en](https://en.wikipedia.org/wiki/%C5%8Cza_%28Go%29) | [SL](https://senseis.xmp.net/?Oza) |
-| 136 | Tournois pro | Tengen | Vert | Titre japonais, du nom du point central du goban. Première édition en 1975. Le vainqueur reçoit 12 à 14 millions de yens. | [fr](https://fr.wikipedia.org/wiki/Tengen_%28go%29) | [SL](https://senseis.xmp.net/?TengenTitle) |
-| 137 | Variantes | Sunjang | Vert | Le baduk traditionnel coréen, qui commence avec des pierres déjà posées sur le plateau, populaire dès le XVIᵉ siècle. | [en §](https://en.wikipedia.org/wiki/Go_variants#Sunjang_baduk) | [SL](https://senseis.xmp.net/?SunjangBaduk) |
-| 138 | Variantes | Torique | Vert | Le go sans bords : chaque côté du plateau se prolonge sur le côté opposé. | [en §](https://en.wikipedia.org/wiki/Go_variants#Borderless_Go) | [SL](https://senseis.xmp.net/?ToroidalGo) |
+| 131 | Tournois pro | Guoshou | Vert | Titre chinois, « le maître national », joué à Kaifeng tous les deux ans. Disputé de 1981 à 1987, il renaît en 2021. Le vainqueur reçoit 400 000 yuans. |  | [SL](https://senseis.xmp.net/?GuoshouTournament) |
+| 132 | Tournois pro | Honinbo | Vert | Le plus ancien titre japonais, du nom de la grande maison de go de l'époque d'Edo. Première édition en 1941. Le vainqueur reçoit 8,5 millions de yens. | [fr](https://fr.wikipedia.org/wiki/Hon'inb%C5%8D) | [SL](https://senseis.xmp.net/?Honinbo) |
+| 133 | Tournois pro | Judan | Vert | Titre japonais, « dixième dan ». Première édition en 1962. Le vainqueur reçoit 7 millions de yens. | [fr](https://fr.wikipedia.org/wiki/Judan_%28go%29) | [SL](https://senseis.xmp.net/?Judan) |
+| 134 | Tournois pro | Kisei | Vert | Le titre japonais le mieux doté, « le saint du go ». Première édition en 1977. Le vainqueur reçoit 43 millions de yens. | [fr](https://fr.wikipedia.org/wiki/Kisei_%28jeu_de_go%29) | [SL](https://senseis.xmp.net/?Kisei) |
+| 135 | Tournois pro | Meijin | Vert | Titre japonais, héritier du rang suprême de l'époque d'Edo. Première édition en 1961-1962. Le vainqueur reçoit 33 millions de yens. | [fr](https://fr.wikipedia.org/wiki/Meijin_%28jeu_de_go%29) | [SL](https://senseis.xmp.net/?Meijin) |
+| 136 | Tournois pro | Mingren | Vert | Titre chinois, équivalent du Meijin japonais. Première édition en 1988. Ma Xiaochun le remporta treize fois d'affilée, de 1989 à 2001. | [fr](https://fr.wikipedia.org/wiki/Mingren) | [SL](https://senseis.xmp.net/?Mingren) |
+| 137 | Tournois pro | Myeongin | Vert | Titre coréen, équivalent du Meijin japonais. Première édition en 1968. Le vainqueur reçoit 70 millions de wons. | [fr](https://fr.wikipedia.org/wiki/Myungin) | [SL](https://senseis.xmp.net/?Myeongin) |
+| 138 | Tournois pro | Oza | Vert | Titre japonais, « le trône ». Première édition en 1953. Le vainqueur reçoit 14 millions de yens. | [en](https://en.wikipedia.org/wiki/%C5%8Cza_%28Go%29) | [SL](https://senseis.xmp.net/?Oza) |
+| 139 | Tournois pro | Qisheng | Vert | Titre chinois, équivalent du Kisei japonais. Première édition en 1999, joué par intermittence depuis. Le vainqueur reçoit 600 000 yuans. | [en](https://en.wikipedia.org/wiki/Qisheng) | [SL](https://senseis.xmp.net/?Qisheng) |
+| 140 | Tournois pro | Tengen | Vert | Titre japonais, du nom du point central du goban. Première édition en 1975. Le vainqueur reçoit 12 à 14 millions de yens. | [fr](https://fr.wikipedia.org/wiki/Tengen_%28go%29) | [SL](https://senseis.xmp.net/?TengenTitle) |
+| 141 | Tournois pro | Tianyuan | Vert | Titre chinois, équivalent du Tengen japonais, dont le vainqueur affronte chaque année le Tengen japonais. Première édition en 1987. Le vainqueur reçoit 400 000 yuans. | [fr](https://fr.wikipedia.org/wiki/Tianyuan_%28go%29) | [SL](https://senseis.xmp.net/?Tianyuan) |
+| 142 | Variantes | Sunjang | Vert | Le baduk traditionnel coréen, qui commence avec des pierres déjà posées sur le plateau, populaire dès le XVIᵉ siècle. | [en §](https://en.wikipedia.org/wiki/Go_variants#Sunjang_baduk) | [SL](https://senseis.xmp.net/?SunjangBaduk) |
+| 143 | Variantes | Torique | Vert | Le go sans bords : chaque côté du plateau se prolonge sur le côté opposé. | [en §](https://en.wikipedia.org/wiki/Go_variants#Borderless_Go) | [SL](https://senseis.xmp.net/?ToroidalGo) |
 
-#### ⚪ Gris — 116 cartes
+#### ⚪ Gris — 127 cartes
 
 | Id | Catégorie | Titre | Rareté | Description | Wikipedia | Sensei's Library |
 |---:|-----------|-------|--------|-------------|-----------|-------------------|
-| 139 | Communauté | Ateliers | Gris | HisokaH revoit les parties des joueureuses de la grotte, par tranche de niveau, pour tous les niveaux. |  |  |
-| 140 | Communauté | Challenges mensuels 2016, 2017 | Gris | Un mois, un challenge. Arriverez-vous à atteindre l'objectif ? |  |  |
-| 141 | Communauté | European Pro Series | Gris | Analyses vidéo de parties de joueureuses professionnel·les européen·nes. |  |  |
-| 142 | Communauté | Fils du Froid | Gris | Maison des combattants, exilée vers le nord : « Le meilleur coup est celui qui brise. » |  |  |
-| 143 | Communauté | FulguroGo Cup | Gris | La série de tournois saisonnière de la communauté, en catégories libre et Novice-Elite. |  |  |
-| 144 | Communauté | Game of Stones | Gris | Un match en quatre victoires, dont les deux joueurs analysent chaque partie ensemble. |  |  |
-| 145 | Communauté | History Pro Player | Gris | Analyses vidéo de parties professionnelles d'un autre siècle. |  |  |
-| 146 | Communauté | Ligue d'Aurak | Gris | La ligue de la communauté, entre membres de maisons adverses pour apporter de la renommée à sa maison. |  |  |
-| 147 | Communauté | Lunaires d'Æther | Gris | Maison des inventeurs, partie vers les îles célestes : « Pourquoi jouer comme hier ? » |  |  |
-| 148 | Communauté | Maisons d'Aurak | Gris | La compétition des quatre maisons, nées de la Partie des Ruptures sur la plaine d'Aurak. |  |  |
-| 149 | Communauté | Nexus Alpha | Gris | Maison des calculateurs, retranchée dans les souterrains de quartz : « Chaque coup est une équation. » |  |  |
-| 150 | Communauté | On discute de livres | Gris | Découverte de divers livres sur le jeu de go. |  |  |
-| 151 | Communauté | Pro Series | Gris | Analyses vidéo de parties professionnelles, pour rendre le compliqué simple. |  |  |
-| 152 | Communauté | Retransmission de tournois | Gris | Commentaires des parties retransmises lors de divers tournois amateurs. |  |  |
-| 153 | Communauté | Sabre Silencieux | Gris | Maison du bushido, retirée dans les forêts de brume : « Un coup, un destin ! » |  |  |
-| 154 | Communauté | Tutoriels | Gris | Les tutoriels vidéo d'HisokaH sur le jeu de go. |  |  |
-| 155 | Formes complexes | Double gueule de tigre | Gris | Deux connexions en gueule de tigre, côte à côte, qui protègent deux points de coupe à la fois. |  |  |
-| 156 | Formes complexes | Double hane | Gris | Deux hane joués coup sur coup : ambitieux, souvent risqué, parfois payant. | [en §](https://en.wikipedia.org/wiki/List_of_Go_terms#Double_hane) | [SL](https://senseis.xmp.net/?DoubleHane) |
-| 157 | Formes complexes | Équerre | Gris | La forme en bouche : cinq pierres autour d'un point vide, pensées pour faire un œil plus que pour connecter. |  | [SL](https://senseis.xmp.net/?MouthShape) |
-| 158 | Formes complexes | Gueule du chien (inu no kao) | Gris | Aussi appelée « bouteille de saké » : un keima joué depuis deux pierres en ikken tobi. |  | [SL](https://senseis.xmp.net/?DogsHead) |
-| 159 | Formes complexes | Gueule du tigre (neko no kao) | Gris | Trois pierres reliées par deux kosumi opposés, la base de la connexion pendante. |  | [SL](https://senseis.xmp.net/?TigersMouth) |
-| 160 | Formes complexes | Nœud de bambou | Gris | Deux paires de pierres parallèles séparées d'une ligne : une connexion impossible à couper. | [fr §](https://fr.wikipedia.org/wiki/Glossaire_du_go#Formes_des_pierres) | [SL](https://senseis.xmp.net/?BambooJoint) |
-| 161 | Formes complexes | Ponnuki | Gris | Le losange de quatre pierres laissé par la capture d'une pierre. « Un ponnuki vaut trente points. » | [en](https://en.wikipedia.org/wiki/Ponnuki) | [SL](https://senseis.xmp.net/?Ponnuki) |
-| 162 | Formes complexes | Table | Gris | Quatre pierres proches de l'Équerre, qui restent connectées tout en gardant un potentiel d'œil. Moins solide que le nœud de bambou. |  | [SL](https://senseis.xmp.net/?TableShape) |
-| 163 | Formes simples | Hane | Gris | Un coup en diagonale qui contourne une pierre adverse au contact. | [fr](https://fr.wikipedia.org/wiki/Hane_%28go%29) | [SL](https://senseis.xmp.net/?Hane) |
-| 164 | Formes simples | Hazama tobi | Gris | Le saut en diagonale, qui laisse une intersection vide entre deux pierres. On l'appelle aussi « pas d'éléphant ». |  | [SL](https://senseis.xmp.net/?HazamaTobi) |
-| 165 | Formes simples | Ikken tobi | Gris | Le saut d'un espace en ligne droite, aussi appelé « tobi ». | [fr §](https://fr.wikipedia.org/wiki/Formes_du_go#Tobi_ou_Ikken-tobi_%28%E4%B8%80%E9%96%93%E3%83%88%E3%83%93%29) | [SL](https://senseis.xmp.net/?OneSpaceJump) |
-| 166 | Formes simples | Keima | Gris | Le saut du cavalier : léger et rapide, mais coupable. | [fr §](https://fr.wikipedia.org/wiki/Formes_du_go#Keima_%28%E6%A1%82%E9%A6%AC%29) | [SL](https://senseis.xmp.net/?Keima) |
-| 167 | Formes simples | Kosumi | Gris | Le coup en diagonale : lent, mais presque impossible à couper. | [fr §](https://fr.wikipedia.org/wiki/Formes_du_go#Kosumi_%28%E3%82%B3%E3%82%B9%E3%83%9F%29) | [SL](https://senseis.xmp.net/?Kosumi) |
-| 168 | Formes simples | Niken tobi | Gris | Le saut de deux espaces en ligne droite, plus rapide et plus fragile que l'ikken tobi. | [fr §](https://fr.wikipedia.org/wiki/Formes_du_go#Niken-tobi) | [SL](https://senseis.xmp.net/?TwoSpaceJump) |
-| 169 | Formes simples | Nobi | Gris | Prolonger en ligne droite, pierre contre pierre : le coup le plus solide qui soit. | [fr §](https://fr.wikipedia.org/wiki/Formes_du_go#Nobi) | [SL](https://senseis.xmp.net/?Nobi) |
-| 170 | Formes simples | Ogeima | Gris | Le grand cavalier, un saut plus étendu que le keima. | [fr §](https://fr.wikipedia.org/wiki/Formes_du_go#%C5%8Cgeima_%28%E5%A4%A7%E3%82%B2%E3%82%A4%E3%83%9E%29) | [SL](https://senseis.xmp.net/?LargeKnightsMove) |
-| 171 | Fuseki | Chinois | Gris | Hoshi, komoku et une extension basse ou haute sur le côté : l'ouverture popularisée par les joueurs chinois. | [en](https://en.wikipedia.org/wiki/Chinese_opening) | [SL](https://senseis.xmp.net/?ChineseOpening) |
-| 172 | Fuseki | Kobayashi | Gris | L'ouverture du style de Kobayashi Koichi, bâtie autour d'un komoku et d'une approche rapide du coin adverse. | [en](https://en.wikipedia.org/wiki/Kobayashi_opening) | [SL](https://senseis.xmp.net/?KobayashiOpening) |
-| 173 | Fuseki | Orthodoxe | Gris | L'ouverture classique : un hoshi ou un komoku et un shimari qui le regarde. |  | [SL](https://senseis.xmp.net/?OrthodoxFuseki) |
-| 174 | Fuseki | Sanrensei | Gris | Trois hoshi alignés sur un même côté, pour un jeu d'influence tourné vers le centre depuis un bord. |  | [SL](https://senseis.xmp.net/?SanrenseiFuseki) |
-| 175 | Fuseki | Shusaku | Gris | L'ouverture de Honinbo Shusaku : trois komoku et le célèbre kosumi de Shusaku. | [en](https://en.wikipedia.org/wiki/Shusaku_opening) | [SL](https://senseis.xmp.net/?ShusakuFuseki) |
-| 176 | Institutions | American Go Association (AGA) | Gris | La fédération des États-Unis. | [fr](https://fr.wikipedia.org/wiki/American_Go_Association) | [SL](https://senseis.xmp.net/?AmericanGoAssociation) |
-| 177 | Institutions | Chinese Weiqi Association (Zhōngguó Wéiqí Xiéhuì) | Gris | L'association qui organise le go professionnel en Chine. | [fr](https://fr.wikipedia.org/wiki/Association_chinoise_de_weiqi) | [SL](https://senseis.xmp.net/?ChineseWeiqiAssociation) |
-| 178 | Institutions | Échelle kyu/dan | Gris | Le système de grades du go : les kyu pour progresser, les dan pour les joueurs confirmés. | [en](https://en.wikipedia.org/wiki/Go_ranks_and_ratings) | [SL](https://senseis.xmp.net/?Rank) |
-| 179 | Institutions | European Go Federation (EGF) | Gris | La fédération européenne, qui réunit les associations d'Europe et délivre un statut professionnel européen. | [fr](https://fr.wikipedia.org/wiki/F%C3%A9d%C3%A9ration_europ%C3%A9enne_de_go) | [SL](https://senseis.xmp.net/?EuropeanGoFederation) |
-| 180 | Institutions | Fédération Française de Go (FFG) | Gris | La fédération française. | [fr](https://fr.wikipedia.org/wiki/F%C3%A9d%C3%A9ration_fran%C3%A7aise_de_go) | [SL](https://senseis.xmp.net/?FrenchGoFederation) |
-| 181 | Institutions | Insei | Gris | Élève d'une école professionnelle, en formation pour devenir pro. | [fr](https://fr.wikipedia.org/wiki/Insei_%28go%29) | [SL](https://senseis.xmp.net/?Insei) |
-| 182 | Institutions | International Go Federation | Gris | La fédération internationale, qui réunit les associations nationales du monde entier. | [fr](https://fr.wikipedia.org/wiki/F%C3%A9d%C3%A9ration_internationale_de_go) | [SL](https://senseis.xmp.net/?InternationalGoFederation) |
-| 183 | Institutions | Japanese Go Association (Nihon Ki-in) | Gris | La principale organisation du go professionnel japonais, fondée en 1924. | [fr](https://fr.wikipedia.org/wiki/Nihon_Ki-in) | [SL](https://senseis.xmp.net/?NihonKiin) |
-| 184 | Institutions | Korean Baduk Association (Hanguk Kiwon) | Gris | L'association qui organise le baduk professionnel en Corée. | [fr](https://fr.wikipedia.org/wiki/Hanguk_Kiwon) | [SL](https://senseis.xmp.net/?HankukKiwon) |
-| 185 | Joueurs | Ali Jabarin | Gris | Professionnel européen depuis 2014, parmi les tout premiers. |  | [SL](https://senseis.xmp.net/?AliJabarin) |
-| 186 | Joueurs | Antti Törmänen | Gris | Professionnel finlandais de la Nihon Ki-in depuis 2016. | [fr](https://fr.wikipedia.org/wiki/Antti_T%C3%B6rm%C3%A4nen_%28joueur_de_go%29) | [SL](https://senseis.xmp.net/?AnttiTormanen) |
-| 187 | Joueurs | Artem Kachanovskyi | Gris | Joueur ukrainien, professionnel depuis 2016, champion de la ligue professionnelle européenne en 2020. | [fr](https://fr.wikipedia.org/wiki/Artem_Katchanovskyi) | [SL](https://senseis.xmp.net/?ArtemKachanovskyi) |
-| 188 | Joueurs | Benjamin Dréan-Guénaïzia | Gris | Joueur français, professionnel européen depuis 2025, connu aussi sous le pseudonyme Ben0. |  | [SL](https://senseis.xmp.net/?BenjaminDreanGuenaizia) |
-| 189 | Joueurs | Chen Qirui | Gris | Professionnel taïwanais depuis 2013. |  | [SL](https://senseis.xmp.net/?ChenQirui) |
-| 190 | Joueurs | Cho Seungah | Gris | Professionnelle coréenne depuis 2016, première vainqueure de la Nanseolheon Cup, en 2021. |  | [SL](https://senseis.xmp.net/?ChoSeungah) |
-| 191 | Joueurs | Dai Junfu | Gris | Amateur chinois installé en France, auteur de plusieurs livres sur la prise de décision, tirés de l'analyse de positions de chuban. |  | [SL](https://senseis.xmp.net/?DaiJunfu) |
-| 192 | Joueurs | Hoshiai Shiho | Gris | Professionnelle japonaise depuis 2013, souvent finaliste des grands titres féminins. |  | [SL](https://senseis.xmp.net/?HoshiaiShiho) |
-| 193 | Joueurs | Inseong Hwang | Gris | Joueur coréen installé en France, maître du Yunguseng Dojang depuis 2010. |  | [SL](https://senseis.xmp.net/?InseongHwang) |
-| 194 | Joueurs | Jan Simara | Gris | Joueur tchèque, professionnel européen depuis 2023. | [en](https://en.wikipedia.org/wiki/Jan_%C5%A0imara) | [SL](https://senseis.xmp.net/?JanSimara) |
-| 195 | Joueurs | Kim Dohyup | Gris | Amateur coréen, souvent le boss final des grands tournois européens. Il collectionne les trophées. |  |  |
-| 196 | Joueurs | Kim Myeong-hun | Gris | Professionnel coréen depuis 2014. |  | [SL](https://senseis.xmp.net/?KimMyeongHun) |
-| 197 | Joueurs | Lee Jihyun | Gris | Professionnel coréen depuis 2010, plusieurs fois vainqueur de la Maxim Cup. |  | [SL](https://senseis.xmp.net/?LeeJihyun) |
-| 198 | Joueurs | Liao Yuanhe | Gris | Professionnel chinois depuis 2013, vainqueur de la 30ᵉ Samsung Cup. |  | [SL](https://senseis.xmp.net/?LiaoYuanhe) |
-| 199 | Joueurs | Maeda Nobuaki | Gris | Professionnel japonais du XXᵉ siècle, surnommé le « dieu du tsumego » pour ses recueils de problèmes. | [en](https://en.wikipedia.org/wiki/Nobuaki_Maeda) | [SL](https://senseis.xmp.net/?MaedaNobuaki) |
-| 200 | Joueurs | Mateusz Surma | Gris | Joueur polonais, professionnel européen depuis 2015. Tel Dracula, il absorbe le sang de ses ennemis sur le plateau. |  | [SL](https://senseis.xmp.net/?MateuszSurma) |
-| 201 | Joueurs | Michael Redmond | Gris | Américain, premier Occidental 9ᵉ dan professionnel au Japon, commentateur des parties d'AlphaGo. | [fr](https://fr.wikipedia.org/wiki/Michael_Redmond_%28joueur_de_go%29) | [SL](https://senseis.xmp.net/?MichaelRedmond) |
-| 202 | Joueurs | Motoki Noguchi | Gris | Joueur japonais installé en France, figure du go français. | [fr](https://fr.wikipedia.org/wiki/Motoki_Noguchi) | [SL](https://senseis.xmp.net/?MotokiNoguchi) |
-| 203 | Joueurs | Oh Jeonga | Gris | Professionnelle coréenne depuis 2011, vainqueure de la Dasan Cup en 2017. Elle a entraîné l'équipe nationale coréenne. |  | [SL](https://senseis.xmp.net/?OhJeonga) |
-| 204 | Joueurs | Park Mingyu | Gris | Professionnel coréen depuis 2013. |  | [SL](https://senseis.xmp.net/?ParkMingyu) |
-| 205 | Joueurs | Pavol Lisy | Gris | Joueur slovaque, premier joueur devenu professionnel européen, en 2014. | [en](https://en.wikipedia.org/wiki/Pavol_Lis%C3%BD) | [SL](https://senseis.xmp.net/?PavolLisy) |
-| 206 | Joueurs | Sada Atsushi | Gris | Professionnel japonais de la Kansai Ki-in depuis 2012. |  | [SL](https://senseis.xmp.net/?SadaAtsushi) |
-| 207 | Joueurs | Stanislaw Frejlak | Gris | Joueur polonais, professionnel européen depuis 2021. |  | [SL](https://senseis.xmp.net/?StanislawFrejlak) |
-| 208 | Joueurs | Suzuki Ayumi | Gris | Professionnelle japonaise depuis 2001, Kisei féminin en 2020. |  | [SL](https://senseis.xmp.net/?SuzukiAyumi) |
-| 209 | Joueurs | Tang Jiawen | Gris | Professionnelle chinoise depuis 2017, vainqueure du Guoshou féminin en 2024. |  | [SL](https://senseis.xmp.net/?TangJiawen) |
-| 210 | Joueurs | Tanguy Le Calvé | Gris | Joueur français, professionnel depuis 2019, parmi les meilleurs du pays. |  | [SL](https://senseis.xmp.net/?TanguyLeCalve) |
-| 211 | Joueurs | Tong Mengcheng | Gris | Professionnel chinois depuis 2008. |  | [SL](https://senseis.xmp.net/?TongMengcheng) |
-| 212 | Joueurs | Wang Yuanjun | Gris | Professionnel taïwanais depuis 2007, commentateur et pédagogue. |  | [SL](https://senseis.xmp.net/?WangYuanjun) |
-| 213 | Joueurs | Yu Zhengqi | Gris | Professionnel taïwanais affilié à la Kansai Ki-in, au Japon, sous le nom de Yo Seiki. |  | [SL](https://senseis.xmp.net/?YuZhengqi) |
-| 214 | Joueurs | Zhou Hongyu | Gris | Professionnelle chinoise depuis 2015, vainqueure de la 10ᵉ Huang Longshi Shuang Deng Cup. |  | [SL](https://senseis.xmp.net/?ZhouHongyu) |
-| 215 | Matériel | Bols (goke) | Gris | Les deux bols, souvent en bois, qui contiennent les pierres de chaque joueur. | [en §](https://en.wikipedia.org/wiki/Go_equipment#Bowls) | [SL](https://senseis.xmp.net/?Goke) |
-| 216 | Matériel | Éventail | Gris | L'éventail que tiennent les professionnels japonais pendant leurs parties. |  | [SL](https://senseis.xmp.net/?Sensu) |
-| 217 | Matériel | Horloge | Gris | La pendule qui décompte le temps de réflexion, jusqu'au byo-yomi. | [fr](https://fr.wikipedia.org/wiki/Pendule_de_jeu) | [SL](https://senseis.xmp.net/?Clock) |
-| 218 | Matériel | Kifu | Gris | La feuille où l'on note les coups d'une partie, numéro par numéro. | [fr](https://fr.wikipedia.org/wiki/Kifu) | [SL](https://senseis.xmp.net/?Kifu) |
-| 219 | Matériel | Pierre (ishi) | Gris | Les pierres noires et blanches, convexes ou biconvexes ; les plus belles sont en ardoise et en coquillage. | [fr](https://fr.wikipedia.org/wiki/Pierre_%28go%29) | [SL](https://senseis.xmp.net/?GoStones) |
-| 220 | Matériel | Plateau (goban) | Gris | Le plateau de 19 × 19 lignes, traditionnellement taillé dans le kaya. | [fr](https://fr.wikipedia.org/wiki/Goban) | [SL](https://senseis.xmp.net/?Goban) |
-| 221 | Meta | Chuban | Gris | Le milieu de partie, là où se livrent les combats. | [fr §](https://fr.wikipedia.org/wiki/Glossaire_du_go#D%C3%A9roulement_de_la_partie) | [SL](https://senseis.xmp.net/?Chuban) |
-| 222 | Meta | Fuseki | Gris | L'ouverture, quand les joueurs se partagent le plateau à grands traits. | [fr](https://fr.wikipedia.org/wiki/Fuseki) | [SL](https://senseis.xmp.net/?Fuseki) |
-| 223 | Meta | Geta | Gris | Le filet : une capture à distance dont la pierre adverse ne peut plus sortir. | [fr](https://fr.wikipedia.org/wiki/Geta_%28go%29) | [SL](https://senseis.xmp.net/?Geta) |
-| 224 | Meta | Glissade du singe | Gris | Le saut sur la première ligne, sous des pierres adverses, pour entamer un territoire par le bord. | [fr §](https://fr.wikipedia.org/wiki/Glossaire_du_go#Coups_utilis%C3%A9s_au_combat) | [SL](https://senseis.xmp.net/?MonkeyJump) |
-| 225 | Meta | Joseki | Gris | Une séquence, en général de coin, jugée localement équilibrée pour les deux joueurs. | [fr](https://fr.wikipedia.org/wiki/Joseki) | [SL](https://senseis.xmp.net/?Joseki) |
-| 226 | Meta | Komi | Gris | Les points donnés à Blanc pour compenser l'avantage du premier coup de Noir. | [fr](https://fr.wikipedia.org/wiki/Komi_%28go%29) | [SL](https://senseis.xmp.net/?Komi) |
-| 227 | Meta | Point vital | Gris | Le point décisif d'une forme, qui fait vivre ou mourir un groupe. | [fr §](https://fr.wikipedia.org/wiki/Glossaire_du_go#Coups_utilis%C3%A9s_au_combat) | [SL](https://senseis.xmp.net/?VitalPoint) |
-| 228 | Meta | Shicho | Gris | L'échelle : une poursuite en atari successifs qui traverse le plateau en zigzag. | [fr](https://fr.wikipedia.org/wiki/Shich%C5%8D) | [SL](https://senseis.xmp.net/?Shicho) |
-| 229 | Meta | Triangle de politesse | Gris | La zone du coin supérieur droit où, par politesse, on joue traditionnellement son premier coup. |  |  |
-| 230 | Meta | Yose | Gris | La fin de partie, phase souvent sous-estimée et souvent la plus longue d'une partie. | [fr](https://fr.wikipedia.org/wiki/Yose) | [SL](https://senseis.xmp.net/?Yose) |
-| 231 | Ouvertures | Hoshi | Gris | Le point étoile 4-4 : rapide et tourné vers l'influence, mais il laisse l'invasion au 3-3. | [fr](https://fr.wikipedia.org/wiki/Hoshi_%28jeu_de_go%29) | [SL](https://senseis.xmp.net/?Hoshi) |
-| 232 | Ouvertures | Komoku | Gris | Le 3-4, l'ouverture de coin classique, équilibrée entre territoire et influence. | [fr §](https://fr.wikipedia.org/wiki/Glossaire_du_go#Points_particuliers_du_goban) | [SL](https://senseis.xmp.net/?Komoku) |
-| 233 | Ouvertures | Mokuhazushi | Gris | Le 3-5, qui vise le côté plutôt que le coin. | [fr §](https://fr.wikipedia.org/wiki/Glossaire_du_go#Points_particuliers_du_goban) | [SL](https://senseis.xmp.net/?Mokuhazushi) |
-| 234 | Ouvertures | Sansan | Gris | Le 3-3, qui prend le coin d'un coup, au prix de l'influence. | [fr §](https://fr.wikipedia.org/wiki/Glossaire_du_go#Points_particuliers_du_goban) | [SL](https://senseis.xmp.net/?Sansan) |
-| 235 | Ouvertures | Shimari | Gris | Deux pierres qui ferment un coin et rendent l'invasion difficile. | [fr §](https://fr.wikipedia.org/wiki/Glossaire_du_go#Formes_des_pierres) | [SL](https://senseis.xmp.net/?Shimari) |
-| 236 | Ouvertures | Takamoku | Gris | Le 4-5, orienté vers l'influence. | [fr §](https://fr.wikipedia.org/wiki/Glossaire_du_go#Points_particuliers_du_goban) | [SL](https://senseis.xmp.net/?Takamoku) |
-| 237 | Ouvertures | Tengen | Gris | Le ciel : le point central du goban. | [fr §](https://fr.wikipedia.org/wiki/Glossaire_du_go#Points_particuliers_du_goban) | [SL](https://senseis.xmp.net/?Tengen) |
-| 238 | Serveurs | FOX Weiqi | Gris | Le serveur chinois, l'un des plus fréquentés du monde. |  | [SL](https://senseis.xmp.net/?FoxGoServer) |
-| 239 | Serveurs | Go Quest | Gris | L'application des parties rapides sur petits plateaux. |  | [SL](https://senseis.xmp.net/?GoQuest) |
-| 240 | Serveurs | IGS Pandanet | Gris | Le serveur japonais Internet Go Server, l'un des tout premiers serveurs de go en ligne. | [en](https://en.wikipedia.org/wiki/Pandanet) | [SL](https://senseis.xmp.net/?IGS) |
-| 241 | Serveurs | KGS | Gris | Le serveur historique de la communauté occidentale, où est née la Grotte de l'Hermite. | [fr](https://fr.wikipedia.org/wiki/KGS) | [SL](https://senseis.xmp.net/?KGS) |
-| 242 | Serveurs | OGS | Gris | L'Online Go Server, où se joue la Ligue d'Aurak. |  | [SL](https://senseis.xmp.net/?OGS) |
-| 243 | Tournois pro | Ing Cup | Gris | Tournoi mondial joué tous les quatre ans depuis 1988, surnommé les « Jeux olympiques du go ». | [fr](https://fr.wikipedia.org/wiki/Coupe_Ing) | [SL](https://senseis.xmp.net/?IngCup) |
-| 244 | Tournois pro | Japan-China-Korea Ryusei | Gris | Tournoi télévisé en parties rapides regroupant les vainqueurs du Ryusei, Longxing et Ryongsang. |  | [SL](https://senseis.xmp.net/?JapanChinaKoreaRyusei) |
-| 245 | Tournois pro | LG Cup | Gris | Tournoi mondial coréen créé en 1996. | [fr](https://fr.wikipedia.org/wiki/Coupe_LG) | [SL](https://senseis.xmp.net/?LGCup) |
-| 246 | Tournois pro | Longxing | Gris | Tournoi chinois télévisé en parties rapides, équivalent du Ryusei japonais et du Ryongsang coréen. |  | [SL](https://senseis.xmp.net/?Longxing) |
-| 247 | Tournois pro | Ryongsang | Gris | Tournoi coréen télévisé en parties rapides, équivalent du Ryusei japonais et du Longxing chinois. |  | [SL](https://senseis.xmp.net/?Ryongsang) |
-| 248 | Tournois pro | Ryusei | Gris | Tournoi japonais télévisé en parties rapides, équivalent du Longxing chinois et du Ryongsang coréen. |  | [SL](https://senseis.xmp.net/?Ryusei) |
-| 249 | Tournois pro | Samsung Cup | Gris | Tournoi mondial coréen, l'un des plus prestigieux. | [fr](https://fr.wikipedia.org/wiki/Coupe_Samsung) | [SL](https://senseis.xmp.net/?SamsungCup) |
-| 250 | Tournois pro | Senko Cup | Gris | Tournoi mondial féminin organisé au Japon. |  | [SL](https://senseis.xmp.net/?SenkoCup) |
-| 251 | Variantes | Atarigo | Gris | Le premier qui capture gagne : la variante d'initiation. | [en](https://en.wikipedia.org/wiki/Capture_go) | [SL](https://senseis.xmp.net/?Atarigo) |
-| 252 | Variantes | Petango | Gris | Le mélange de la pétanque et du go : on lance les pierres sur le goban. |  |  |
-| 253 | Variantes | Rengo | Gris | Le go en équipes : les partenaires jouent à tour de rôle, sans se concerter. | [en §](https://en.wikipedia.org/wiki/Go_variants#Rengo) | [SL](https://senseis.xmp.net/?Rengo) |
-| 254 | Variantes | Unicolor | Gris | Les deux joueurs jouent avec des pierres de même couleur, et doivent se souvenir de qui est qui. | [en §](https://en.wikipedia.org/wiki/Go_variants#One_Color_Go) | [SL](https://senseis.xmp.net/?OneColourGo) |
+| 144 | Communauté | Ateliers | Gris | HisokaH revoit les parties des joueureuses de la grotte, par tranche de niveau, pour tous les niveaux. |  |  |
+| 145 | Communauté | Challenges mensuels 2016, 2017 | Gris | Un mois, un challenge. Arriverez-vous à atteindre l'objectif ? |  |  |
+| 146 | Communauté | European Pro Series | Gris | Analyses vidéo de parties de joueureuses professionnel·les européen·nes. |  |  |
+| 147 | Communauté | Fils du Froid | Gris | Maison des combattants, exilée vers le nord : « Le meilleur coup est celui qui brise. » |  |  |
+| 148 | Communauté | FulguroGo Cup | Gris | La série de tournois saisonnière de la communauté, en catégories libre et Novice-Elite. |  |  |
+| 149 | Communauté | Game of Stones | Gris | Un match en quatre victoires, dont les deux joueurs analysent chaque partie ensemble. |  |  |
+| 150 | Communauté | History Pro Player | Gris | Analyses vidéo de parties professionnelles d'un autre siècle. |  |  |
+| 151 | Communauté | Ligue d'Aurak | Gris | La ligue de la communauté, entre membres de maisons adverses pour apporter de la renommée à sa maison. |  |  |
+| 152 | Communauté | Lunaires d'Æther | Gris | Maison des inventeurs, partie vers les îles célestes : « Pourquoi jouer comme hier ? » |  |  |
+| 153 | Communauté | Maisons d'Aurak | Gris | La compétition des quatre maisons, nées de la Partie des Ruptures sur la plaine d'Aurak. |  |  |
+| 154 | Communauté | Nexus Alpha | Gris | Maison des calculateurs, retranchée dans les souterrains de quartz : « Chaque coup est une équation. » |  |  |
+| 155 | Communauté | On discute de livres | Gris | Découverte de divers livres sur le jeu de go. |  |  |
+| 156 | Communauté | Pro Series | Gris | Analyses vidéo de parties professionnelles, pour rendre le compliqué simple. |  |  |
+| 157 | Communauté | Retransmission de tournois | Gris | Commentaires des parties retransmises lors de divers tournois amateurs. |  |  |
+| 158 | Communauté | Sabre Silencieux | Gris | Maison du bushido, retirée dans les forêts de brume : « Un coup, un destin ! » |  |  |
+| 159 | Communauté | Tutoriels | Gris | Les tutoriels vidéo d'HisokaH sur le jeu de go. |  |  |
+| 160 | Formes complexes | Double gueule de tigre | Gris | Deux connexions en gueule de tigre, côte à côte, qui protègent deux points de coupe à la fois. |  |  |
+| 161 | Formes complexes | Double hane | Gris | Deux hane joués coup sur coup : ambitieux, souvent risqué, parfois payant. | [en §](https://en.wikipedia.org/wiki/List_of_Go_terms#Double_hane) | [SL](https://senseis.xmp.net/?DoubleHane) |
+| 162 | Formes complexes | Équerre | Gris | La forme en bouche : cinq pierres autour d'un point vide, pensées pour faire un œil plus que pour connecter. |  | [SL](https://senseis.xmp.net/?MouthShape) |
+| 163 | Formes complexes | Gueule du chien (inu no kao) | Gris | Aussi appelée « bouteille de saké » : un keima joué depuis deux pierres en ikken tobi. |  | [SL](https://senseis.xmp.net/?DogsHead) |
+| 164 | Formes complexes | Gueule du tigre (neko no kao) | Gris | Trois pierres reliées par deux kosumi opposés, la base de la connexion pendante. |  | [SL](https://senseis.xmp.net/?TigersMouth) |
+| 165 | Formes complexes | Nœud de bambou | Gris | Deux paires de pierres parallèles séparées d'une ligne : une connexion impossible à couper. | [fr §](https://fr.wikipedia.org/wiki/Glossaire_du_go#Formes_des_pierres) | [SL](https://senseis.xmp.net/?BambooJoint) |
+| 166 | Formes complexes | Ponnuki | Gris | Le losange de quatre pierres laissé par la capture d'une pierre. « Un ponnuki vaut trente points. » | [en](https://en.wikipedia.org/wiki/Ponnuki) | [SL](https://senseis.xmp.net/?Ponnuki) |
+| 167 | Formes complexes | Table | Gris | Quatre pierres proches de l'Équerre, qui restent connectées tout en gardant un potentiel d'œil. Moins solide que le nœud de bambou. |  | [SL](https://senseis.xmp.net/?TableShape) |
+| 168 | Formes simples | Hane | Gris | Un coup en diagonale qui contourne une pierre adverse au contact. | [fr](https://fr.wikipedia.org/wiki/Hane_%28go%29) | [SL](https://senseis.xmp.net/?Hane) |
+| 169 | Formes simples | Hazama tobi | Gris | Le saut en diagonale, qui laisse une intersection vide entre deux pierres. On l'appelle aussi « pas d'éléphant ». |  | [SL](https://senseis.xmp.net/?HazamaTobi) |
+| 170 | Formes simples | Ikken tobi | Gris | Le saut d'un espace en ligne droite, aussi appelé « tobi ». | [fr §](https://fr.wikipedia.org/wiki/Formes_du_go#Tobi_ou_Ikken-tobi_%28%E4%B8%80%E9%96%93%E3%83%88%E3%83%93%29) | [SL](https://senseis.xmp.net/?OneSpaceJump) |
+| 171 | Formes simples | Keima | Gris | Le saut du cavalier : léger et rapide, mais coupable. | [fr §](https://fr.wikipedia.org/wiki/Formes_du_go#Keima_%28%E6%A1%82%E9%A6%AC%29) | [SL](https://senseis.xmp.net/?Keima) |
+| 172 | Formes simples | Kosumi | Gris | Le coup en diagonale : lent, mais presque impossible à couper. | [fr §](https://fr.wikipedia.org/wiki/Formes_du_go#Kosumi_%28%E3%82%B3%E3%82%B9%E3%83%9F%29) | [SL](https://senseis.xmp.net/?Kosumi) |
+| 173 | Formes simples | Niken tobi | Gris | Le saut de deux espaces en ligne droite, plus rapide et plus fragile que l'ikken tobi. | [fr §](https://fr.wikipedia.org/wiki/Formes_du_go#Niken-tobi) | [SL](https://senseis.xmp.net/?TwoSpaceJump) |
+| 174 | Formes simples | Nobi | Gris | Prolonger en ligne droite, pierre contre pierre : le coup le plus solide qui soit. | [fr §](https://fr.wikipedia.org/wiki/Formes_du_go#Nobi) | [SL](https://senseis.xmp.net/?Nobi) |
+| 175 | Formes simples | Ogeima | Gris | Le grand cavalier, un saut plus étendu que le keima. | [fr §](https://fr.wikipedia.org/wiki/Formes_du_go#%C5%8Cgeima_%28%E5%A4%A7%E3%82%B2%E3%82%A4%E3%83%9E%29) | [SL](https://senseis.xmp.net/?LargeKnightsMove) |
+| 176 | Fuseki | Chinois | Gris | Hoshi, komoku et une extension basse ou haute sur le côté : l'ouverture popularisée par les joueurs chinois. | [en](https://en.wikipedia.org/wiki/Chinese_opening) | [SL](https://senseis.xmp.net/?ChineseOpening) |
+| 177 | Fuseki | Kobayashi | Gris | L'ouverture du style de Kobayashi Koichi, bâtie autour d'un komoku et d'une approche rapide du coin adverse. | [en](https://en.wikipedia.org/wiki/Kobayashi_opening) | [SL](https://senseis.xmp.net/?KobayashiOpening) |
+| 178 | Fuseki | Orthodoxe | Gris | L'ouverture classique : un hoshi ou un komoku et un shimari qui le regarde. |  | [SL](https://senseis.xmp.net/?OrthodoxFuseki) |
+| 179 | Fuseki | Sanrensei | Gris | Trois hoshi alignés sur un même côté, pour un jeu d'influence tourné vers le centre depuis un bord. |  | [SL](https://senseis.xmp.net/?SanrenseiFuseki) |
+| 180 | Fuseki | Shusaku | Gris | L'ouverture de Honinbo Shusaku : trois komoku et le célèbre kosumi de Shusaku. | [en](https://en.wikipedia.org/wiki/Shusaku_opening) | [SL](https://senseis.xmp.net/?ShusakuFuseki) |
+| 181 | Institutions | American Go Association (AGA) | Gris | La fédération des États-Unis. | [fr](https://fr.wikipedia.org/wiki/American_Go_Association) | [SL](https://senseis.xmp.net/?AmericanGoAssociation) |
+| 182 | Institutions | Chinese Weiqi Association (Zhōngguó Wéiqí Xiéhuì) | Gris | L'association qui organise le go professionnel en Chine. | [fr](https://fr.wikipedia.org/wiki/Association_chinoise_de_weiqi) | [SL](https://senseis.xmp.net/?ChineseWeiqiAssociation) |
+| 183 | Institutions | Échelle kyu/dan | Gris | Le système de grades du go : les kyu pour progresser, les dan pour les joueurs confirmés. | [en](https://en.wikipedia.org/wiki/Go_ranks_and_ratings) | [SL](https://senseis.xmp.net/?Rank) |
+| 184 | Institutions | European Go Federation (EGF) | Gris | La fédération européenne, qui réunit les associations d'Europe et délivre un statut professionnel européen. | [fr](https://fr.wikipedia.org/wiki/F%C3%A9d%C3%A9ration_europ%C3%A9enne_de_go) | [SL](https://senseis.xmp.net/?EuropeanGoFederation) |
+| 185 | Institutions | Fédération Française de Go (FFG) | Gris | La fédération française. | [fr](https://fr.wikipedia.org/wiki/F%C3%A9d%C3%A9ration_fran%C3%A7aise_de_go) | [SL](https://senseis.xmp.net/?FrenchGoFederation) |
+| 186 | Institutions | Insei | Gris | Élève d'une école professionnelle, en formation pour devenir pro. | [fr](https://fr.wikipedia.org/wiki/Insei_%28go%29) | [SL](https://senseis.xmp.net/?Insei) |
+| 187 | Institutions | International Go Federation | Gris | La fédération internationale, qui réunit les associations nationales du monde entier. | [fr](https://fr.wikipedia.org/wiki/F%C3%A9d%C3%A9ration_internationale_de_go) | [SL](https://senseis.xmp.net/?InternationalGoFederation) |
+| 188 | Institutions | Japanese Go Association (Nihon Ki-in) | Gris | La principale organisation du go professionnel japonais, fondée en 1924. | [fr](https://fr.wikipedia.org/wiki/Nihon_Ki-in) | [SL](https://senseis.xmp.net/?NihonKiin) |
+| 189 | Institutions | Korean Baduk Association (Hanguk Kiwon) | Gris | L'association qui organise le baduk professionnel en Corée. | [fr](https://fr.wikipedia.org/wiki/Hanguk_Kiwon) | [SL](https://senseis.xmp.net/?HankukKiwon) |
+| 190 | Joueurs | Ali Jabarin | Gris | Professionnel européen depuis 2014, parmi les tout premiers. |  | [SL](https://senseis.xmp.net/?AliJabarin) |
+| 191 | Joueurs | Antti Törmänen | Gris | Professionnel finlandais de la Nihon Ki-in depuis 2016. | [fr](https://fr.wikipedia.org/wiki/Antti_T%C3%B6rm%C3%A4nen_%28joueur_de_go%29) | [SL](https://senseis.xmp.net/?AnttiTormanen) |
+| 192 | Joueurs | Artem Kachanovskyi | Gris | Joueur ukrainien, professionnel depuis 2016, champion de la ligue professionnelle européenne en 2020. | [fr](https://fr.wikipedia.org/wiki/Artem_Katchanovskyi) | [SL](https://senseis.xmp.net/?ArtemKachanovskyi) |
+| 193 | Joueurs | Benjamin Dréan-Guénaïzia | Gris | Joueur français, professionnel européen depuis 2025, connu aussi sous le pseudonyme Ben0. |  | [SL](https://senseis.xmp.net/?BenjaminDreanGuenaizia) |
+| 194 | Joueurs | Chen Qirui | Gris | Professionnel taïwanais depuis 2013. |  | [SL](https://senseis.xmp.net/?ChenQirui) |
+| 195 | Joueurs | Cho Seungah | Gris | Professionnelle coréenne depuis 2016, première vainqueure de la Nanseolheon Cup, en 2021. |  | [SL](https://senseis.xmp.net/?ChoSeungah) |
+| 196 | Joueurs | Dai Junfu | Gris | Amateur chinois installé en France, auteur de plusieurs livres sur la prise de décision, tirés de l'analyse de positions de chuban. |  | [SL](https://senseis.xmp.net/?DaiJunfu) |
+| 197 | Joueurs | Hoshiai Shiho | Gris | Professionnelle japonaise depuis 2013, souvent finaliste des grands titres féminins. |  | [SL](https://senseis.xmp.net/?HoshiaiShiho) |
+| 198 | Joueurs | Inseong Hwang | Gris | Joueur coréen installé en France, maître du Yunguseng Dojang depuis 2010. |  | [SL](https://senseis.xmp.net/?InseongHwang) |
+| 199 | Joueurs | Jan Simara | Gris | Joueur tchèque, professionnel européen depuis 2023. | [en](https://en.wikipedia.org/wiki/Jan_%C5%A0imara) | [SL](https://senseis.xmp.net/?JanSimara) |
+| 200 | Joueurs | Kim Dohyup | Gris | Amateur coréen, souvent le boss final des grands tournois européens. Il collectionne les trophées. |  |  |
+| 201 | Joueurs | Kim Myeong-hun | Gris | Professionnel coréen depuis 2014. |  | [SL](https://senseis.xmp.net/?KimMyeongHun) |
+| 202 | Joueurs | Lee Jihyun | Gris | Professionnel coréen depuis 2010, vainqueur à deux reprises de la Maxim Cup. |  | [SL](https://senseis.xmp.net/?LeeJihyun) |
+| 203 | Joueurs | Liao Yuanhe | Gris | Professionnel chinois depuis 2013, vainqueur de la 30ᵉ Samsung Cup. |  | [SL](https://senseis.xmp.net/?LiaoYuanhe) |
+| 204 | Joueurs | Maeda Nobuaki | Gris | Professionnel japonais du XXᵉ siècle, surnommé le « dieu du tsumego » pour ses recueils de problèmes. | [en](https://en.wikipedia.org/wiki/Nobuaki_Maeda) | [SL](https://senseis.xmp.net/?MaedaNobuaki) |
+| 205 | Joueurs | Mateusz Surma | Gris | Joueur polonais, professionnel européen depuis 2015. Tel Dracula, il absorbe le sang de ses ennemis sur le plateau. |  | [SL](https://senseis.xmp.net/?MateuszSurma) |
+| 206 | Joueurs | Michael Redmond | Gris | Américain, premier Occidental 9ᵉ dan professionnel au Japon, commentateur des parties d'AlphaGo. | [fr](https://fr.wikipedia.org/wiki/Michael_Redmond_%28joueur_de_go%29) | [SL](https://senseis.xmp.net/?MichaelRedmond) |
+| 207 | Joueurs | Motoki Noguchi | Gris | Joueur japonais installé en France, figure du go français. | [fr](https://fr.wikipedia.org/wiki/Motoki_Noguchi) | [SL](https://senseis.xmp.net/?MotokiNoguchi) |
+| 208 | Joueurs | Oh Jeonga | Gris | Professionnelle coréenne depuis 2011, vainqueure de la Dasan Cup en 2017. Elle a entraîné l'équipe nationale coréenne. |  | [SL](https://senseis.xmp.net/?OhJeonga) |
+| 209 | Joueurs | Park Mingyu | Gris | Professionnel coréen depuis 2013. |  | [SL](https://senseis.xmp.net/?ParkMingyu) |
+| 210 | Joueurs | Pavol Lisy | Gris | Joueur slovaque, premier joueur devenu professionnel européen, en 2014. | [en](https://en.wikipedia.org/wiki/Pavol_Lis%C3%BD) | [SL](https://senseis.xmp.net/?PavolLisy) |
+| 211 | Joueurs | Sada Atsushi | Gris | Professionnel japonais de la Kansai Ki-in depuis 2012. |  | [SL](https://senseis.xmp.net/?SadaAtsushi) |
+| 212 | Joueurs | Stanislaw Frejlak | Gris | Joueur polonais, professionnel européen depuis 2021. |  | [SL](https://senseis.xmp.net/?StanislawFrejlak) |
+| 213 | Joueurs | Suzuki Ayumi | Gris | Professionnelle japonaise depuis 2001, Kisei féminin en 2020. |  | [SL](https://senseis.xmp.net/?SuzukiAyumi) |
+| 214 | Joueurs | Tang Jiawen | Gris | Professionnelle chinoise depuis 2017, vainqueure du Guoshou féminin en 2024. |  | [SL](https://senseis.xmp.net/?TangJiawen) |
+| 215 | Joueurs | Tanguy Le Calvé | Gris | Joueur français, professionnel depuis 2019, parmi les meilleurs du pays. |  | [SL](https://senseis.xmp.net/?TanguyLeCalve) |
+| 216 | Joueurs | Tong Mengcheng | Gris | Professionnel chinois depuis 2008. |  | [SL](https://senseis.xmp.net/?TongMengcheng) |
+| 217 | Joueurs | Wang Yuanjun | Gris | Professionnel taïwanais depuis 2007, commentateur et pédagogue. |  | [SL](https://senseis.xmp.net/?WangYuanjun) |
+| 218 | Joueurs | Yu Zhengqi | Gris | Professionnel taïwanais affilié à la Kansai Ki-in, au Japon, sous le nom de Yo Seiki. |  | [SL](https://senseis.xmp.net/?YuZhengqi) |
+| 219 | Joueurs | Zhou Hongyu | Gris | Professionnelle chinoise depuis 2015, vainqueure de la 10ᵉ Huang Longshi Shuang Deng Cup. |  | [SL](https://senseis.xmp.net/?ZhouHongyu) |
+| 220 | Matériel | Bols (goke) | Gris | Les deux bols, souvent en bois, qui contiennent les pierres de chaque joueur. | [en §](https://en.wikipedia.org/wiki/Go_equipment#Bowls) | [SL](https://senseis.xmp.net/?Goke) |
+| 221 | Matériel | Éventail | Gris | L'éventail que tiennent les professionnels japonais pendant leurs parties. |  | [SL](https://senseis.xmp.net/?Sensu) |
+| 222 | Matériel | Horloge | Gris | La pendule qui décompte le temps de réflexion, jusqu'au byo-yomi. | [fr](https://fr.wikipedia.org/wiki/Pendule_de_jeu) | [SL](https://senseis.xmp.net/?Clock) |
+| 223 | Matériel | Kifu | Gris | La feuille où l'on note les coups d'une partie, numéro par numéro. | [fr](https://fr.wikipedia.org/wiki/Kifu) | [SL](https://senseis.xmp.net/?Kifu) |
+| 224 | Matériel | Pierre (ishi) | Gris | Les pierres noires et blanches, convexes ou biconvexes ; les plus belles sont en ardoise et en coquillage. | [fr](https://fr.wikipedia.org/wiki/Pierre_%28go%29) | [SL](https://senseis.xmp.net/?GoStones) |
+| 225 | Matériel | Plateau (goban) | Gris | Le plateau de 19 × 19 lignes, traditionnellement taillé dans le kaya. | [fr](https://fr.wikipedia.org/wiki/Goban) | [SL](https://senseis.xmp.net/?Goban) |
+| 226 | Meta | Chuban | Gris | Le milieu de partie, là où se livrent les combats. | [fr §](https://fr.wikipedia.org/wiki/Glossaire_du_go#D%C3%A9roulement_de_la_partie) | [SL](https://senseis.xmp.net/?Chuban) |
+| 227 | Meta | Fuseki | Gris | L'ouverture, quand les joueurs se partagent le plateau à grands traits. | [fr](https://fr.wikipedia.org/wiki/Fuseki) | [SL](https://senseis.xmp.net/?Fuseki) |
+| 228 | Meta | Geta | Gris | Le filet : une capture à distance dont la pierre adverse ne peut plus sortir. | [fr](https://fr.wikipedia.org/wiki/Geta_%28go%29) | [SL](https://senseis.xmp.net/?Geta) |
+| 229 | Meta | Glissade du singe | Gris | Le saut sur la première ligne, sous des pierres adverses, pour entamer un territoire par le bord. | [fr §](https://fr.wikipedia.org/wiki/Glossaire_du_go#Coups_utilis%C3%A9s_au_combat) | [SL](https://senseis.xmp.net/?MonkeyJump) |
+| 230 | Meta | Joseki | Gris | Une séquence, en général de coin, jugée localement équilibrée pour les deux joueurs. | [fr](https://fr.wikipedia.org/wiki/Joseki) | [SL](https://senseis.xmp.net/?Joseki) |
+| 231 | Meta | Komi | Gris | Les points donnés à Blanc pour compenser l'avantage du premier coup de Noir. | [fr](https://fr.wikipedia.org/wiki/Komi_%28go%29) | [SL](https://senseis.xmp.net/?Komi) |
+| 232 | Meta | Point vital | Gris | Le point décisif d'une forme, qui fait vivre ou mourir un groupe. | [fr §](https://fr.wikipedia.org/wiki/Glossaire_du_go#Coups_utilis%C3%A9s_au_combat) | [SL](https://senseis.xmp.net/?VitalPoint) |
+| 233 | Meta | Shicho | Gris | L'échelle : une poursuite en atari successifs qui traverse le plateau en zigzag. | [fr](https://fr.wikipedia.org/wiki/Shich%C5%8D) | [SL](https://senseis.xmp.net/?Shicho) |
+| 234 | Meta | Triangle de politesse | Gris | La zone du coin supérieur droit où, par politesse, on joue traditionnellement son premier coup. |  |  |
+| 235 | Meta | Yose | Gris | La fin de partie, phase souvent sous-estimée et souvent la plus longue d'une partie. | [fr](https://fr.wikipedia.org/wiki/Yose) | [SL](https://senseis.xmp.net/?Yose) |
+| 236 | Ouvertures | Hoshi | Gris | Le point étoile 4-4 : rapide et tourné vers l'influence, mais il laisse l'invasion au 3-3. | [fr](https://fr.wikipedia.org/wiki/Hoshi_%28jeu_de_go%29) | [SL](https://senseis.xmp.net/?Hoshi) |
+| 237 | Ouvertures | Komoku | Gris | Le 3-4, l'ouverture de coin classique, équilibrée entre territoire et influence. | [fr §](https://fr.wikipedia.org/wiki/Glossaire_du_go#Points_particuliers_du_goban) | [SL](https://senseis.xmp.net/?Komoku) |
+| 238 | Ouvertures | Mokuhazushi | Gris | Le 3-5, qui vise le côté plutôt que le coin. | [fr §](https://fr.wikipedia.org/wiki/Glossaire_du_go#Points_particuliers_du_goban) | [SL](https://senseis.xmp.net/?Mokuhazushi) |
+| 239 | Ouvertures | Sansan | Gris | Le 3-3, qui prend le coin d'un coup, au prix de l'influence. | [fr §](https://fr.wikipedia.org/wiki/Glossaire_du_go#Points_particuliers_du_goban) | [SL](https://senseis.xmp.net/?Sansan) |
+| 240 | Ouvertures | Shimari | Gris | Deux pierres qui ferment un coin et rendent l'invasion difficile. | [fr §](https://fr.wikipedia.org/wiki/Glossaire_du_go#Formes_des_pierres) | [SL](https://senseis.xmp.net/?Shimari) |
+| 241 | Ouvertures | Takamoku | Gris | Le 4-5, orienté vers l'influence. | [fr §](https://fr.wikipedia.org/wiki/Glossaire_du_go#Points_particuliers_du_goban) | [SL](https://senseis.xmp.net/?Takamoku) |
+| 242 | Ouvertures | Tengen | Gris | Le ciel : le point central du goban. | [fr §](https://fr.wikipedia.org/wiki/Glossaire_du_go#Points_particuliers_du_goban) | [SL](https://senseis.xmp.net/?Tengen) |
+| 243 | Serveurs | FOX Weiqi | Gris | Le serveur chinois, l'un des plus fréquentés du monde. |  | [SL](https://senseis.xmp.net/?FoxGoServer) |
+| 244 | Serveurs | Go Quest | Gris | L'application des parties rapides sur petits plateaux. |  | [SL](https://senseis.xmp.net/?GoQuest) |
+| 245 | Serveurs | IGS Pandanet | Gris | Le serveur japonais Internet Go Server, l'un des tout premiers serveurs de go en ligne. | [en](https://en.wikipedia.org/wiki/Pandanet) | [SL](https://senseis.xmp.net/?IGS) |
+| 246 | Serveurs | KGS | Gris | Le serveur historique de la communauté occidentale, où est née la Grotte de l'Hermite. | [fr](https://fr.wikipedia.org/wiki/KGS) | [SL](https://senseis.xmp.net/?KGS) |
+| 247 | Serveurs | OGS | Gris | L'Online Go Server, où se joue la Ligue d'Aurak. |  | [SL](https://senseis.xmp.net/?OGS) |
+| 248 | Tournois pro | Agon Cup | Gris | Tournoi chinois en parties rapides créé en 1999, l'Ahan Tongshan Cup. Son vainqueur affrontait celui de l'Agon-Kiriyama Cup japonaise. | [en](https://en.wikipedia.org/wiki/Ahan_Tongshan_Cup) | [SL](https://senseis.xmp.net/?ChineseAgonCup) |
+| 249 | Tournois pro | GS Caltex Cup | Gris | Tournoi coréen créé en 1996 sous le nom de Techron Cup, finale en cinq parties. Le vainqueur reçoit 70 millions de wons. | [en](https://en.wikipedia.org/wiki/GS_Caltex_Cup) | [SL](https://senseis.xmp.net/?GSCaltexCup) |
+| 250 | Tournois pro | Guoshou | Gris | Titre taïwanais, « le maître national ». La série actuelle date de 2005. Le vainqueur reçoit 500 000 dollars taïwanais. |  | [SL](https://senseis.xmp.net/?TaiwanGuoshou) |
+| 251 | Tournois pro | Ing Cup | Gris | Tournoi mondial joué tous les quatre ans depuis 1988, surnommé les « Jeux olympiques du go ». | [fr](https://fr.wikipedia.org/wiki/Coupe_Ing) | [SL](https://senseis.xmp.net/?IngCup) |
+| 252 | Tournois pro | Japan-China-Korea Ryusei | Gris | Tournoi télévisé en parties rapides regroupant les vainqueurs du Ryusei, Longxing et Ryongsang. |  | [SL](https://senseis.xmp.net/?JapanChinaKoreaRyusei) |
+| 253 | Tournois pro | LG Cup | Gris | Tournoi mondial coréen créé en 1996. | [fr](https://fr.wikipedia.org/wiki/Coupe_LG) | [SL](https://senseis.xmp.net/?LGCup) |
+| 254 | Tournois pro | Longxing | Gris | Tournoi chinois télévisé en parties rapides, équivalent du Ryusei japonais et du Ryongsang coréen. |  | [SL](https://senseis.xmp.net/?Longxing) |
+| 255 | Tournois pro | Maxim Cup | Gris | Tournoi coréen télévisé en parties rapides, créé en 2000 et réservé aux 9ᵉ dan. | [en](https://en.wikipedia.org/wiki/Maxim_Cup) | [SL](https://senseis.xmp.net/?MaximCup) |
+| 256 | Tournois pro | Mingren | Gris | Titre taïwanais, le mieux doté du pays. Disputé de 1974 à 2010, il est repris en 2020 par la Haifong Go Academy. Le vainqueur reçoit 1,8 million de dollars taïwanais. |  | [SL](https://senseis.xmp.net/?TaiwanMingren) |
+| 257 | Tournois pro | MLily Cup | Gris | Tournoi mondial chinois créé en 2013, joué tous les deux ans. Sa 3ᵉ édition fut la première à inviter un programme, DeepZenGo. Le vainqueur reçoit 1,8 million de yuans. | [en](https://en.wikipedia.org/wiki/MLily_Cup) | [SL](https://senseis.xmp.net/?MLilyCup) |
+| 258 | Tournois pro | Nongshim Cup | Gris | Tournoi mondial par équipes créé en 1999 entre la Chine, la Corée et le Japon : le vainqueur de chaque partie reste en jeu. Lee Changho y gagna 14 parties sans une défaite. | [fr](https://fr.wikipedia.org/wiki/Coupe_Nongshim) | [SL](https://senseis.xmp.net/?NongshimCup) |
+| 259 | Tournois pro | Qiwang | Gris | Titre taïwanais, « le roi du go ». Première édition en 2008. Le vainqueur reçoit 1,2 million de dollars taïwanais. |  | [SL](https://senseis.xmp.net/?TaiwanQiwang) |
+| 260 | Tournois pro | Quzhou-Lanke Cup | Gris | Tournoi chinois créé en 2006, joué tous les deux ans. Il tient son nom du mont Lanke, où la légende veut qu'un bûcheron, en regardant deux immortels jouer au go, vit pourrir le manche de sa hache. | [en](https://en.wikipedia.org/wiki/Quzhou-Lanke_Cup) | [SL](https://senseis.xmp.net/?QuzhouLankeCup) |
+| 261 | Tournois pro | Ryongsang | Gris | Tournoi coréen télévisé en parties rapides, équivalent du Ryusei japonais et du Longxing chinois. |  | [SL](https://senseis.xmp.net/?Ryongsang) |
+| 262 | Tournois pro | Ryusei | Gris | Tournoi japonais télévisé en parties rapides, équivalent du Longxing chinois et du Ryongsang coréen. |  | [SL](https://senseis.xmp.net/?Ryusei) |
+| 263 | Tournois pro | Samsung Cup | Gris | Tournoi mondial coréen, l'un des plus prestigieux. | [fr](https://fr.wikipedia.org/wiki/Coupe_Samsung) | [SL](https://senseis.xmp.net/?SamsungCup) |
+| 264 | Tournois pro | Senko Cup | Gris | Tournoi mondial féminin organisé au Japon. |  | [SL](https://senseis.xmp.net/?SenkoCup) |
+| 265 | Tournois pro | Supreme Player | Gris | Tournoi coréen créé en 2020 : une ligue désigne le challenger du tenant, en cinq parties. Le vainqueur reçoit 70 millions de wons. |  | [SL](https://senseis.xmp.net/?SupremePlayer) |
+| 266 | Tournois pro | Tianyuan | Gris | Titre taïwanais, équivalent du Tengen japonais. Première édition en 2002. Le vainqueur reçoit 1 million de dollars taïwanais. |  | [SL](https://senseis.xmp.net/?TaiwanTianyuan) |
+| 267 | Variantes | Atarigo | Gris | Le premier qui capture gagne : la variante d'initiation. | [en](https://en.wikipedia.org/wiki/Capture_go) | [SL](https://senseis.xmp.net/?Atarigo) |
+| 268 | Variantes | Petango | Gris | Le mélange de la pétanque et du go : on lance les pierres sur le goban. |  |  |
+| 269 | Variantes | Rengo | Gris | Le go en équipes : les partenaires jouent à tour de rôle, sans se concerter. | [en §](https://en.wikipedia.org/wiki/Go_variants#Rengo) | [SL](https://senseis.xmp.net/?Rengo) |
+| 270 | Variantes | Unicolor | Gris | Les deux joueurs jouent avec des pierres de même couleur, et doivent se souvenir de qui est qui. | [en §](https://en.wikipedia.org/wiki/Go_variants#One_Color_Go) | [SL](https://senseis.xmp.net/?OneColourGo) |
 
 ### 7.3 Notes de contenu
 
@@ -535,6 +569,12 @@ puis, dans chaque rareté, par catégorie et par titre, dans l'ordre alphabétiq
   est le vainqueur de la catégorie libre, le petit (Vert) celui de la catégorie Novice-Elite. La saison 2018, jouée en
   une seule catégorie, n'a que son adulte, le Poulpe.
 - Dai Junfu et Lai Junfu sont deux joueurs distincts.
+- Mingren, Tianyuan et Guoshou existent deux fois : le titre chinois (Vert) et le titre taïwanais (Gris). La
+  description dit lequel est lequel.
+- Un titre national est Vert quand il tient dans son pays le rang des sept grands titres japonais : le Myeongin en
+  Corée ; le Mingren, le Tianyuan, le Qisheng et le Guoshou en Chine. Les tournois mondiaux, les tournois de sponsor,
+  les tournois rapides et les titres taïwanais sont Gris.
+- La carte Quzhou-Lanke Cup est le tournoi chinois créé en 2006, pas le Quzhou-Lanke Cup World Go Open créé en 2023.
 - FOX et IGS sont des cartes, bien que le serveur ne suive plus ces plateformes : une carte n'est pas une intégration.
 - Le consentement des membres représentés sur les cartes Communauté est acquis.
 
@@ -569,7 +609,7 @@ joueur à 10 packs par jour.
 | Gold   | 500                 |
 
 Une Gold recyclée paie un pack. En fin de collection, quand presque tout est double, un pack recyclé en entier rapporte
-~150 points, soit 30 % de son prix : le recyclage allonge le budget d'un peu plus d'un quart.
+~146 points, soit 29 % de son prix : le recyclage allonge le budget d'un quart.
 
 ## 9. Équilibre
 
@@ -597,33 +637,33 @@ Avec les poids du §3, l'anti-doublon, le pity et le recyclage réinvesti en pac
 
 | | 10ᵉ centile | Médiane | 90ᵉ centile |
 |---|---:|---:|---:|
-| Packs ouverts | 228 | 296 | 392 |
-| Points à gagner en parties | 92 600 | 118 200 | 152 100 |
+| Packs ouverts | 245 | 323 | 415 |
+| Points à gagner en parties | 99 900 | 129 300 | 162 500 |
 
 Soit, à 1 000 points par partie :
 
 | Parties gold par mois | Mois pour finir (chanceux / médian / malchanceux) |
 |----------------------:|--------------------------------------------------:|
-| 1                     | 93 / 118 / 152                                    |
-| **3 (joueur médian)** | **31 / 39 / 51**                                  |
-| 5                     | 19 / 24 / 30                                      |
-| 10                    | 9 / 12 / 15                                       |
+| 1                     | 100 / 129 / 163                                   |
+| **3 (joueur médian)** | **33 / 43 / 54**                                  |
+| 5                     | 20 / 26 / 33                                      |
+| 10                    | 10 / 13 / 16                                      |
 | 20                    | 5 / 6 / 8                                         |
 
-Le joueur actif médian finit en un peu plus de trois ans (39 mois), ce qui tient l'objectif de plus de deux ans. À 5
-parties par mois, il faut deux ans ; à 10, un an. Même un joueur qui atteint le plafond chaque jour a besoin d'environ
-118 parties, soit plus de trois semaines à 5 parties par jour.
+Le joueur actif médian finit en un peu plus de trois ans et demi (43 mois), ce qui tient l'objectif de plus de deux
+ans. À 5 parties par mois, il faut un peu plus de deux ans ; à 10, un an. Même un joueur qui atteint le plafond chaque
+jour a besoin d'environ 129 parties, soit près de quatre semaines à 5 parties par jour.
 
 ### 9.3 Poids des mécanismes
 
 | Scénario (packs ouverts) | Médiane | 90ᵉ centile |
 |--------------------------|--------:|------------:|
-| Tirage pondéré seul | 707 | 1 138 |
-| + anti-doublon sur le slot garanti | 321 | 427 |
-| + pity sur carte manquante | 296 | 392 |
+| Tirage pondéré seul | 752 | 1 183 |
+| + anti-doublon sur le slot garanti | 339 | 454 |
+| + pity sur carte manquante | 323 | 415 |
 
 L'anti-doublon fait l'essentiel : il divise par deux le nombre de packs nécessaires. Le pity déplace peu la médiane,
-mais il coupe la queue de distribution (90ᵉ centile : 427 → 392), c'est-à-dire les joueurs malchanceux. C'est
+mais il coupe la queue de distribution (90ᵉ centile : 454 → 415), c'est-à-dire les joueurs malchanceux. C'est
 exactement son rôle.
 
 ### 9.4 Extensions
