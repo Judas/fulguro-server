@@ -3,8 +3,9 @@
 Ce document décrit le système de cartes à collectionner de FulguroGo : contenu, tirage, économie, équilibre, et ce que
 sa mise en place demande à fulguro-server. C'est la base du futur plan d'implémentation.
 
-Les chiffres d'équilibre viennent d'un calcul exact quand il existe, sinon d'une simulation Monte-Carlo (500
-collections simulées, graine fixe). L'activité des joueurs est mesurée sur la base de dev (§9.1).
+Les chiffres d'équilibre viennent d'un calcul exact quand il existe, sinon d'une simulation Monte-Carlo à graine fixe
+(1 000 collections simulées pour la durée de complétion, 500 pour la comparaison des mécanismes du §8.3). L'activité
+des joueurs est mesurée sur la base de dev (§8.1).
 
 ---
 
@@ -15,8 +16,10 @@ collections simulées, graine fixe). L'activité des joueurs est mesurée sur la
 - L'album est **permanent** : une collection se garde d'une saison à l'autre, et une **extension** par an ajoute des
   cartes.
 - La progression s'affiche en **taux de complétion**, global, par rareté et par catégorie. Il n'y a pas de badges.
-- Les points qui achètent les packs se gagnent **uniquement en jouant des parties gold** (§8.1).
-- Objectif de durée : un joueur actif médian complète l'album en **plus de deux ans**, de l'ordre de trois ans et demi.
+- Les points qui achètent les packs se gagnent **uniquement en jouant des parties gold** (§7.1).
+- Objectif de durée : un joueur actif médian complète l'album en **trois ans et neuf mois** (45 mois), et le nombre
+  de packs qu'il faut pour finir reste **aléatoire** : un joueur malchanceux en ouvre près de deux fois plus qu'un
+  chanceux.
 
 ## 2. Raretés et effectifs
 
@@ -29,7 +32,7 @@ collections simulées, graine fixe). L'activité des joueurs est mesurée sur la
 | Mythique     | Gold    | 🟡      | 14      | 5,2 %    |
 | **Total**    |         |         | **270** |          |
 
-Les effectifs ne sont pas des quotas. Un joueur va dans la rareté que lui donne son palmarès (§6) et le tirage s'adapte
+Les effectifs ne sont pas des quotas. Un joueur va dans la rareté que lui donne son palmarès (§5) et le tirage s'adapte
 seul, grâce aux poids par carte (§3).
 
 ## 3. Tirage
@@ -60,35 +63,55 @@ Ce choix a deux conséquences :
 Un pack contient **5 cartes** :
 
 - **4 slots standards**, tirés indépendamment parmi toutes les cartes ;
-- **1 slot garanti**, tiré parmi les cartes Vert ou mieux, avec **anti-doublon** : la rareté est tirée au prorata des
-  poids, puis la carte est choisie parmi celles de cette rareté **que le joueur n'a pas encore**. S'il les a toutes,
-  n'importe laquelle de la rareté.
+- **1 slot Vert+**, tiré parmi les cartes Vert ou mieux au prorata des poids. Si la rareté tirée est Violet ou Gold, la
+  carte est choisie parmi celles de cette rareté **que le joueur n'a pas encore** (anti-doublon), et n'importe laquelle
+  de la rareté s'il les a toutes. Sur Vert ou Bleu, le double est possible.
 
 L'ordre d'affichage des cartes est mélangé.
 
+L'anti-doublon est réservé aux Violettes et aux Gold. Étendu à tout le slot, il complète les Vertes vers le 70ᵉ pack,
+puis ne donne plus que des doubles, pendant que les Grises restent la rareté la plus lente à finir. Les Grises, Vertes
+et Bleues manquantes sont l'affaire du pity sur carte nouvelle (§3.4).
+
 Avec les effectifs actuels, les poids donnent :
 
-| Rareté | Part d'un slot standard | Part du slot garanti |
-|--------|------------------------:|---------------------:|
-| Gris   | 71,1 %                  | —                    |
-| Vert   | 19,3 %                  | 66,9 %               |
-| Bleu   | 6,2 %                   | 21,5 %               |
-| Violet | 2,6 %                   | 8,9 %                |
-| Gold   | 0,8 %                   | 2,7 %                |
+| Rareté | Part d'un slot standard | Part du slot Vert+ |
+|--------|------------------------:|-------------------:|
+| Gris   | 71,1 %                  | —                  |
+| Vert   | 19,3 %                  | 66,9 %             |
+| Bleu   | 6,2 %                   | 21,5 %             |
+| Violet | 2,6 %                   | 8,9 %              |
+| Gold   | 0,8 %                   | 2,7 %              |
 
 ### 3.3 Ce que contient un pack
 
-| Rareté | Cartes par pack | Au moins une dans le pack | Une carte donnée (hors anti-doublon) |
-|--------|----------------:|--------------------------:|-------------------------------------:|
-| Gris   | 2,84            | 99,3 %                    | tous les 45 packs                    |
-| Vert   | 1,44            | 86,0 %                    | tous les 48 packs                    |
-| Bleu   | 0,46            | 39,3 %                    | tous les 80 packs                    |
-| Violet | 0,19            | 17,9 %                    | tous les 120 packs                   |
-| Gold   | 0,06            | 5,7 %                     | tous les 239 packs                   |
+| Rareté | Cartes par pack | Au moins une dans le pack | Une carte donnée (hors anti-doublon et pity) |
+|--------|----------------:|--------------------------:|---------------------------------------------:|
+| Gris   | 2,84            | 99,3 %                    | tous les 45 packs                            |
+| Vert   | 1,44            | 86,0 %                    | tous les 48 packs                            |
+| Bleu   | 0,46            | 39,3 %                    | tous les 80 packs                            |
+| Violet | 0,19            | 17,9 %                    | tous les 120 packs                           |
+| Gold   | 0,06            | 5,7 %                     | tous les 239 packs                           |
 
 En moyenne, une Bleue tous les 2 packs, une Violette tous les 5 packs, une Gold tous les 17 packs.
 
-### 3.4 Pity sur carte manquante
+### 3.4 Pity sur carte nouvelle
+
+Si les **2 derniers packs** ouverts par le joueur ne lui ont apporté aucune carte nouvelle, le premier slot standard du
+pack suivant donne une carte **Grise, Verte ou Bleue que le joueur n'a pas**, choisie parmi les manquantes au prorata
+des poids. S'il les a toutes, le slot reste un slot standard.
+
+- Le compteur est propre à chaque joueur et court d'une ouverture à l'autre. Un pack qui apporte au moins une carte
+  nouvelle, quelle qu'elle soit, le remet à zéro.
+- Les Violettes et les Gold en sont exclues exprès. Un pity qui puise dans toutes les cartes manquantes finit par
+  donner lui-même les dernières Gold, et le nombre de packs pour finir devient presque fixe (±8 % autour de la médiane,
+  quel que soit le seuil). Les exclure laisse la fin de collection au hasard : c'est voulu, et le recyclage (§7.2)
+  amortit la malchance.
+- Le seuil compte peu : à 3 packs au lieu de 2, la médiane passe de 304 à 302 packs.
+
+Sur une collection complète, le pity donne en moyenne 17 cartes, soit 1,2 % des cartes tirées.
+
+### 3.5 Pity Gold et Violet
 
 Un filet de sécurité, réglé pour ne se déclencher que dans environ 5 % des cas, et qui donne toujours une carte **que
 le joueur n'a pas**.
@@ -101,88 +124,22 @@ Règles de détail :
 
 - Les compteurs courent d'un pack à l'autre et sont propres à chaque joueur.
 - Une Gold remet les deux compteurs à zéro, une Violette seulement le compteur Violet. Un double compte aussi.
-- Le pity s'applique au slot qui arrive, standard ou garanti. Si les deux sont dus en même temps, la Gold passe
-  d'abord.
+- Le pity s'applique au slot qui arrive, standard ou Vert+. Si les deux sont dus en même temps, la Gold passe
+  d'abord. Il passe aussi avant le pity sur carte nouvelle s'ils tombent sur le même slot.
 - Si le joueur possède déjà toutes les cartes de la rareté, le pity donne une carte quelconque de cette rareté.
 
-Sur une collection complète, 0,27 % des cartes tirées viennent du pity.
-
-## 4. Algorithme (pseudo-code)
-
-```kotlin
-import kotlin.random.Random
-
-enum class Rarity(val weight: Double, val recycleValue: Int) {
-    GRIS(10.0, 10), VERT(5.0, 25), BLEU(3.0, 50), VIOLET(2.0, 150), GOLD(1.0, 500)
-}
-
-data class Card(
-    val slug: String,
-    val name: String,
-    val category: String,
-    val rarity: Rarity,
-    val description: String,
-)
-
-data class PityCounters(val sinceGold: Int, val sinceViolet: Int)
-
-class PackOpener(private val catalog: List<Card>, private val random: Random = Random.Default) {
-    private val guaranteedPool = catalog.filter { it.rarity != Rarity.GRIS }
-
-    fun open(owned: Set<String>, start: PityCounters): Pair<List<Card>, PityCounters> {
-        val pack = mutableListOf<Card>()
-        var pity = start
-        repeat(5) { slot ->
-            val card = when {
-                pity.sinceGold >= GOLD_PITY -> missingOf(Rarity.GOLD, owned + pack.slugs())
-                pity.sinceViolet >= VIOLET_PITY -> missingOf(Rarity.VIOLET, owned + pack.slugs())
-                slot < 4 -> weighted(catalog)
-                else -> missingOf(weighted(guaranteedPool).rarity, owned + pack.slugs())
-            }
-            pack.add(card)
-            pity = when (card.rarity) {
-                Rarity.GOLD -> PityCounters(0, 0)
-                Rarity.VIOLET -> PityCounters(pity.sinceGold + 1, 0)
-                else -> PityCounters(pity.sinceGold + 1, pity.sinceViolet + 1)
-            }
-        }
-        return pack.shuffled(random) to pity
-    }
-
-    // Une carte de la rareté que le joueur n'a pas ; n'importe laquelle s'il les a toutes.
-    private fun missingOf(rarity: Rarity, owned: Set<String>): Card {
-        val pool = catalog.filter { it.rarity == rarity }
-        return pool.filter { it.slug !in owned }.ifEmpty { pool }.random(random)
-    }
-
-    private fun weighted(pool: List<Card>): Card {
-        var x = random.nextDouble(pool.sumOf { it.rarity.weight })
-        for (card in pool) {
-            x -= card.rarity.weight
-            if (x < 0) return card
-        }
-        return pool.last()
-    }
-
-    private fun List<Card>.slugs() = mapTo(mutableSetOf()) { it.slug }
-
-    companion object {
-        const val GOLD_PITY = 255
-        const val VIOLET_PITY = 60
-    }
-}
-```
+Sur une collection complète, 0,28 % des cartes tirées viennent de ce pity.
 
 Pas d'argent réel : `kotlin.random.Random` suffit, un RNG cryptographique n'apporte rien. Le tirage se fait côté
 serveur, jamais sur le site.
 
-## 5. Catalogue
+## 4. Catalogue
 
 Chaque carte porte :
 
 | Champ | Rôle |
 |-------|------|
-| `id` | Numéro de la carte dans l'album, entier à partir de 1 (§7.2). |
+| `id` | Numéro de la carte dans l'album, entier à partir de 1 (§6.2). |
 | `slug` | Identifiant stable, jamais modifié, même si le nom est corrigé : c'est lui que référencent les collections. |
 | `name` | Nom affiché. Deux cartes peuvent porter le même (« Tengen » Ouverture et « Tengen » Tournoi). |
 | `category` | Catégorie d'album. |
@@ -192,7 +149,7 @@ Chaque carte porte :
 
 Chaque carte est unique dans l'album : un exemplaire suffit à la compter.
 
-## 6. Classement des joueurs
+## 5. Classement des joueurs
 
 La rareté d'un joueur part de son **palmarès**, quelle que soit l'époque. La grille ci-dessous donne le repère ; ce
 n'est pas un barème, et un joueur peut être classé un cran au-dessus ou au-dessous, selon sa place dans l'histoire du
@@ -232,15 +189,15 @@ go. Un titre mondial isolé, par exemple, ne fait pas à lui seul une Bleue.
 | Suzuki Ayumi | Gris | Vert | Un Kisei féminin (2020) |
 | Tang Jiawen | Gris | Vert | Un Guoshou féminin (2024) |
 
-Le classement de la liste (§7) a été vérifié joueur par joueur.
+Le classement de la liste (§6) a été vérifié joueur par joueur.
 
-## 7. Liste des cartes
+## 6. Liste des cartes
 
-### 7.1 Catégories
+### 6.1 Catégories
 
 | Catégorie | Contenu | Gris | Vert | Bleu | Violet | Gold | Total |
 |-----------|---------|-----:|-----:|-----:|-------:|-----:|------:|
-| Joueurs | Joueurs professionnels et amateurs, classés au palmarès (§6) | 30 | 34 | 21 | 14 | 9 | **108** |
+| Joueurs | Joueurs professionnels et amateurs, classés au palmarès (§5) | 30 | 34 | 21 | 14 | 9 | **108** |
 | Communauté | Maisons, compétitions, vainqueurs de la FGC, émissions, événements, lieux du lore et figures de la communauté | 16 | 14 | 12 | 6 | 4 | **52** |
 | Tournois pro | Tournois mondiaux, grands titres japonais, coréens, chinois et taïwanais, tournois rapides télévisés | 19 | 12 | — | — | — | **31** |
 | Formes complexes | Formes de plusieurs pierres, bonnes ou mauvaises | 8 | 2 | — | 1 | — | **11** |
@@ -258,12 +215,12 @@ Le classement de la liste (§7) a été vérifié joueur par joueur.
 Joueurs et Communauté sont les deux seules catégories présentes dans toutes les raretés ; six catégories n'ont que des
 cartes Gris.
 
-### 7.2 Cartes
+### 6.2 Cartes
 
 Toutes les cartes, classement et description, ont été vérifiées.
 
-Les deux dernières colonnes renvoient aux pages Wikipedia (en français, à défaut en anglais) et Sensei's Library qui décrivent
-le sujet de la carte. « § » signale un lien vers une section d'une page plus large, faute de page dédiée.
+Les deux dernières colonnes renvoient aux pages Wikipedia (en français, à défaut en anglais) et Sensei's Library qui
+décrivent le sujet de la carte. « § » signale un lien vers une section d'une page plus large, faute de page dédiée.
 
 Chaque carte porte un `id` entier, de 1 à 270, attribué en triant les cartes par rareté décroissante (Gold d'abord),
 puis, dans chaque rareté, par catégorie et par titre, dans l'ordre alphabétique sans tenir compte des accents.
@@ -563,10 +520,11 @@ puis, dans chaque rareté, par catégorie et par titre, dans l'ordre alphabétiq
 | 269 | Variantes | Rengo | Gris | Le go en équipes : les partenaires jouent à tour de rôle, sans se concerter. | [en §](https://en.wikipedia.org/wiki/Go_variants#Rengo) | [SL](https://senseis.xmp.net/?Rengo) |
 | 270 | Variantes | Unicolor | Gris | Les deux joueurs jouent avec des pierres de même couleur, et doivent se souvenir de qui est qui. | [en §](https://en.wikipedia.org/wiki/Go_variants#One_Color_Go) | [SL](https://senseis.xmp.net/?OneColourGo) |
 
-### 7.3 Notes de contenu
+### 6.3 Notes de contenu
 
-- Les cartes Communauté Vert et Bleu des animaux impériaux sont les vainqueurs de la FulguroGo Cup. Il y a un animal par saison : l'adulte (Bleu)
-  est le vainqueur de la catégorie libre, le petit (Vert) celui de la catégorie Novice-Elite. La saison 2018, jouée en
+- Les cartes Communauté Vert et Bleu des animaux impériaux sont les vainqueurs de la FulguroGo Cup. Il y a un animal
+  par saison : l'adulte (Bleu) est le vainqueur de la catégorie libre, le petit (Vert) celui de la catégorie
+  Novice-Elite. La saison 2018, jouée en
   une seule catégorie, n'a que son adulte, le Poulpe.
 - Dai Junfu et Lai Junfu sont deux joueurs distincts.
 - Mingren, Tianyuan et Guoshou existent deux fois : le titre chinois (Vert) et le titre taïwanais (Gris). La
@@ -578,9 +536,9 @@ puis, dans chaque rareté, par catégorie et par titre, dans l'ordre alphabétiq
 - FOX et IGS sont des cartes, bien que le serveur ne suive plus ces plateformes : une carte n'est pas une intégration.
 - Le consentement des membres représentés sur les cartes Communauté est acquis.
 
-## 8. Économie
+## 7. Économie
 
-### 8.1 Gagner des points
+### 7.1 Gagner des points
 
 Une seule source : les **parties gold**, définies comme pour la validité FGC. Une partie finie sur KGS ou OGS, en
 **19×19**, **sans handicap**, avec un **komi strictement compris entre 6 et 9**, dont **les deux joueurs** sont des
@@ -588,16 +546,26 @@ membres ayant lié leur compte. Qu'elle soit classée ou non ne compte pas.
 
 | Règle | Valeur |
 |-------|--------|
-| Gain par partie gold | **1 000 points** à chacun des deux joueurs |
-| Plafond | **5 parties créditées par jour et par joueur** (jour calendaire, heure de Paris) ; au-delà, rien |
+| Gain par partie gold | **dégressif dans la journée**, à chacun des deux joueurs : `max(1, arrondi(1 600 × 0,75^(rang − 1)))` |
+| Rang | Rang de la partie parmi celles du joueur ce jour-là (jour calendaire, heure de Paris), à partir de 1, dans l'ordre où elles sont créditées (§11.2) |
 | Partie annulée après coup par la plateforme | les points déjà crédités restent acquis |
 
-Il n'y a ni défis, ni événements, ni autre source. À ce tarif, une partie gold paie 2 packs, et le plafond borne un
-joueur à 10 packs par jour.
+Il n'y a pas de plafond : chaque partie rapporte au moins 1 point, mais la valeur s'effondre vite. À partir de la
+26ᵉ partie de la journée, elle ne vaut plus que 1 point.
 
-### 8.2 Dépenser
+| Rang dans la journée | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 20 | 26 et plus |
+|----------------------|--:|--:|--:|--:|--:|--:|--:|--:|--:|---:|---:|-----------:|
+| Points | 1 600 | 1 200 | 900 | 675 | 506 | 380 | 285 | 214 | 160 | 120 | 7 | 1 |
+| Total de la journée | 1 600 | 2 800 | 3 700 | 4 375 | 4 881 | 5 261 | 5 546 | 5 760 | 5 920 | 6 040 | 6 381 | → ~6 400 |
 
-- **Un pack coûte 500 points.** Le joueur l'ouvre depuis le site, quand il veut.
+Il n'y a ni défis, ni événements, ni autre source. La première partie du jour paie 2 packs, la deuxième 1,5, la
+troisième un peu plus d'un. En pratique, une journée ne rapporte jamais beaucoup plus de 6 400 points, soit 8 packs :
+la dégressivité tient le rôle d'un plafond sans en avoir le couperet, et elle ne pénalise pas les journées normales
+(§8.1).
+
+### 7.2 Dépenser
+
+- **Un pack coûte 800 points.** Le joueur l'ouvre depuis le site, quand il veut.
 - Les doubles sont proposés au recyclage :
 
 | Rareté | Points de recyclage |
@@ -608,12 +576,14 @@ joueur à 10 packs par jour.
 | Violet | 150                 |
 | Gold   | 500                 |
 
-Une Gold recyclée paie un pack. En fin de collection, quand presque tout est double, un pack recyclé en entier rapporte
-~146 points, soit 29 % de son prix : le recyclage allonge le budget d'un quart.
+Une Gold recyclée paie près des deux tiers d'un pack. En fin de collection, quand presque tout est double, un pack
+recyclé en entier rapporte ~146 points, soit 18 % de son prix. Sur une collection complète, le recyclage rembourse 12 %
+de ce qui est dépensé en packs, en moyenne ~98 points par pack, et allonge le budget de 14 %. C'est lui qui amortit la
+malchance de fin de collection, que le pity laisse volontairement au hasard (§3.4).
 
-## 9. Équilibre
+## 8. Équilibre
 
-### 9.1 Activité de référence
+### 8.1 Activité de référence
 
 Mesure sur la base de dev, du 26/08/2026 au 24/09/2026 : 149 parties gold jouées en 30 jours, 72 joueurs actifs (au
 moins une partie gold) sur 304 membres liés.
@@ -626,84 +596,111 @@ moins une partie gold) sur 304 membres liés.
 | Maximum                                    | 28     |
 
 Par jour et par joueur, 98 % des journées comptent une ou deux parties. Le seul cas au-delà de 3 est une série de
-13 parties entre deux joueurs le même jour, que le plafond de 5 coupe.
+13 parties entre deux joueurs le même jour, dont la dégressivité (§7.1) ramène les dernières à quelques points.
 
 ⚠ Un mois de début de saison ne dit rien de l'été ni du creux de l'hiver. La mesure est à refaire sur une saison
-complète, et le gain par partie à recaler si la médiane bouge.
+complète, et le barème du §7.1 à recaler si la médiane bouge.
 
-### 9.2 Durée de complétion
+### 8.2 Durée de complétion
 
-Avec les poids du §3, l'anti-doublon, le pity et le recyclage réinvesti en packs :
+Avec les poids du §3, l'anti-doublon, les deux pity et le recyclage réinvesti en packs :
 
 | | 10ᵉ centile | Médiane | 90ᵉ centile |
 |---|---:|---:|---:|
-| Packs ouverts | 245 | 323 | 415 |
-| Points à gagner en parties | 99 900 | 129 300 | 162 500 |
+| Packs ouverts | 218 | 304 | 407 |
+| Points à gagner en parties | 154 600 | 213 500 | 282 400 |
 
-Soit, à 1 000 points par partie :
+Aux extrêmes, le 1ᵉʳ centile finit en 173 packs et le 99ᵉ en 495.
 
-| Parties gold par mois | Mois pour finir (chanceux / médian / malchanceux) |
-|----------------------:|--------------------------------------------------:|
-| 1                     | 100 / 129 / 163                                   |
-| **3 (joueur médian)** | **33 / 43 / 54**                                  |
-| 5                     | 20 / 26 / 33                                      |
-| 10                    | 10 / 13 / 16                                      |
-| 20                    | 5 / 6 / 8                                         |
+Pack auquel chaque rareté est complète, en médiane :
 
-Le joueur actif médian finit en un peu plus de trois ans et demi (43 mois), ce qui tient l'objectif de plus de deux
-ans. À 5 parties par mois, il faut un peu plus de deux ans ; à 10, un an. Même un joueur qui atteint le plafond chaque
-jour a besoin d'environ 129 parties, soit près de quatre semaines à 5 parties par jour.
+| Gris | Vert | Bleu | Violet | Gold |
+|-----:|-----:|-----:|-------:|-----:|
+| 155  | 159  | 167  | 154    | 304  |
 
-### 9.3 Poids des mécanismes
+Les Gold sont la dernière rareté complétée dans 97 % des collections : c'est sur elles que se joue la fin.
+
+Les points dépendent de la façon dont les parties se répartissent dans la journée (§7.1). Le tableau suppose une
+partie par jour, à 1 600 points. C'est le cas le plus courant (§8.1) ; deux parties le même jour rapportent 2 800
+points au lieu de 3 200, ce qui allonge un peu la durée :
+
+| Parties gold par mois, une par jour | Mois pour finir (chanceux / médian / malchanceux) |
+|------------------------------------:|--------------------------------------------------:|
+| 1                                   | 97 / 134 / 177                                    |
+| **3 (joueur médian)**               | **32 / 45 / 59**                                  |
+| 5                                   | 19 / 27 / 35                                      |
+| 10                                  | 10 / 13 / 18                                      |
+| 20                                  | 5 / 7 / 9                                         |
+
+Le joueur actif médian finit en trois ans et neuf mois (45 mois). À 5 parties par mois, il faut un peu plus de deux
+ans ; à 10, un an.
+
+Un joueur qui joue tous les jours :
+
+| Parties par jour | Points par jour | Jours pour finir (chanceux / médian / malchanceux) |
+|-----------------:|----------------:|---------------------------------------------------:|
+| 1                | 1 600           | 97 / 134 / 177                                     |
+| 2                | 2 800           | 56 / 77 / 101                                      |
+| 3                | 3 700           | 42 / 58 / 77                                       |
+| 5                | 4 881           | 32 / 44 / 58                                       |
+| 10               | 6 040           | 26 / 36 / 47                                       |
+| 20               | 6 381           | 25 / 34 / 45                                       |
+
+Au-delà d'une dizaine de parties par jour, jouer plus ne fait presque plus gagner de temps : même à 20 parties par
+jour, il faut environ cinq semaines en médiane, et un joueur chanceux ne descend pas sous 25 jours.
+
+### 8.3 Poids des mécanismes
 
 | Scénario (packs ouverts) | Médiane | 90ᵉ centile |
 |--------------------------|--------:|------------:|
-| Tirage pondéré seul | 752 | 1 183 |
-| + anti-doublon sur le slot garanti | 339 | 454 |
-| + pity sur carte manquante | 323 | 415 |
+| Tirage pondéré seul | 760 | 1 157 |
+| + anti-doublon Violet et Gold sur le slot Vert+ | 376 | 512 |
+| + pity sur carte nouvelle | 320 | 467 |
+| + pity Gold et Violet | 304 | 407 |
 
-L'anti-doublon fait l'essentiel : il divise par deux le nombre de packs nécessaires. Le pity déplace peu la médiane,
-mais il coupe la queue de distribution (90ᵉ centile : 454 → 415), c'est-à-dire les joueurs malchanceux. C'est
-exactement son rôle.
+L'anti-doublon fait l'essentiel : il divise par deux le nombre de packs nécessaires, parce qu'il règle les cartes les
+plus longues à venir. Le pity sur carte nouvelle retire les Grises de la fin de collection. Le pity Gold et Violet
+déplace peu la médiane, mais il coupe la queue de distribution (90ᵉ centile : 467 → 407), c'est-à-dire les joueurs
+malchanceux. C'est exactement son rôle.
 
-### 9.4 Extensions
+### 8.4 Extensions
 
-À chaque extension, les poids restent les mêmes, mais les parts par couleur, le temps de complétion et le gain par
-partie sont à recalculer (§3.1). Le taux de complétion affiché de chaque joueur baisse le jour de la sortie : c'est
+À chaque extension, les poids restent les mêmes, mais les parts par couleur, le temps de complétion et le barème de
+gain sont à recalculer (§3.1). Le taux de complétion affiché de chaque joueur baisse le jour de la sortie : c'est
 voulu, et c'est la seule conséquence, puisqu'il n'y a pas de badges.
 
-## 10. Membres
+## 9. Membres
 
 - **Membre banni** : ses cartes Communauté restent des cartes comme les autres, dans le set et dans les collections.
 - **Membre purgé** (parti du Discord, supprimé par `CleanService` après un jour de grâce) : sa collection, son solde et
   ses registres de points sont supprimés avec le reste de ses données.
 
-## 11. Discord
+## 10. Discord
 
 Deux annonces, sur le canal de notification :
 
 - une **Gold obtenue**, quand elle est nouvelle pour le joueur (un double n'est pas annoncé) ;
 - un **album complet**, quand un joueur atteint 100 % du set courant.
 
-## 12. Mise en place sur fulguro-server
+## 11. Mise en place sur fulguro-server
 
 Le système entre dans l'architecture existante sans rien de nouveau : un module `cards` sur le modèle des autres
 (`CardsModule`, `CardsDatabaseAccessor`, modèles sql2o, routes sur `Api`).
 
-### 12.1 Données
+### 11.1 Données
 
 | Table | Contenu |
 |-------|---------|
-| `cards` | Le catalogue (§5). Corriger une carte ou ajouter une extension, c'est un script SQL appliqué au déploiement. |
+| `cards` | Le catalogue (§4). Corriger une carte ou ajouter une extension, c'est un script SQL appliqué au déploiement. |
 | `card_collection` | `(discord_id, slug)` → nombre d'exemplaires. |
-| `card_ledger` | Un mouvement de points par ligne : gain de partie, achat de pack, recyclage. |
-| `card_wallet` | Le solde matérialisé et les deux compteurs de pity, par joueur. |
+| `card_ledger` | Un mouvement de points par ligne : gain de partie (avec son rang dans la journée), achat de pack, recyclage. |
+| `card_wallet` | Le solde matérialisé et les trois compteurs de pity, par joueur : packs sans carte nouvelle, cartes depuis la dernière Gold, cartes depuis la dernière Violette. |
 | `card_openings` | Le journal des ouvertures : joueur, date, cartes, compteurs de pity avant et après. |
 
 Le solde est **stocké et vérifiable** : il doit toujours égaler la somme du registre. Le stockage permet le débit
 atomique, le registre permet de répondre à une contestation avec des faits.
 
-### 12.2 Crédit des points
+### 11.2 Crédit des points
 
 Un service périodique parcourt les parties gold qui n'ont pas encore été créditées, et écrit un gain par (partie, joueur)
 dans `card_ledger`. La clé `(gold_id, discord_id)` rend l'écriture idempotente sans curseur, sur le modèle de
@@ -711,8 +708,11 @@ dans `card_ledger`. La clé `(gold_id, discord_id)` rend l'écriture idempotente
 
 Trois contraintes :
 
-- **Le plafond de 5 par jour** se compte sur la date de la partie en heure de Paris (`DATE_ZONE`). Une partie
-  au-delà du plafond est enregistrée à 0 point plutôt qu'ignorée, sinon elle revient à chaque tick.
+- **Le rang d'une partie** se compte sur la date de la partie en heure de Paris (`DATE_ZONE`) et **dans l'ordre de
+  crédit** : c'est 1 + le nombre de gains déjà écrits pour ce joueur à cette date. Un gain écrit ne change donc jamais.
+  Ranger par heure de la partie serait plus juste, mais KGS est scrapé avec du retard : une partie arrivée tard
+  s'intercalerait avant des parties déjà créditées, et il faudrait réécrire leurs gains dans le registre. Les ticks ne
+  se chevauchent pas (`PeriodicFlowService`), donc deux crédits ne peuvent pas prendre le même rang.
 - **Le registre ne dépend pas de la survie de la partie.** `CleanService` supprime les parties de plus de 32 jours et
   `OgsService` celles qu'OGS annule. Aucune de ces suppressions ne doit toucher `card_ledger`, puisque les points
   d'une partie annulée restent acquis.
@@ -720,30 +720,30 @@ Trois contraintes :
   sert qu'à compter. Elle en reprend les critères. Le service doit passer au moins une fois dans les 32 jours de
   rétention des parties, ce que n'importe quel intervalle de l'ordre de la minute garantit.
 
-### 12.3 Ouverture d'un pack et recyclage
+### 11.3 Ouverture d'un pack et recyclage
 
 - **Routes authentifiées.** Sans authentification, n'importe qui pourrait dépenser les points d'un autre et recycler
   ses cartes. `api/auth/SessionResolver.kt` résout déjà la session Discord du navigateur pour les routes admin, et les
   routes cartes passent par lui.
-- **Une seule transaction** par ouverture : débit conditionnel (`UPDATE card_wallet SET points = points - 500 WHERE
-  discord_id = :id AND points >= 500`, puis contrôle du nombre de lignes touchées), écriture des cartes, des compteurs
+- **Une seule transaction** par ouverture : débit conditionnel (`UPDATE card_wallet SET points = points - 800 WHERE
+  discord_id = :id AND points >= 800`, puis contrôle du nombre de lignes touchées), écriture des cartes, des compteurs
   de pity, du registre et du journal. Sinon un double clic ouvre deux packs pour un seul débit. Le rate limit de l'API
   ne protège pas de ça.
 - Le recyclage suit le même schéma : décrément de l'exemplaire, crédit du registre et du solde dans la même
   transaction.
 
-### 12.4 Purge et annonces
+### 11.4 Purge et annonces
 
 - `CleanService` ajoute les tables `card_collection`, `card_ledger`, `card_wallet` et `card_openings` à ce qu'il
   supprime pour un membre purgé.
-- Les annonces du §11 passent par `DiscordBot.sendMessageEmbeds`, sur le modèle de `HouseNotifier`, en best-effort :
+- Les annonces du §10 passent par `DiscordBot.sendMessageEmbeds`, sur le modèle de `HouseNotifier`, en best-effort :
   une annonce ratée coûte une ligne de log, jamais une ouverture.
 - dev et prod sont isolés : un tirage en local écrit dans `fg_dev` et passe par le bot de test. Aucune ressource
   externe n'est partagée.
 
-### 12.5 Avant publication
+### 11.5 Avant publication
 
-- Refaire la mesure d'activité du §9.1 sur une saison complète.
-- Tests : simuler des ouvertures en masse pour vérifier les parts réelles, que le slot garanti est toujours Vert ou
-  mieux, que l'anti-doublon et le pity rendent bien une carte manquante, et que deux ouvertures concurrentes ne
+- Refaire la mesure d'activité du §8.1 sur une saison complète.
+- Tests : simuler des ouvertures en masse pour vérifier les parts réelles, que le slot Vert+ est toujours Vert ou
+  mieux, que l'anti-doublon et les deux pity rendent bien une carte manquante, et que deux ouvertures concurrentes ne
   débitent jamais sous zéro.
