@@ -16,7 +16,7 @@ des joueurs est mesurée sur la base de dev (§8.1).
 - L'album est **permanent** : une collection se garde d'une saison à l'autre, et une **extension** par an ajoute des
   cartes.
 - La progression s'affiche en **taux de complétion**, global, par rareté et par catégorie. Il n'y a pas de badges.
-- Les **pépites**, la monnaie qui achète les packs, se gagnent **uniquement en jouant des parties gold** (§7.1).
+- Les **pépites**, la monnaie qui achète les packs, se gagnent **uniquement en jouant des parties gold classées sur OGS** (§7.1).
 - Objectif de durée : un joueur actif médian complète l'album en **trois ans et neuf mois** (45 mois), et le nombre
   de packs qu'il faut pour finir reste **aléatoire** : un joueur malchanceux en ouvre près de deux fois plus qu'un
   chanceux.
@@ -540,9 +540,13 @@ puis, dans chaque rareté, par catégorie et par titre, dans l'ordre alphabétiq
 
 ### 7.1 Gagner des pépites
 
-Une seule source : les **parties gold**, définies comme pour la validité FGC. Une partie finie sur KGS ou OGS, en
-**19×19**, **sans handicap**, avec un **komi strictement compris entre 6 et 9**, dont **les deux joueurs** sont des
-membres ayant lié leur compte. Qu'elle soit classée ou non ne compte pas.
+Une seule source : les **parties gold classées sur OGS**. Une partie compte si elle remplit les conditions d'une partie
+valide pour la FGC (finie, en **19×19**, **sans handicap**, avec un **komi strictement compris entre 6 et 9**, et dont
+**les deux joueurs** sont des membres ayant lié leur compte) et si elle est **classée sur OGS**. Une partie KGS ne
+rapporte rien, une partie OGS non classée non plus. Les parties de la ligue sont classées (`doc/plan-ligue.md`) et
+rapportent donc des pépites comme les autres.
+
+Dans la suite, « partie gold » désigne une partie qui remplit ces conditions.
 
 | Règle | Valeur |
 |-------|--------|
@@ -585,18 +589,22 @@ malchance de fin de collection, que le pity laisse volontairement au hasard (§3
 
 ### 8.1 Activité de référence
 
-Mesure sur la base de dev, du 26/08/2026 au 24/09/2026 : 149 parties gold jouées en 30 jours, 72 joueurs actifs (au
-moins une partie gold) sur 304 membres liés.
+Mesure sur la base de dev, du 26/08/2026 au 24/09/2026, le seul mois complet que contient l'instantané : 107 parties
+gold (§7.1) jouées en 30 jours, 67 joueurs actifs (au moins une partie gold) sur 197 membres ayant lié un compte OGS.
 
 | Parties gold par joueur actif sur 30 jours | Valeur |
 |--------------------------------------------|-------:|
 | Médiane                                    | 3      |
-| Moyenne                                    | 4,1    |
-| 75ᵉ centile                                | 5      |
-| Maximum                                    | 28     |
+| Moyenne                                    | 3,2    |
+| 75ᵉ centile                                | 4      |
+| Maximum                                    | 12     |
 
-Par jour et par joueur, 98 % des journées comptent une ou deux parties. Le seul cas au-delà de 3 est une série de
-13 parties entre deux joueurs le même jour, dont la dégressivité (§7.1) ramène les dernières à quelques pépites.
+Par jour et par joueur, 99 % des journées comptent une ou deux parties, et aucune n'en compte plus de trois.
+
+Sur le même mois, la définition de la validité FGC seule (KGS et OGS, classées ou non) donne 136 parties et 72 joueurs
+actifs, pour une médiane de 3 parties également. La restriction aux parties classées sur OGS retire les 29 parties OGS
+non classées et aucune partie KGS : le mois ne compte aucune partie KGS entre deux membres liés. Elle tasse le haut de
+la distribution (moyenne 3,8 → 3,2, 75ᵉ centile 5 → 4) mais ne déplace pas la médiane, sur laquelle repose le §8.2.
 
 ⚠ Un mois de début de saison ne dit rien de l'été ni du creux de l'hiver. La mesure est à refaire sur une saison
 complète, et le barème du §7.1 à recaler si la médiane bouge.
@@ -710,14 +718,16 @@ Trois contraintes :
 
 - **Le rang d'une partie** se compte sur la date de la partie en heure de Paris (`DATE_ZONE`) et **dans l'ordre de
   crédit** : c'est 1 + le nombre de gains déjà écrits pour ce joueur à cette date. Un gain écrit ne change donc jamais.
-  Ranger par heure de la partie serait plus juste, mais KGS est scrapé avec du retard : une partie arrivée tard
-  s'intercalerait avant des parties déjà créditées, et il faudrait réécrire leurs gains dans le registre. Les ticks ne
+  Ranger par heure de la partie serait plus juste, mais une partie n'est créditée qu'une fois finie : une partie
+  longue, ou une partie que le poll REST d'`OgsService` rattrape après coup, s'intercalerait avant des parties déjà
+  créditées, et il faudrait réécrire leurs gains dans le registre. Les ticks ne
   se chevauchent pas (`PeriodicFlowService`), donc deux crédits ne peuvent pas prendre le même rang.
 - **Le registre ne dépend pas de la survie de la partie.** `CleanService` supprime les parties de plus de 32 jours et
   `OgsService` celles qu'OGS annule. Aucune de ces suppressions ne doit toucher `card_ledger`, puisque les pépites
   d'une partie annulée restent acquises.
 - **La sélection ne peut pas réutiliser la vue `fgc_validity_games` telle quelle**, qui est bornée à 30 jours et ne
-  sert qu'à compter. Elle en reprend les critères. Le service doit passer au moins une fois dans les 32 jours de
+  sert qu'à compter, et qui mélange KGS et OGS, classées ou non. Elle en reprend les critères sur `ogs_games` seul, plus
+  `ranked = 1`. Le service doit passer au moins une fois dans les 32 jours de
   rétention des parties, ce que n'importe quel intervalle de l'ordre de la minute garantit.
 
 ### 11.3 Ouverture d'un pack et recyclage
@@ -743,7 +753,7 @@ Trois contraintes :
 
 ### 11.5 Avant publication
 
-- Refaire la mesure d'activité du §8.1 sur une saison complète.
+- Refaire la mesure d'activité du §8.1 sur une saison complète, en ne comptant que les parties classées sur OGS.
 - Tests : simuler des ouvertures en masse pour vérifier les parts réelles, que le slot Bois+ est toujours Bois ou
   mieux, que l'anti-doublon et les deux pity rendent bien une carte manquante, et que deux ouvertures concurrentes ne
   débitent jamais sous zéro.
