@@ -135,17 +135,29 @@ serveur, jamais sur le site.
 
 ## 4. Catalogue
 
+Les cartes sont des **images finies, produites à la main avant la mise en ligne**. Rien n'est généré à partir des
+données : le titre, la description, la rareté et l'illustration sont dans l'image. La base ne garde que ce dont le
+tirage, la complétion et les annonces ont besoin.
+
 Chaque carte porte :
 
 | Champ | Rôle |
 |-------|------|
-| `id` | Numéro de la carte dans l'album, entier à partir de 1 (§6.2). |
-| `slug` | Identifiant stable, jamais modifié, même si le nom est corrigé : c'est lui que référencent les collections. |
-| `name` | Nom affiché. Deux cartes peuvent porter le même (« Tengen » Ouverture et « Tengen » Tournoi). |
-| `category` | Catégorie d'album. |
+| `id` | Numéro de la carte dans l'album, entier à partir de 1 (§6.2). C'est la clé de la carte partout : collections, registre, journal des ouvertures, nom du fichier image. **Jamais renuméroté ni réutilisé** : une carte retirée laisse un trou. |
+| `name` | Nom affiché dans les annonces Discord et en texte alternatif. Deux cartes peuvent porter le même (« Tengen » Ouverture et « Tengen » Tournoi) : c'est l'`id` qui les distingue. |
+| `category` | Catégorie d'album, pour la complétion par catégorie. |
 | `rarity` | Rareté, qui fixe le poids et la valeur de recyclage. |
-| `description` | Texte de la carte. C'est elle qui distingue les homonymes. |
-| visuel | Côté site. Les joueurs réels sont illustrés, pas photographiés. |
+| `edition` | Le set auquel la carte appartient : `0` pour le set de base, puis un par extension (§8.4). |
+
+Le visuel est un PNG nommé d'après l'`id` sur trois chiffres : `001.png`, `123.png`. Les joueurs réels sont illustrés,
+pas photographiés. Seul le **numéro** de la carte est imprimé dessus, jamais le total du set, pour qu'une extension ne
+rende aucune image existante fausse.
+
+Il n'y a pas de `slug` : l'`id` est déjà stable, imprimé sur la carte et utilisé comme nom de fichier. Il n'y a pas
+non plus de `description` en base : le texte est dans l'image.
+
+⚠ Corriger le texte d'une carte veut dire refaire l'image. Le nom de fichier ne changeant pas, il faut casser le cache
+(paramètre de version dans l'URL) pour que le site et Discord ne gardent pas l'ancienne.
 
 Chaque carte est unique dans l'album : un exemplaire suffit à la compter.
 
@@ -219,11 +231,16 @@ cartes Pierre.
 
 Toutes les cartes, classement et description, ont été vérifiées.
 
-Les deux dernières colonnes renvoient aux pages Wikipedia (en français, à défaut en anglais) et Sensei's Library qui
-décrivent le sujet de la carte. « § » signale un lien vers une section d'une page plus large, faute de page dédiée.
+Les colonnes Description, Wikipedia et Sensei's Library sont la **matière de l'illustration**, pas des données : elles
+ne vont pas en base (§4). Les deux dernières renvoient aux pages Wikipedia (en français, à défaut en anglais) et
+Sensei's Library qui décrivent le sujet de la carte. « § » signale un lien vers une section d'une page plus large,
+faute de page dédiée.
 
 Chaque carte porte un `id` entier, de 1 à 270, attribué en triant les cartes par rareté décroissante (Or d'abord),
 puis, dans chaque rareté, par catégorie et par titre, dans l'ordre alphabétique sans tenir compte des accents.
+
+Ce tri ne vaut que pour le set de base. Une extension ne renumérote rien : ses cartes prennent les `id` qui suivent
+le dernier attribué (271 et au-delà pour la première), triées de la même façon à l'intérieur de l'extension.
 
 #### 🥇 Or — 14 cartes
 
@@ -540,11 +557,24 @@ puis, dans chaque rareté, par catégorie et par titre, dans l'ordre alphabétiq
 
 ### 7.1 Gagner des pépites
 
-Une seule source : les **parties gold classées sur OGS**. Une partie compte si elle remplit les conditions d'une partie
-valide pour la FGC (finie, en **19×19**, **sans handicap**, avec un **komi strictement compris entre 6 et 9**, et dont
-**les deux joueurs** sont des membres ayant lié leur compte) et si elle est **classée sur OGS**. Une partie KGS ne
-rapporte rien, une partie OGS non classée non plus. Les parties de la ligue sont classées (`doc/plan-ligue.md`) et
-rapportent donc des pépites comme les autres.
+Une seule source de gain en jeu : les **parties gold classées sur OGS**. Une partie compte si elle remplit les
+conditions d'une partie valide pour la FGC (finie, en **19×19**, **sans handicap**, avec un **komi strictement compris
+entre 6 et 9**, et dont **les deux joueurs** sont des membres ayant lié leur compte), si elle est **classée sur OGS**
+et si le poll REST d'OGS l'a **confirmée** (§11.2). Une partie KGS ne rapporte rien, une partie OGS non classée non
+plus. Les parties de la ligue sont classées (`doc/plan-ligue.md`) et rapportent donc des pépites comme les autres.
+
+- **Parties par correspondance** : elles ne rapportent rien, et n'ont pas besoin d'être filtrées ici, puisqu'elles
+  n'entrent jamais dans `ogs_games` (`OgsService` les écarte, `OgsRealTimeService` ne lit que la liste `live`). La
+  colonne `long_game` ne veut pas dire « correspondance » mais « partie live à temps long » : elle ne sert pas de filtre.
+- **Pas de nombre minimal de coups** : une partie doit être classée, et un joueur qui abîme son rang OGS pour farmer
+  des cartes en paie déjà le prix.
+- **Date de lancement** : seules les parties commencées après le lancement des cartes rapportent des pépites (§11.2).
+  Il n'y a pas de rétroactivité.
+- **Compte lié après coup** : une partie jouée avant que le joueur ait lié son compte OGS est créditée plus tard, tant
+  qu'elle est encore dans `ogs_games` (32 jours) et qu'elle a commencé après le lancement. C'est voulu.
+- **Toute l'année** : les cartes n'ont rien à voir avec le calendrier des maisons et de la ligue. Les pépites sont
+  créditées pendant la trêve de juin à août comme le reste de l'année.
+- **Pack de bienvenue** : chaque joueur reçoit une fois 800 pépites, le prix d'un pack (§11.3).
 
 Dans la suite, « partie gold » désigne une partie qui remplit ces conditions.
 
@@ -552,7 +582,7 @@ Dans la suite, « partie gold » désigne une partie qui remplit ces conditions.
 |-------|--------|
 | Gain par partie gold | **dégressif dans la journée**, à chacun des deux joueurs : `max(1, arrondi(1 600 × 0,75^(rang − 1)))` |
 | Rang | Rang de la partie parmi celles du joueur ce jour-là (jour calendaire, heure de Paris), à partir de 1, dans l'ordre où elles sont créditées (§11.2) |
-| Partie annulée après coup par la plateforme | les pépites déjà créditées restent acquises |
+| Partie annulée par la plateforme | jamais créditée si l'annulation arrive avant la confirmation (§11.2), le cas des parties « cancel » ; les pépites déjà créditées restent acquises si elle arrive après |
 
 Il n'y a pas de plafond : chaque partie rapporte au moins 1 pépite, mais la valeur s'effondre vite. À partir de la
 26ᵉ partie de la journée, elle ne vaut plus que 1 pépite.
@@ -570,7 +600,9 @@ la dégressivité tient le rôle d'un plafond sans en avoir le couperet, et elle
 ### 7.2 Dépenser
 
 - **Un pack coûte 800 pépites.** Le joueur l'ouvre depuis le site, quand il veut.
-- Les doubles sont proposés au recyclage :
+- Les doubles se recyclent **à la main, depuis le site**, carte par carte ou tous d'un coup. Rien n'est recyclé
+  automatiquement, et le dernier exemplaire d'une carte ne se recycle jamais : une carte possédée le reste, ce sur
+  quoi reposent l'anti-doublon et les pity. Barème :
 
 | Rareté | Pépites de recyclage |
 |--------|---------------------:|
@@ -673,22 +705,37 @@ malchanceux. C'est exactement son rôle.
 
 ### 8.4 Extensions
 
+Une extension, c'est un script SQL qui ajoute ses cartes à `cards`, avec l'`edition` suivante et les `id` qui suivent
+le dernier attribué (§6.2), et les images correspondantes côté site. Il n'y a pas de mécanisme de sortie différée : les
+cartes entrent dans le tirage le jour où le script est appliqué.
+
 À chaque extension, les poids restent les mêmes, mais les parts par matière, le temps de complétion et le barème de
-gain sont à recalculer (§3.1). Le taux de complétion affiché de chaque joueur baisse le jour de la sortie : c'est
-voulu, et c'est la seule conséquence, puisqu'il n'y a pas de badges.
+gain sont à recalculer (§3.1). La complétion se compte toujours sur **le total du set courant**, toutes éditions
+confondues, pas par extension : le taux affiché de chaque joueur baisse le jour de la sortie. C'est voulu, et c'est la
+seule conséquence, puisqu'il n'y a pas de badges. Un joueur qui avait complété l'album le complète à nouveau en
+finissant l'extension, et l'annonce du §10 repart.
 
 ## 9. Membres
 
+- **Membre parti du Discord** (supprimé par `CleanService` après un jour de grâce) : ses données de cartes sont
+  **gardées** — collection, solde, registre, journal des ouvertures. S'il revient avec le même compte Discord, il
+  retrouve tout à sa première connexion au site, et ne reçoit pas un second pack de bienvenue. Il doit relier son
+  compte OGS pour gagner de nouvelles pépites, comme tout membre qui revient.
+- **Membre purgé par un admin** (`POST /gold/api/admin/purge`, le cas d'un bannissement) : toutes ses données de cartes
+  sont supprimées. S'il revient, il repart de zéro côté cartes, pack de bienvenue compris. Les pépites que ses
+  adversaires ont gagnées contre lui ne sont pas touchées, comme `league_matches`.
 - **Membre banni** : ses cartes Communauté restent des cartes comme les autres, dans le set et dans les collections.
-- **Membre purgé** (parti du Discord, supprimé par `CleanService` après un jour de grâce) : sa collection, son solde et
-  ses registres de pépites sont supprimés avec le reste de ses données.
 
 ## 10. Discord
 
 Deux annonces, sur le canal de notification :
 
 - une **carte Or obtenue**, quand elle est nouvelle pour le joueur (un double n'est pas annoncé) ;
-- un **album complet**, quand un joueur atteint 100 % du set courant.
+- un **album complet**, chaque fois qu'un joueur atteint 100 % du set courant : une première fois sur le set de base,
+  puis de nouveau après chaque extension qu'il finit (§8.4).
+
+L'annonce d'une carte Or montre l'image de la carte, ce qui demande une URL publique absolue : la base des images
+(§11.1) suivie de `NNN.png`.
 
 ## 11. Mise en place sur fulguro-server
 
@@ -699,14 +746,19 @@ Le système entre dans l'architecture existante sans rien de nouveau : un module
 
 | Table | Contenu |
 |-------|---------|
-| `cards` | Le catalogue (§4). Corriger une carte ou ajouter une extension, c'est un script SQL appliqué au déploiement. |
-| `card_collection` | `(discord_id, slug)` → nombre d'exemplaires. |
-| `card_ledger` | Un mouvement de pépites par ligne : gain de partie (avec son rang dans la journée), achat de pack, recyclage. |
-| `card_wallet` | Le solde matérialisé et les trois compteurs de pity, par joueur : packs sans carte nouvelle, cartes depuis la dernière carte Or, cartes depuis la dernière carte Argent. |
-| `card_openings` | Le journal des ouvertures : joueur, date, cartes, compteurs de pity avant et après. |
+| `cards` | Le catalogue (§4) : `id`, `name`, `category`, `rarity`, `edition`. Corriger une rareté ou ajouter une extension, c'est un script SQL appliqué au déploiement ; corriger un texte, c'est une nouvelle image. |
+| `card_collection` | `(discord_id, card_id)` → nombre d'exemplaires. |
+| `card_ledger` | Un mouvement de pépites par ligne, signé, avec son type : `WELCOME` (pack de bienvenue), `GAME` (gain de partie, avec son `gold_id` et son rang dans la journée), `PACK` (achat), `RECYCLE` (recyclage), `ADMIN` (ajustement, avec le motif et le Discord id de l'admin). |
+| `card_wallet` | Une ligne par joueur : le solde matérialisé et les trois compteurs de pity (packs sans carte nouvelle, cartes depuis la dernière carte Or, cartes depuis la dernière carte Argent). Son existence vaut aussi « pack de bienvenue déjà donné » (§11.3). |
+| `card_openings` | Le journal des ouvertures, une ligne par pack : joueur, date, compteurs de pity avant et après. |
+| `card_opening_cards` | Les cartes tirées, une ligne par carte : `(opening_id, slot, card_id, reason)`, où `reason` vaut `STANDARD`, `WOOD_PLUS`, `PITY_NEW`, `PITY_GOLD` ou `PITY_SILVER`. Une table plutôt qu'une colonne JSON : vérifier les parts réelles et la fréquence des pity (§11.6) se fait alors en un `GROUP BY`. |
 
 Le solde est **stocké et vérifiable** : il doit toujours égaler la somme du registre. Le stockage permet le débit
-atomique, le registre permet de répondre à une contestation avec des faits.
+atomique, le registre permet de répondre à une contestation avec des faits. C'est aussi pour ça que l'admin passe par
+une ligne `ADMIN` et jamais par une écriture directe du solde.
+
+Les images ne sont pas servies par le serveur. Leur URL de base est une clé de config, à ajouter aux trois fichiers
+`config.properties*`, pour que les annonces Discord (§10) puissent pointer dessus.
 
 ### 11.2 Crédit des pépites
 
@@ -714,46 +766,99 @@ Un service périodique parcourt les parties gold qui n'ont pas encore été cré
 dans `card_ledger`. La clé `(gold_id, discord_id)` rend l'écriture idempotente sans curseur, sur le modèle de
 `house_points`.
 
+**Seules les parties confirmées par le poll REST sont créditées.** Une partie annulée sur OGS (le « cancel » des
+premiers coups, ou une annulation de modérateur) revient de l'API avec `annulled: true`, `outcome: "Cancellation"` et
+**un perdant désigné** (`doc/ogs-online-league-api.md`). Le WebSocket n'a pas de champ `annulled` : `OgsRealTimeService`
+écrit donc la partie comme une vraie victoire, et seul `OgsService` la retire, quand son poll arrive au joueur — un
+joueur toutes les 15 secondes, soit de l'ordre de 50 minutes pour faire le tour des comptes. Un crédit qui tournerait
+sur les lignes du WebSocket paierait dans cet intervalle. D'où deux changements dans le module `ogs` :
+
+- **Colonne `ogs_games.confirmed`**, à 0 par défaut. `OgsService` la passe à 1 pour chaque partie finie et non annulée
+  que son poll voit, y compris quand la ligne existe déjà (écrite par le WebSocket, ce qui est le cas courant : `addGame`
+  et `finishGame` n'y touchent alors pas, il faut une écriture à part). La sélection du crédit exige `confirmed = 1`.
+  Une partie que le WebSocket est seul à avoir vue ne rapporte rien. Le poll ne lit qu'au moins une page de parties par
+  joueur : une partie qui en sortirait avant d'être lue n'est jamais créditée, ce qui avec la dégressivité ne coûte
+  presque rien, et chaque partie a deux chances, une par joueur.
+- **`OgsRealTimeService` ignore `outcome == "Cancellation"`**, comme un résultat qu'il ne sait pas lire. La partie
+  n'est plus annoncée ni affichée comme gagnée en attendant le poll, qui la supprime ensuite comme aujourd'hui.
+
+Une annulation qui arrive après la confirmation ne reprend rien (§7.1).
+
 Trois contraintes :
 
 - **Le rang d'une partie** se compte sur la date de la partie en heure de Paris (`DATE_ZONE`) et **dans l'ordre de
   crédit** : c'est 1 + le nombre de gains déjà écrits pour ce joueur à cette date. Un gain écrit ne change donc jamais.
-  Ranger par heure de la partie serait plus juste, mais une partie n'est créditée qu'une fois finie : une partie
-  longue, ou une partie que le poll REST d'`OgsService` rattrape après coup, s'intercalerait avant des parties déjà
-  créditées, et il faudrait réécrire leurs gains dans le registre. Les ticks ne
-  se chevauchent pas (`PeriodicFlowService`), donc deux crédits ne peuvent pas prendre le même rang.
+  Ranger par heure de la partie serait plus juste, mais une partie n'est créditée qu'une fois confirmée : une partie
+  longue, ou une partie que le poll REST rattrape après coup, s'intercalerait avant des parties déjà créditées, et il
+  faudrait réécrire leurs gains dans le registre. Les ticks ne se chevauchent pas (`PeriodicFlowService`), donc deux
+  crédits ne peuvent pas prendre le même rang.
 - **Le registre ne dépend pas de la survie de la partie.** `CleanService` supprime les parties de plus de 32 jours et
-  `OgsService` celles qu'OGS annule. Aucune de ces suppressions ne doit toucher `card_ledger`, puisque les pépites
-  d'une partie annulée restent acquises.
+  `OgsService` celles qu'OGS annule. Aucune de ces suppressions ne doit toucher `card_ledger`.
 - **La sélection ne peut pas réutiliser la vue `fgc_validity_games` telle quelle**, qui est bornée à 30 jours et ne
   sert qu'à compter, et qui mélange KGS et OGS, classées ou non. Elle en reprend les critères sur `ogs_games` seul, plus
-  `ranked = 1`. Le service doit passer au moins une fois dans les 32 jours de
-  rétention des parties, ce que n'importe quel intervalle de l'ordre de la minute garantit.
+  `ranked = 1` et `confirmed = 1`, en joignant `ogs_user_info` des deux côtés pour retrouver les Discord id. Le service
+  doit passer au moins une fois dans les 32 jours de rétention des parties, ce que n'importe quel intervalle de l'ordre
+  de la minute garantit.
 
-### 11.3 Ouverture d'un pack et recyclage
+**Date de lancement.** Seules les parties **commencées** à partir de la date de lancement sont créditées : la sélection
+ajoute `ogs_games.date >= :launch`, `date` étant l'heure de début de la partie. Une partie commencée avant et finie
+après ne rapporte rien. Rien de ce qui est déjà en base au déploiement n'est donc crédité, sans rétroactivité.
 
+La date est une clé de config, `cards.launch.date`, au format ISO local en heure de Paris (`2026-11-01T00:00`), lue
+avec `Config.get` et donc obligatoire dans les trois fichiers `config.properties*`. Une clé plutôt qu'une constante :
+dev peut prendre une date plus ancienne pour tester le crédit sur les parties de `fg_dev`, sans toucher à prod. ⚠ La
+comparaison doit se faire dans le même fuseau que celui dans lequel `ogs_games.date` est écrit, sans quoi la borne glisse
+de une ou deux heures.
+
+### 11.3 Portefeuille, pack de bienvenue, ouverture et recyclage
+
+- **Création du portefeuille.** La ligne `card_wallet` est créée avec le pack de bienvenue : un `INSERT IGNORE` du
+  portefeuille à 800 pépites et, seulement si l'insertion a pris, la ligne `WELCOME` du registre, dans la même
+  transaction. Ça se fait dans `DiscordDatabaseAccessor.createUser`, appelé à chaque connexion au site (`Api.kt`,
+  `getAuthProfile`), qui est le seul endroit où un joueur est créé. Au déploiement, la migration fait de même pour
+  chaque ligne existante de `discord_user_info`.
+- **Pas de second pack de bienvenue.** Le portefeuille n'est pas supprimé quand un membre quitte le Discord (§11.4) :
+  à son retour, l'`INSERT IGNORE` ne prend pas et rien n'est crédité. Après une purge admin, il n'existe plus, et le
+  joueur repart de zéro, pack compris : c'est voulu.
 - **Routes authentifiées.** Sans authentification, n'importe qui pourrait dépenser les pépites d'un autre et recycler
-  ses cartes. `api/auth/SessionResolver.kt` résout déjà la session Discord du navigateur pour les routes admin, et les
-  routes cartes passent par lui.
+  ses cartes. `api/auth/SessionResolver.kt` résout déjà la session Discord du navigateur (en-tête `X-Gold-Id`) ; il faut
+  un pendant membre de `asAdmin`, qui ne contrôle pas les rôles. ⚠ Chaque résolution appelle `/users/@me` sur Discord :
+  une ouverture coûte un appel à l'API Discord.
 - **Une seule transaction** par ouverture : débit conditionnel (`UPDATE card_wallet SET nuggets = nuggets - 800 WHERE
   discord_id = :id AND nuggets >= 800`, puis contrôle du nombre de lignes touchées), écriture des cartes, des compteurs
   de pity, du registre et du journal. Sinon un double clic ouvre deux packs pour un seul débit. Le rate limit de l'API
   ne protège pas de ça.
-- Le recyclage suit le même schéma : décrément de l'exemplaire, crédit du registre et du solde dans la même
-  transaction.
+- **Recyclage**, à l'unité ou de tous les doubles : décrément des exemplaires sans jamais descendre sous 1, crédit du
+  registre et du solde dans la même transaction. Le décrément porte la condition (`WHERE count > 1`) pour qu'un double
+  clic ne recycle pas le dernier exemplaire.
+- **Administration.** Des routes `/gold/api/admin/cards/…`, derrière `asAdmin`, pour créditer ou débiter des pépites
+  (ligne `ADMIN`, motif obligatoire) et consulter le registre d'un joueur.
+- **Contrat d'API** : il sera écrit avec le plan d'implémentation.
 
 ### 11.4 Purge et annonces
 
-- `CleanService` ajoute les tables `card_collection`, `card_ledger`, `card_wallet` et `card_openings` à ce qu'il
-  supprime pour un membre purgé.
+- **Les tables de joueur** (`card_collection`, `card_ledger`, `card_wallet`, `card_openings`, avec
+  `card_opening_cards` par cascade ou à la suite) vont dans **`PURGE_ONLY_TABLES`** de `CleanDatabaseAccessor`, pas dans
+  `ACCOUNT_TABLES`. `CleanService` ne les touche donc pas quand un membre quitte le Discord, et la purge admin les
+  supprime dans sa transaction (§9).
+- Garder ces lignes pour un membre parti conserve son Discord id indéfiniment, comme `house_points` le fait déjà.
 - Les annonces du §10 passent par `DiscordBot.sendMessageEmbeds`, sur le modèle de `HouseNotifier`, en best-effort :
   une annonce ratée coûte une ligne de log, jamais une ouverture.
 - dev et prod sont isolés : un tirage en local écrit dans `fg_dev` et passe par le bot de test. Aucune ressource
   externe n'est partagée.
 
-### 11.5 Avant publication
+### 11.5 Déploiement
+
+- Un script `doc/migration cartes.sql` : les tables, la colonne `ogs_games.confirmed`, les 270 lignes du catalogue et
+  le pack de bienvenue des joueurs existants, avec sa place dans le déploiement. `doc/schema.sql` et le CLAUDE.md
+  suivent.
+- Fixer `cards.launch.date` dans le fichier prod au moment du déploiement, ou à une date à venir pour ouvrir le crédit
+  plus tard que la mise en ligne. Le pack de bienvenue, lui, est donné dès le déploiement.
+
+### 11.6 Avant publication
 
 - Refaire la mesure d'activité du §8.1 sur une saison complète, en ne comptant que les parties classées sur OGS.
 - Tests : simuler des ouvertures en masse pour vérifier les parts réelles, que le slot Bois+ est toujours Bois ou
   mieux, que l'anti-doublon et les deux pity rendent bien une carte manquante, et que deux ouvertures concurrentes ne
-  débitent jamais sous zéro.
+  débitent jamais sous zéro. Le module `cards` a besoin de son propre `src/test`, sur le modèle de `modules/api`.
+- Vérifier sur `fg_dev`, avec une vraie partie annulée, qu'elle n'est jamais créditée.
