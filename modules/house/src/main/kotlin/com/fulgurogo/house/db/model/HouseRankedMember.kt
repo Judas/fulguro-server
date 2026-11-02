@@ -28,7 +28,12 @@ data class HouseRankedMember(
     override val victory: Int,
     override val evenGame: Int,
     override val ranked: Int,
-    /** The sum of the per-game totals, coefficients already applied — not the sum of the seven columns above. */
+    /** The signed sum of this season's administrator adjustments for this house. */
+    override val adjustment: Int = 0,
+    /**
+     * The sum of the per-game totals, coefficients already applied, plus [adjustment] — not the sum of the seven
+     * columns above. Can be negative when a penalty outweighs what was scored.
+     */
     override val total: Int,
     val rank: Int = 0
 ) : HousePointsBreakdown

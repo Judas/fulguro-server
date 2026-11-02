@@ -22,6 +22,15 @@ interface HousePointsBreakdown {
     val evenGame: Int
     val ranked: Int
 
-    /** What the register credited, board coefficient included. Equal to the sum of the seven columns on 19×19 only. */
+    /**
+     * What administrators added or took away by hand (`house_adjustments`), signed. Zero for a single game; only a
+     * player's season line carries one.
+     */
+    val adjustment: Int get() = 0
+
+    /**
+     * What the register credited, board coefficient included, plus [adjustment]. Equal to the sum of the seven columns
+     * on 19×19 with no adjustment only.
+     */
     val total: Int
 }

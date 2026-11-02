@@ -1,4 +1,4 @@
--- Reference schema of the fg_prod database: 19 tables, 5 views, and the gold_tiers reference rows.
+-- Reference schema of the fg_prod database: 20 tables, 5 views, and the gold_tiers reference rows.
 --
 -- There is no migration tool. The live schema is changed by hand on the server, and this file is what the code
 -- expects to find there -- so it is a reference, not a script anyone runs, and it can drift. When in doubt the
@@ -23,7 +23,8 @@
 -- that has run that script but not yet deployed the Houses they exist and stay empty. Two later scripts changed
 -- them: `migration choix de maison.sql` for `house_members`.`pending_house_id`, and
 -- `migration taille de goban.sql` for `house_points`.`total` and the `size` column of `house_games` -- the board
--- coefficient, which is where the reasoning for both lives.
+-- coefficient, which is where the reasoning for both lives. `house_adjustments` is a fifth house table, from
+-- `migration ajustements maisons.sql`.
 --
 -- The six league_* tables come from `migration ligue.sql`, same story and same authority for the reasoning. They add
 -- no view: the standings depend on the current season, which only Kotlin knows, so they are hand-written queries in
@@ -248,6 +249,23 @@ CREATE TABLE `house_points` (
   KEY `house_points_season_house` (`season`, `house_id`),
   KEY `house_points_season_player` (`season`, `discord_id`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 ROW_FORMAT = DYNAMIC;
+
+-- Administrators' bonuses (positive) and penalties (negative), one row per grant, never 0. Added on top of the
+-- register in every house total and ranking. `house_id` and `season` frozen at write time like the register's; kept
+-- by CleanService, deleted by `/admin/purge`. From `migration ajustements maisons.sql`.
+CREATE TABLE `house_adjustments` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `discord_id` VARCHAR(255) NOT NULL,
+  `house_id` INT(11) NOT NULL,
+  `season` VARCHAR(9) NOT NULL,
+  `points` INT(11) NOT NULL,
+  `reason` VARCHAR(200) NOT NULL,
+  `admin_discord_id` VARCHAR(255) NOT NULL,
+  `created` DATETIME NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `house_adjustments_season_house` (`season`, `house_id`),
+  KEY `house_adjustments_season_player` (`season`, `discord_id`)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
 
 -- The once-only guard for what must happen exactly once a season: applying the summer intentions, the closing
 -- recap, the daily ranking. `season` is the '2026-2027' string computed in Kotlin. `opened IS NULL` means the

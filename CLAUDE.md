@@ -12,8 +12,9 @@ It used to aggregate four more sources — the FOX and IGS servers and the FFG a
 in 8.8 (`doc/migration remove servers - *.sql`). Nothing of them is left; don't reintroduce a platform-shaped
 abstraction on their account.
 
-There are no tests in the repo (`src/test` does not exist anywhere), no linter config, and no CI. Verification means
-compiling and running.
+The only tests are the route tests in `modules/api/src/test` (`./gradlew :modules:api:test`, also run by
+`./gradlew build`): each builds an `Api` with fake services and drives it over HTTP, no database. There is no linter
+config and no CI. Anything past the routes is verified by compiling and running.
 
 ## Commands
 
@@ -198,6 +199,13 @@ not open every connection at once.
    therefore drift from `house_members`. Two things have to hold on the guild or every grant fails the same way: the bot
    needs **Manage Roles**, and its own role has to sit **above** the four house roles — `DiscordBot` checks the second
    up front (`canInteract`) and names it in the log, since it is the one nobody guesses.
+
+   An administrator can also give or take points by hand, `POST /gold/api/admin/house/points` (step 12 of
+   `doc/plan-maisons.md`). Those go in `house_adjustments`, signed, with a reason and the administrator, and *not* in
+   `house_points`: the register stays one row per (game, player). `houseTotals` and `rankedMembers` add them on top,
+   so every total and ranking counts them and exposes them as an eighth column, `adjustment`, already inside `total`.
+   ⚠ Totals can therefore be **negative** — don't reintroduce a `-1` or `0` sentinel for "no score". Like the
+   register, adjustments survive a player leaving and only `/admin/purge` removes them.
 5. The **league** (`doc/plan-ligue.md`) is a season-long ladder on top of the houses: 16 fortnightly sessions,
    1 September to 31 May, one match per player per session against someone from another house. `LeagueSessionService`
    ticks every 10 minutes and does everything in one pass — draws a session in the 7am-9am window, creates the challenge

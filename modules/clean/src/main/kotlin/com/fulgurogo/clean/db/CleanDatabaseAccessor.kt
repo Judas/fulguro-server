@@ -19,7 +19,7 @@ object CleanDatabaseAccessor {
      * `house_members` belongs here — losing the Discord account means losing the membership, and it is in fact the only
      * way out of a house mid-season, since the API only offers "leave" during the summer break.
      *
-     * `house_points` deliberately does **not**, and neither does `league_exemptions`; both are in [PURGE_ONLY_TABLES]
+     * `house_points`, `house_adjustments` and `league_exemptions` deliberately do **not**; they are in [PURGE_ONLY_TABLES]
      * instead, where the reasons are set out. `league_matches` is in neither, and that omission is deliberate too:
      * deleting the matches would shrink an academy's renown and, worse, take the opponent's played-and-won credit with
      * them. A match is a fact about two players, and only one of them is being removed.
@@ -46,16 +46,18 @@ object CleanDatabaseAccessor {
      * *leaves*. It is not a licence to keep points that should never have counted, which is the same exception
      * `OgsDatabaseAccessor.removeAnnulledGames` already makes in as many words. A ban is the other case that earns it.
      *
+     * `house_adjustments`: the administrators' bonuses and penalties, kept on leaving for the same reason as the register.
+     *
      * `league_exemptions`: `CleanService` keeps them because they are a fact about a *session* — the draw looked at this
      * player and found nobody — and the perfect-attendance bonus of anyone who comes back is computed from them. Nobody
      * comes back from a ban, and with the academy row gone the rows are read by nothing at all, so here they go.
      */
-    private val PURGE_ONLY_TABLES = listOf("house_points", "league_exemptions")
+    private val PURGE_ONLY_TABLES = listOf("house_points", "house_adjustments", "league_exemptions")
 
     /**
      * Deletes a banned player: their account, their house points and their academy, in one transaction. Answers what went.
      *
-     * The admin counterpart of [removeAllFrom], and it differs from it in exactly the two tables [PURGE_ONLY_TABLES]
+     * The admin counterpart of [removeAllFrom], and it differs from it in exactly the tables [PURGE_ONLY_TABLES]
      * names. Everything else about the two is the same, deliberately.
      *
      * **`league_matches` is not touched**, which is the whole of "without breaking the rest of the league". The row is

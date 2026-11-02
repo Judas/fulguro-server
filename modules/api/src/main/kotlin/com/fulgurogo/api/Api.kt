@@ -2,6 +2,9 @@ package com.fulgurogo.api
 
 import com.fulgurogo.api.ApiModule.TAG
 import com.fulgurogo.api.admin.AdminAccess
+import com.fulgurogo.api.admin.HouseAdjustmentResult
+import com.fulgurogo.api.admin.HouseAdministrationService
+import com.fulgurogo.api.admin.HouseAdministrator
 import com.fulgurogo.api.admin.LogReader
 import com.fulgurogo.api.admin.PlayerPurgeService
 import com.fulgurogo.api.admin.PlayerPurger
@@ -50,6 +53,7 @@ import com.fulgurogo.league.db.LeagueDatabaseAccessor
 import com.fulgurogo.league.db.model.LeagueAward
 import com.fulgurogo.ogs.api.OgsApiClient
 import com.google.gson.Gson
+import com.google.gson.JsonSyntaxException
 import io.javalin.http.Context
 import io.javalin.http.HttpResponseException
 import okhttp3.Request
@@ -64,6 +68,7 @@ class Api(
     private val accountUnlinker: AccountUnlinker = AccountUnlinkService(accountLinkers),
     private val playerPurger: PlayerPurger = PlayerPurgeService(),
     private val leagueAdministrator: LeagueAdministrator = LeagueAdministrationService(),
+    private val houseAdministrator: HouseAdministrator = HouseAdministrationService(),
 ) {
     private val gson: Gson = Gson()
 
@@ -677,6 +682,45 @@ class Api(
         }
     }
 
+    /**
+     * Gives or takes house points by hand: 401/503/403 as the other admin routes, 400 on a bad body, 404 when the player
+     * is in no house, 409 during the summer break, 200 with what was recorded and the player's new total.
+     *
+     * [points] is signed and never zero, at most [MAX_HOUSE_ADJUSTMENT] either way — a guard against a stray digit, not
+     * a rule of the game. The reason is required and announced on Discord with the amount; the administrator is named
+     * only in the log line and in the table.
+     */
+    fun adjustHousePoints(context: Context) = context.handle("adjustHousePoints") {
+        context.asAdmin { admin ->
+            // Gson does not honour Kotlin nullability, so treat every field as possibly absent. A non-integer amount
+            // ("5.5", "abc") fails the parse itself, and is as much a bad request as a missing one.
+            val body = try {
+                gson.fromJson(context.body(), HouseAdjustmentRequestBody::class.java)
+            } catch (e: JsonSyntaxException) {
+                null
+            }
+            val discordId = body?.discordId
+            val points = body?.points
+            val reason = body?.reason?.trim()
+            if (discordId.isNullOrBlank() || points == null || points == 0 ||
+                points !in -MAX_HOUSE_ADJUSTMENT..MAX_HOUSE_ADJUSTMENT ||
+                reason.isNullOrEmpty() || reason.length > MAX_HOUSE_ADJUSTMENT_REASON
+            ) {
+                context.badRequest()
+                return@handle
+            }
+
+            when (val result = houseAdministrator.adjust(discordId, points, reason, admin.discordId)) {
+                HouseAdjustmentResult.NotMember -> context.notFoundError()
+                HouseAdjustmentResult.OutOfSeason -> context.conflict()
+                is HouseAdjustmentResult.Done -> {
+                    log(TAG, "adjustHousePoints admin=${admin.discordId} target=$discordId points=$points")
+                    context.standardResponse(result.adjustment)
+                }
+            }
+        }
+    }
+
     private fun requestAuthToken(authCode: String): AuthRequestResponse {
         val body: RequestBody = AuthRequestPayload(code = authCode).toFormBody()
 
@@ -740,5 +784,13 @@ class Api(
         GoldDatabaseAccessor.addPlayer(discordId)
         FgcDatabaseAccessor.addPlayer(discordId)
         context.standardResponse()
+    }
+
+    private companion object {
+        /** Largest bonus or penalty one request can carry, either way. */
+        const val MAX_HOUSE_ADJUSTMENT = 100
+
+        /** Matches `house_adjustments.reason VARCHAR(200)`; the reason is also an embed line on Discord. */
+        const val MAX_HOUSE_ADJUSTMENT_REASON = 200
     }
 }

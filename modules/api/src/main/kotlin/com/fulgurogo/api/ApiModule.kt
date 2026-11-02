@@ -61,6 +61,8 @@ object ApiModule {
                 // League administration: take a player out, rule on a match. Renown only, never house points.
                 post("/gold/api/admin/league/remove", api::removeLeagueMember)
                 post("/gold/api/admin/league/adjudicate", api::adjudicateLeagueMatch)
+                // House points by hand: a signed bonus or penalty with a reason, announced on Discord.
+                post("/gold/api/admin/house/points", api::adjustHousePoints)
 
                 // Accounts
                 get("/gold/api/accounts", api::getAccounts)

@@ -20,6 +20,7 @@ object HouseDatabaseAccessor {
     private const val HOUSES_TABLE = "houses"
     private const val MEMBERS_TABLE = "house_members"
     private const val POINTS_TABLE = "house_points"
+    private const val ADJUSTMENTS_TABLE = "house_adjustments"
     private const val SEASONS_TABLE = "house_seasons"
     private const val GAMES_VIEW = "house_games"
     private const val DISCORD_TABLE = "discord_user_info"
@@ -40,9 +41,11 @@ object HouseDatabaseAccessor {
                 " COALESCE(SUM(p.victory), 0) AS victory, " +
                 " COALESCE(SUM(p.even_game), 0) AS even_game, " +
                 " COALESCE(SUM(p.ranked), 0) AS ranked, " +
+                // MAX and not SUM: `a` is pre-aggregated to one row per member, then repeated once per register row.
+                " COALESCE(MAX(a.adjustment), 0) AS adjustment, " +
                 // Never SUM of the seven above: below 19x19 a game credits less than its breakdown, and the register
-                // is what remembers how much. See HousePointsBreakdown.
-                " COALESCE(SUM(p.total), 0) AS total "
+                // is what remembers how much. See HousePointsBreakdown. The adjustments are added on top.
+                " COALESCE(SUM(p.total), 0) + COALESCE(MAX(a.adjustment), 0) AS total "
 
     fun houses(): List<House> = DatabaseAccessor.withDao { connection ->
         connection
@@ -286,6 +289,37 @@ object HouseDatabaseAccessor {
     }
 
     /**
+     * Records an administrator's adjustment — a bonus when [points] is positive, a penalty when negative — for the house
+     * [houseId] in [season], both frozen here exactly like a register row's, so the adjustment stays with that house if
+     * the player later leaves it.
+     *
+     * A table of its own rather than a synthetic `house_points` row: the register is one row per (game, player), with a
+     * positive total, and it has nowhere to keep the reason or the administrator — the only trace of who moved what.
+     */
+    fun addAdjustment(
+        discordId: String,
+        houseId: Int,
+        season: String,
+        points: Int,
+        reason: String,
+        adminDiscordId: String
+    ) = DatabaseAccessor.withDao { connection ->
+        connection
+            .query(
+                "INSERT INTO $ADJUSTMENTS_TABLE(discord_id, house_id, season, points, reason, admin_discord_id, created) " +
+                        " VALUES (:discordId, :houseId, :season, :points, :reason, :adminDiscordId, NOW()) "
+            )
+            .addParameter("discordId", discordId)
+            .addParameter("houseId", houseId)
+            .addParameter("season", season)
+            .addParameter("points", points)
+            .addParameter("reason", reason)
+            .addParameter("adminDiscordId", adminDiscordId)
+            .executeUpdate()
+        Unit
+    }
+
+    /**
      * Puts a player in a house, stamping `joined` with the database clock, and answers whether this call is the one that
      * did it.
      *
@@ -494,7 +528,9 @@ object HouseDatabaseAccessor {
         val query = "SELECT h.id AS house_id, " +
                 " (SELECT COUNT(*) FROM $MEMBERS_TABLE m WHERE m.house_id = h.id) AS member_count, " +
                 " (SELECT COALESCE(SUM(p.total), 0) FROM $POINTS_TABLE p " +
-                "   WHERE p.house_id = h.id AND p.season = :season) AS total_points " +
+                "   WHERE p.house_id = h.id AND p.season = :season) + " +
+                " (SELECT COALESCE(SUM(a.points), 0) FROM $ADJUSTMENTS_TABLE a " +
+                "   WHERE a.house_id = h.id AND a.season = :season) AS total_points " +
                 " FROM $HOUSES_TABLE h ORDER BY h.id "
         return connection
             .query(query)
@@ -518,6 +554,11 @@ object HouseDatabaseAccessor {
                 " JOIN $DISCORD_TABLE d ON d.discord_id = m.discord_id " +
                 " LEFT JOIN $POINTS_TABLE p " +
                 "   ON p.discord_id = m.discord_id AND p.house_id = m.house_id AND p.season = :season " +
+                // Aggregated before joining: a plain join next to `p` would repeat each adjustment once per game row,
+                // and each game row once per adjustment.
+                " LEFT JOIN (SELECT discord_id, house_id, SUM(points) AS adjustment FROM $ADJUSTMENTS_TABLE " +
+                "   WHERE season = :season GROUP BY discord_id, house_id) a " +
+                "   ON a.discord_id = m.discord_id AND a.house_id = m.house_id " +
                 houseFilter +
                 " GROUP BY m.discord_id, m.house_id, d.discord_name, d.discord_avatar "
 
@@ -535,7 +576,9 @@ object HouseDatabaseAccessor {
      * on 40 points are both 2nd and the next is 4th. Ties break on name, to keep the list stable between calls.
      */
     private fun List<HouseRankedMember>.withRanks(): List<HouseRankedMember> {
-        var lastTotal = -1
+        // Null rather than a sentinel: an administrator's penalty can take a total below zero, and a -1 sentinel would
+        // then hand a leader on exactly -1 the rank 0.
+        var lastTotal: Int? = null
         var lastRank = 0
         return this
             .sortedWith(

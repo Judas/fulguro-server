@@ -9,16 +9,18 @@ import com.fulgurogo.house.db.model.House
 import com.fulgurogo.house.db.model.HouseRankedMember
 import com.fulgurogo.house.db.model.HouseStanding
 import com.fulgurogo.house.db.model.ranked
+import kotlin.math.abs
 
 /**
- * The three things the bot says about the houses: someone arrived, here is today's standing, here is how the season
- * ended. Nothing else — the scanner is silent by design, or every blitz game would be announced twice over.
+ * The four things the bot says about the houses: someone arrived, an administrator moved someone's points, here is
+ * today's standing, here is how the season ended. Nothing else — the scanner is silent by design, or every blitz game
+ * would be announced twice over. An adjustment is the opposite case: rare, by hand, and the community should see why.
  *
- * All three go to `bot.notification.channel.id`, the channel games are already announced in, so there is no new config
+ * All four go to `bot.notification.channel.id`, the channel games are already announced in, so there is no new config
  * key. French throughout, because this is the one part of the module a player reads.
  *
  * Formatting only. *When* to say these things lives in the callers — [HouseSeasonService] for the two dated ones, the
- * `join` handler for an arrival — because the guards that make them happen once are rows in `house_seasons`, and a
+ * `join` handler for an arrival, the admin route for an adjustment — because the guards that make them happen once are rows in `house_seasons`, and a
  * formatter that reached for the database to decide whether to speak would be much harder to reason about.
  */
 object HouseNotifier {
@@ -46,6 +48,25 @@ object HouseNotifier {
         imageUrl = crestOf(house)
     )
 
+    /**
+     * An administrator's bonus or penalty, with the reason they gave. Dressed in the house's colours like an arrival:
+     * it is about one player and one house.
+     *
+     * The administrator is not named. The reason is what the channel needs; who did it is in the server log and in
+     * `house_adjustments.admin_discord_id`.
+     */
+    fun notifyAdjustment(discordId: String, house: House, points: Int, reason: String) {
+        val amount = "${if (points > 0) "+" else "−"}${abs(points)} " +
+                "point${if (abs(points) > 1) "s" else ""}"
+        val title = if (points > 0) "**${nameOf(discordId)}** reçoit **$amount** pour la maison **${house.name}**"
+        else "**${nameOf(discordId)}** perd **$amount** pour la maison **${house.name}**"
+        send(
+            title = title,
+            message = "${emojiOf(house)} *$reason*",
+            imageUrl = crestOf(house)
+        )
+    }
+
     /** Today's standing: the four houses in order, each with its best current member. */
     fun notifyDailyRanking(season: String, standings: List<HouseStanding>) = send(
         title = "$EMOJI Classement des Maisons",
@@ -65,7 +86,8 @@ object HouseNotifier {
         val winners = ordered.filter { it.totalPoints == best }
 
         val headline = when {
-            best == 0 -> "Aucune maison n'a marqué cette saison."
+            // Every house at zero, not merely a best of zero: with penalties, a house on 0 can lead three below it.
+            ordered.all { it.totalPoints == 0 } -> "Aucune maison n'a marqué cette saison."
             winners.size == 1 -> "La maison **${winners.first().house.name}** remporte la saison $season !"
             else -> "La saison $season se termine sur une égalité entre les maisons " +
                     winners.joinToString(" et ") { "**${it.house.name}**" } + " !"
@@ -98,7 +120,7 @@ object HouseNotifier {
     private fun leaderLine(leader: HouseRankedMember): String =
         "↳ Leader : ${leader.discordName ?: "?"} *(${points(leader.total)})*"
 
-    private fun points(total: Int): String = "**$total point${if (total > 1) "s" else ""}**"
+    private fun points(total: Int): String = "**$total point${if (abs(total) > 1) "s" else ""}**"
 
     /**
      * A house's own Discord emoji, falling back to the generic [EMOJI] when it has none configured.

@@ -782,6 +782,43 @@ remplaçant arrive bientôt » à propos de la disparition de l'Exam Hunter, pro
 **Vérification** : faite. `./gradlew build` passe, `./gradlew :app:run` démarre, et `/gold/api/health` répond 200
 avec les dix services sains, `HousePointsService` et `HouseSeasonService` compris.
 
+## Étape 12 — Ajustements administrateur
+
+Dépend de : étapes 6, 7 et 10.
+
+Un administrateur donne ou retire des points de maison à un joueur, pour ce que le scanner ne voit pas : un
+événement, un tournoi, une pénalité. Même porte que les autres routes d'administration (`asAdmin`, rôles de
+`gold.admin.role.ids`).
+
+**Route** — `POST /gold/api/admin/house/points {discordId, points, reason}`.
+
+| Réponse | Quand |
+|---|---|
+| 200 `{discordId, house, season, points, reason, total}` | enregistré ; `total` est le nouveau total du joueur, relu dans le classement |
+| 400 | `discordId` vide, `points` absent, nul, non entier ou hors de [-100, 100], `reason` vide ou plus de 200 caractères |
+| 404 | le joueur n'est dans aucune maison |
+| 409 | vacances (`HouseSeason.period()`) : la saison est close et son récapitulatif déjà publié |
+
+**Table** — `house_adjustments`, une ligne par attribution, signée, avec la raison et l'administrateur. Pas une
+ligne synthétique de `house_points` : le registre est une ligne par (partie, joueur), à total positif, et n'a nulle
+part où garder ni la raison ni l'auteur. `house_id` et `season` sont figés à l'écriture, comme dans le registre.
+Voir `doc/migration ajustements maisons.sql`.
+
+**Effets** — `houseTotals` et `rankedMembers` ajoutent les ajustements de la saison au registre ; toutes les lectures
+passent par ces deux fonctions, donc classement, profil, page de maison, classement quotidien et récapitulatif de fin
+de saison les comptent. Le détail sort dans une huitième colonne, `adjustment`, déjà comprise dans `total`.
+`HouseNotifier.notifyAdjustment` annonce chaque attribution avec sa raison, sans nommer l'administrateur ;
+l'annonce est au mieux, après l'écriture, et son échec n'annule rien.
+
+⚠ **Un total peut être négatif**, pour un joueur comme pour une maison. Deux endroits supposaient le contraire et
+ont été corrigés : `withRanks` partait d'un total sentinelle de -1 (un leader à -1 aurait eu le rang 0), et le
+récapitulatif annonçait « aucune maison n'a marqué » sur un meilleur total de 0, ce qui devient faux quand une
+maison à 0 en devance une à -3.
+
+⚠ **Un ajustement reste à la maison** quand le joueur la quitte, comme ses points de parties : `CleanService` n'y
+touche pas. Seule `/admin/purge` le supprime. Une erreur se corrige donc par un ajustement inverse, pas par une
+suppression : il n'y a pas de route pour en retirer un.
+
 ---
 
 ## Points ouverts

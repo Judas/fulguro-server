@@ -3,6 +3,27 @@ Notes de version de FulguroGo Server.
 l'historique des versions antérieures est dans les messages de commit.
 
 
+9.11 — Points de maison attribués par un administrateur
+---------------------------------------------------------
+
+Pour les joueurs
+- Un administrateur peut donner ou retirer des points de maison à un joueur, avec une raison : un événement, un
+  tournoi, une pénalité. Chaque attribution est annoncée sur Discord avec sa raison.
+- Ces points comptent dans le total du joueur et de sa maison, et restent à la maison s'il la quitte. Un total peut
+  désormais être négatif.
+- Hors saison (juin à août), rien ne peut être attribué : la saison est close et son résultat déjà annoncé.
+
+Pour le site
+- POST /gold/api/admin/house/points {discordId, points, reason}, réservée aux administrateurs (en-tête X-Gold-Id).
+  `points` est un entier signé, non nul, entre -100 et 100 ; `reason` est obligatoire, 200 caractères au plus.
+  Réponses : 200 {discordId, house, season, points, reason, total}, 400, 404 (joueur sans maison), 409 (hors saison).
+- Les points de maison (`points` du profil, des membres et du leader) ont une colonne `adjustment`, déjà comprise dans
+  `total` : à afficher, jamais à additionner.
+
+Pour l'exploitation
+- Appliquer `doc/migration ajustements maisons.sql` avant le déploiement : une nouvelle table `house_adjustments`.
+
+
 9.10 — Arbitrage de la ligue
 ----------------------------
 
