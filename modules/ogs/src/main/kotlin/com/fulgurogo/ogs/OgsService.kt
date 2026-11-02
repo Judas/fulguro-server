@@ -35,7 +35,7 @@ class OgsService : StalestFirstService<OgsUserInfo>(0, 15, TAG) {
                     discordId = stale.discordId,
                     ogsId = stale.ogsId,
                     ogsName = rating.username,
-                    ogsRank = rating.ranking.rankToKyuDanString(),
+                    ogsRank = rating.rank().rankToKyuDanString(),
                     updated = Date(),
                     error = false
                 )
