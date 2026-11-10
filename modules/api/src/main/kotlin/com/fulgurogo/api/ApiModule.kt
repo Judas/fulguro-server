@@ -27,6 +27,8 @@ object ApiModule {
 
                 // Games
                 get("/gold/api/games", api::getRecentGames)
+                // OGS games in progress with at least one member, from the WebSocket's live list. 503 when it is stale.
+                get("/gold/api/games/live", api::getLiveGames)
                 get("/gold/api/game/{id}", api::getGame)
 
                 // Gold tiers

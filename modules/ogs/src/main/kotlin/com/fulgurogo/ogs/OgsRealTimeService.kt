@@ -80,6 +80,10 @@ class OgsRealTimeService : PeriodicFlowService(0, 10), OgsWsClient.Listener {
     }
 
     override fun onGameListResponse(message: OgsWsMessage.GameList) {
+        // Before the early return and before the two-member filter below: an empty answer has to clear the games that
+        // just ended, and the live route wants games with a single member too.
+        OgsLiveGames.publish(message.data.results)
+
         if (message.data.results.isEmpty()) return
 
         // One query for the whole response. This used to be two queries per game listed, on a callback that fires

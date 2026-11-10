@@ -51,13 +51,19 @@ import com.fulgurogo.house.db.model.House
 import com.fulgurogo.league.LeagueSession
 import com.fulgurogo.league.db.LeagueDatabaseAccessor
 import com.fulgurogo.league.db.model.LeagueAward
+import com.fulgurogo.common.utilities.rankToKyuDanString
+import com.fulgurogo.ogs.OgsLiveGames
+import com.fulgurogo.ogs.OgsLiveSnapshot
 import com.fulgurogo.ogs.api.OgsApiClient
+import com.fulgurogo.ogs.websocket.model.OgsWsGameLightPlayer
 import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
 import io.javalin.http.Context
 import io.javalin.http.HttpResponseException
 import okhttp3.Request
 import okhttp3.RequestBody
+import java.time.Duration
+import java.time.Instant
 import java.time.ZonedDateTime
 
 class Api(
@@ -69,6 +75,9 @@ class Api(
     private val playerPurger: PlayerPurger = PlayerPurgeService(),
     private val leagueAdministrator: LeagueAdministrator = LeagueAdministrationService(),
     private val houseAdministrator: HouseAdministrator = HouseAdministrationService(),
+    private val liveGames: () -> OgsLiveSnapshot? = { OgsLiveGames.snapshot },
+    private val ogsMembers: (Collection<Int>) -> Map<Int, ApiOgsMember> = ApiDatabaseAccessor::ogsMembers,
+    private val ogsWebsiteUrl: () -> String = { Config.get("ogs.website.url") },
 ) {
     private val gson: Gson = Gson()
 
@@ -157,6 +166,74 @@ class Api(
     fun getRecentGames(context: Context) = context.handle("getRecentGames") {
         val games = ApiDatabaseAccessor.recentGames()
         context.standardResponse(games)
+    }
+
+    /**
+     * The OGS games in progress with at least one member, the most recent first, each flagged `gold` when both players
+     * are members, optionally filtered on that flag with `?gold=true|false`.
+     *
+     * "Most recent" is ordered by OGS game id, which OGS hands out in creation order: a `gamelist/query` entry carries no
+     * start date, and the one in `OgsWsGameData` would cost a `game/connect` per game.
+     *
+     * Read from the list [OgsLiveGames] keeps, not from `ogs_games`: see there for why the table cannot answer this.
+     * 503 rather than an empty list when that list is missing or older than [LIVE_GAMES_MAX_AGE_SECONDS] — the
+     * WebSocket is down, or the app just started — because "nobody is playing" and "we cannot tell" must not look alike.
+     *
+     * Membership is checked again here even though OGS was asked for members' games only: the list can be up to ten
+     * seconds old, and an account unlinked in between should not show. Rengo and non-square boards are left out, as
+     * everywhere else OGS games are read.
+     */
+    fun getLiveGames(context: Context) = context.handle("getLiveGames") {
+        // `?gold=true` keeps the games between two members, `?gold=false` those against an outsider, absent keeps both.
+        // Anything else is a 400 rather than ignored, so a typo does not silently return the unfiltered list.
+        val goldFilter = when (context.queryParam("gold")) {
+            null -> null
+            "true" -> true
+            "false" -> false
+            else -> {
+                context.badRequest()
+                return@handle
+            }
+        }
+
+        val snapshot = liveGames()
+        val age = snapshot?.let { Duration.between(it.receivedAt, Instant.now()).seconds }
+        if (snapshot == null || age == null || age > LIVE_GAMES_MAX_AGE_SECONDS) {
+            context.serviceUnavailable()
+            return@handle
+        }
+
+        val candidates = snapshot.games.filter { !it.rengo && it.width == it.height }
+        val members = ogsMembers(candidates.flatMap { listOf(it.black.id, it.white.id) }.toSet())
+        val baseUrl = ogsWebsiteUrl()
+
+        fun participant(player: OgsWsGameLightPlayer) = ApiLiveGameParticipant(
+            ogsId = player.id,
+            ogsName = player.username,
+            ogsRank = player.rank?.rankToKyuDanString(),
+            member = members[player.id]
+        )
+
+        val games = candidates
+            .filter { it.black.id in members || it.white.id in members }
+            .sortedByDescending { it.id }
+            .map {
+                ApiLiveGame(
+                    goldId = "OGS_${it.id}",
+                    ogsId = it.id,
+                    link = "$baseUrl/game/${it.id}",
+                    name = it.name,
+                    size = it.width,
+                    handicap = it.handicap,
+                    ranked = it.ranked,
+                    moveNumber = it.moveNumber,
+                    gold = it.black.id in members && it.white.id in members,
+                    black = participant(it.black),
+                    white = participant(it.white)
+                )
+            }
+            .filter { goldFilter == null || it.gold == goldFilter }
+        context.standardResponse(ApiLiveGames(age, games))
     }
 
     fun getGame(context: Context) = context.handle("getGame") {
@@ -792,5 +869,8 @@ class Api(
 
         /** Matches `house_adjustments.reason VARCHAR(200)`; the reason is also an embed line on Discord. */
         const val MAX_HOUSE_ADJUSTMENT_REASON = 200
+
+        /** Six missed refreshes of `OgsRealTimeService`, which asks every 10s. */
+        const val LIVE_GAMES_MAX_AGE_SECONDS = 60L
     }
 }

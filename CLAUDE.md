@@ -243,7 +243,10 @@ not open every connection at once.
    on the production server. The league routes are the same story, assembled by `api/league/LeagueApiComposer`, and the league
    adds **no view at all**. ⚠ One rule there is not stylistic: `black_invite` / `white_invite` never leave
    the API, on any route, not even on the profile of the player they belong to — no route here is authenticated, so a
-   published player link would let anyone play anyone's match. Only `spectator_link` is public. The other exception is
+   published player link would let anyone play anyone's match. Only `spectator_link` is public. `GET /gold/api/games/live`
+   reads no table either: `OgsRealTimeService` keeps its last `gamelist/query` answer in `OgsLiveGames`, before the
+   both-members filter. `ogs_games` would lag by a full REST walk (members × 15s), both for games against outsiders,
+   which only the poll writes, and for ends the WebSocket missed. It answers 503 once that list is over 60s old. The other exception is
    `GET /gold/api/health`, which reports the background services:
    200 when they are all healthy, 503 otherwise, so a monitor can watch the status code alone. Every service
    registers itself in `ServiceRegistry` from `PeriodicFlowService.start()`, and each reports whether it is still

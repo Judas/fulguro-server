@@ -64,6 +64,34 @@ object ApiDatabaseAccessor {
             ?.toApiGame()
     }
 
+    /**
+     * The members behind [ogsIds], keyed by OGS id. An id nobody linked is simply absent.
+     *
+     * LEFT JOINs on the rating, unlike `api_games`: a member who just linked is in a live game before GoldService has
+     * rated them, and dropping them would drop the game.
+     */
+    fun ogsMembers(ogsIds: Collection<Int>): Map<Int, ApiOgsMember> {
+        // `IN ()` is a syntax error in MySQL, and no live game is a normal answer
+        if (ogsIds.isEmpty()) return mapOf()
+
+        return DatabaseAccessor.withDao { connection ->
+            val query = "SELECT ogs.ogs_id, discord.discord_id, discord.discord_name, discord.discord_avatar, " +
+                    " gold.rating, gold.tier_rank, tier.name AS tier_name " +
+                    " FROM ogs_user_info AS ogs " +
+                    " INNER JOIN discord_user_info AS discord ON ogs.discord_id = discord.discord_id " +
+                    " LEFT JOIN gold_ratings AS gold ON discord.discord_id = gold.discord_id " +
+                    " LEFT JOIN gold_tiers AS tier ON gold.tier_rank = tier.rank " +
+                    " WHERE ogs.ogs_id IN (:ogsIds)"
+            connection
+                .query(query)
+                .throwOnMappingFailure(false)
+                .addParameter("ogsIds", ogsIds.toList())
+                .executeAndFetch(ApiOgsMember::class.java)
+                ?.associateBy { it.ogsId }
+                ?: mapOf()
+        }
+    }
+
     fun saveAuthCredentials(goldId: String, authCredentials: AuthRequestResponse) {
         DatabaseAccessor.withDao { connection ->
             val query =
